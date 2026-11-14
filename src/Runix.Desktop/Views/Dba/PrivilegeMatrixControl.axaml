@@ -1,0 +1,102 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:dba="clr-namespace:Runix.Desktop.Views.Dba"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
+             x:Class="Runix.Desktop.Views.Dba.PrivilegeMatrixControl"
+             Background="#090d14">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- TOP TOOLBAR -->
+        <Border Grid.Row="0" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="14,10">
+            <Grid ColumnDefinitions="Auto,160,Auto,140,*,Auto">
+                <TextBlock Grid.Column="0" Text="Role:" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="#8b9cb3" Margin="0,0,8,0"/>
+                <ComboBox Name="ComboRoles" Grid.Column="1" HorizontalAlignment="Stretch" Background="#141d2b" Foreground="#f0f6fc"/>
+
+                <TextBlock Grid.Column="2" Text="Schema:" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="#8b9cb3" Margin="14,0,8,0"/>
+                <ComboBox Name="ComboSchemas" Grid.Column="3" HorizontalAlignment="Stretch" Background="#141d2b" Foreground="#f0f6fc"/>
+
+                <!-- Search Filter -->
+                <TextBox Name="TxtTableFilter" Grid.Column="4" Watermark="Filtrar tabela..." Margin="14,0,0,0"
+                         Background="#141d2b" Foreground="#f0f6fc" BorderBrush="#1e2d42" Padding="8,6" CornerRadius="4"/>
+
+                <!-- Refresh Button -->
+                <Button Name="BtnRefresh" Grid.Column="5" Content="🔄 Recarregar" Classes="btn-secondary" Margin="10,0,0,0" Padding="12,6" FontSize="11"/>
+            </Grid>
+        </Border>
+
+        <!-- PRIVILEGES DATAGRID -->
+        <Grid Grid.Row="1">
+            <DataGrid Name="GridPrivileges" AutoGenerateColumns="False" IsReadOnly="False"
+                      x:DataType="dba:TablePrivilegeRowViewModel"
+                      GridLinesVisibility="All" HeadersVisibility="Column"
+                      BorderThickness="0" Background="#090d14" Foreground="#f0f6fc"
+                      RowBackground="#0c111a"
+                      HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Schema" Binding="{Binding SchemaName}" IsReadOnly="True" Width="100"/>
+                    <DataGridTextColumn Header="Tabela" Binding="{Binding TableName}" IsReadOnly="True" Width="180"/>
+                    <DataGridCheckBoxColumn Header="SELECT" Binding="{Binding HasSelect}" Width="80"/>
+                    <DataGridCheckBoxColumn Header="INSERT" Binding="{Binding HasInsert}" Width="80"/>
+                    <DataGridCheckBoxColumn Header="UPDATE" Binding="{Binding HasUpdate}" Width="80"/>
+                    <DataGridCheckBoxColumn Header="DELETE" Binding="{Binding HasDelete}" Width="80"/>
+                    <DataGridCheckBoxColumn Header="TRUNCATE" Binding="{Binding HasTruncate}" Width="90"/>
+                    <DataGridCheckBoxColumn Header="REFERENCES" Binding="{Binding HasReferences}" Width="100"/>
+                    <DataGridCheckBoxColumn Header="TRIGGER" Binding="{Binding HasTrigger}" Width="80"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Loading Indicator -->
+            <Border Name="PanelLoading" Background="#a0090d14" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" IsVisible="False">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                    <ProgressBar IsIndeterminate="True" Width="180" Height="4" Foreground="#008bb9"/>
+                    <TextBlock Text="Carregando matriz de privilégios..." Foreground="#8b9cb3" FontSize="12" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- BOTTOM STAGING BAR -->
+        <Border Name="PanelStagingBar" Grid.Row="2" Background="#141d2b" BorderBrush="#f59e0b" BorderThickness="0,2,0,0" Padding="16,10" IsVisible="False">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="⚠️" FontSize="14" VerticalAlignment="Center"/>
+                    <TextBlock Name="TxtStagingCount" Text="0 alterações pendentes" FontWeight="Bold" Foreground="#fbbf24" FontSize="12" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <Button Name="BtnDiscardChanges" Grid.Column="2" Content="Descartar" Classes="btn-outline" Padding="14,6" Margin="0,0,8,0" FontSize="11"/>
+                <Button Name="BtnReviewAndApply" Grid.Column="3" Content="Revisar &amp; Aplicar Alterações ⚡" Classes="btn-primary" Padding="16,6" FontSize="11"/>
+            </Grid>
+        </Border>
+
+        <!-- PREVIEW MODAL OVERLAY -->
+        <Grid Name="PanelPreviewOverlay" Grid.RowSpan="3" Background="#b0000000" IsVisible="False" ZIndex="100">
+            <Border Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8"
+                    Padding="20" Width="600" MaxHeight="500" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    BoxShadow="0 8 32 #50000000">
+                <Grid RowDefinitions="Auto,*,Auto">
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,14">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="⚡" FontSize="16" VerticalAlignment="Center"/>
+                            <TextBlock Text="Preview das Alterações DDL (GRANT / REVOKE)" FontSize="14" FontWeight="Bold" Foreground="#f0f6fc" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <Button Name="BtnClosePreview" Grid.Column="1" Content="✕" Classes="btn-outline" Padding="6,2" FontSize="11"/>
+                    </Grid>
+
+                    <Border Grid.Row="1" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="4" Padding="12">
+                        <ScrollViewer MaxHeight="300" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                            <TextBox Name="TxtPreviewSql" IsReadOnly="True" FontFamily="Consolas, Menlo, Monaco, monospace"
+                                     Background="Transparent" BorderThickness="0" Foreground="#38bdf8" FontSize="12" TextWrapping="NoWrap"/>
+                        </ScrollViewer>
+                    </Border>
+
+                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="0,14,0,0">
+                        <TextBlock Name="TxtPreviewStatus" Grid.Column="0" Text="" Foreground="#f87171" FontSize="11" VerticalAlignment="Center"/>
+                        <Button Name="BtnCancelPreview" Grid.Column="1" Content="Cancelar" Classes="btn-outline" Padding="14,6" Margin="0,0,8,0" FontSize="11"/>
+                        <Button Name="BtnConfirmApply" Grid.Column="2" Content="Confirmar e Executar" Classes="btn-primary" Padding="16,6" FontSize="11"/>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

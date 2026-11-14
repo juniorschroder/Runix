@@ -1,0 +1,123 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:models="clr-namespace:Runix.Core.Models;assembly=Runix.Core"
+             xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
+             mc:Ignorable="d" d:DesignWidth="950" d:DesignHeight="600"
+             x:Class="Runix.Desktop.Views.TableStructureTabControl"
+             Background="#090d14">
+
+    <UserControl.Styles>
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="Background" Value="#0e141f"/>
+            <Setter Property="Foreground" Value="#8b9cb3"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="BorderBrush" Value="#1e2d42"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="Padding" Value="10,6"/>
+        </Style>
+
+        <Style Selector="DataGridCell">
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="BorderBrush" Value="#151f2e"/>
+        </Style>
+
+        <Style Selector="DataGridRow">
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Background" Value="#090d14"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- TOP TITLE BAR -->
+        <Border Grid.Row="0" Background="#141d2b" Padding="14,10" BorderBrush="#1e2d42" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <TextBlock Text="{DynamicResource TableStructure.TitlePrefix}" FontSize="13" Foreground="#8b9cb3" VerticalAlignment="Center"/>
+                    <TextBlock Name="TxtTableName" Text="table_name" FontSize="14" FontWeight="Bold" Foreground="#008bb9" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                    <Button Name="BtnRefresh" Content="{DynamicResource Workspace.Refresh}" 
+                            Classes="btn-outline" Padding="12,6"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- TABS FOR COLUMNS, INDEXES, FOREIGN KEYS, AND DDL -->
+        <TabControl Grid.Row="1" Background="#090d14" Margin="0,4,0,0">
+            <!-- TAB 1: COLUMNS -->
+            <TabItem Header="{DynamicResource TableStructure.TabColumns}" FontSize="12">
+                <DataGrid Name="GridColumns" AutoGenerateColumns="False" IsReadOnly="True"
+                          x:DataType="models:ColumnInfo"
+                          GridLinesVisibility="All" HeadersVisibility="Column"
+                          HorizontalGridLinesBrush="#151f2e" VerticalGridLinesBrush="#151f2e"
+                          BorderThickness="0" Background="#090d14" Foreground="#f0f6fc"
+                          RowBackground="#090d14" FontSize="11.5">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="#" Binding="{Binding OrdinalPosition}" Width="60"/>
+                        <DataGridTextColumn Header="{DynamicResource TableStructure.ColName}" Binding="{Binding Name}" Width="200"/>
+                        <DataGridTextColumn Header="{DynamicResource TableStructure.ColType}" Binding="{Binding DataType}" Width="160"/>
+                        <DataGridTextColumn Header="{DynamicResource TableStructure.ColNullable}" Binding="{Binding NullableText}" Width="90"/>
+                        <DataGridTextColumn Header="{DynamicResource TableStructure.ColKey}" Binding="{Binding KeyText}" Width="180"/>
+                        <DataGridTextColumn Header="{DynamicResource TableStructure.ColDefault}" Binding="{Binding DefaultValue}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <!-- TAB 2: INDEXES -->
+            <TabItem Header="{DynamicResource TableStructure.TabIndexes}" FontSize="12">
+                <DataGrid Name="GridIndexes" AutoGenerateColumns="False" IsReadOnly="True"
+                          x:DataType="models:TableIndexInfo"
+                          GridLinesVisibility="All" HeadersVisibility="Column"
+                          HorizontalGridLinesBrush="#151f2e" VerticalGridLinesBrush="#151f2e"
+                          BorderThickness="0" Background="#090d14" Foreground="#f0f6fc"
+                          RowBackground="#090d14" FontSize="11.5">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="{DynamicResource TableStructure.IndexName}" Binding="{Binding Name}" Width="220"/>
+                        <DataGridTextColumn Header="{DynamicResource TableStructure.IndexColumns}" Binding="{Binding Columns}" Width="200"/>
+                        <DataGridTextColumn Header="{DynamicResource TableStructure.IndexMethod}" Binding="{Binding Method}" Width="100"/>
+                        <DataGridTextColumn Header="{DynamicResource TableStructure.IndexUnique}" Binding="{Binding UniqueText}" Width="90"/>
+                        <DataGridTextColumn Header="{DynamicResource TableStructure.IndexPk}" Binding="{Binding PrimaryText}" Width="90"/>
+                        <DataGridTextColumn Header="SQL" Binding="{Binding Definition}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <!-- TAB 3: FOREIGN KEYS -->
+            <TabItem Header="{DynamicResource TableStructure.TabForeignKeys}" FontSize="12">
+                <DataGrid Name="GridForeignKeys" AutoGenerateColumns="False" IsReadOnly="True"
+                          x:DataType="models:ForeignKeyInfo"
+                          GridLinesVisibility="All" HeadersVisibility="Column"
+                          HorizontalGridLinesBrush="#151f2e" VerticalGridLinesBrush="#151f2e"
+                          BorderThickness="0" Background="#090d14" Foreground="#f0f6fc"
+                          RowBackground="#090d14" FontSize="11.5">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="{DynamicResource TableStructure.FkConstraint}" Binding="{Binding ConstraintName}" Width="200"/>
+                        <DataGridTextColumn Header="{DynamicResource TableStructure.FkSourceCol}" Binding="{Binding SourceColumn}" Width="160"/>
+                        <DataGridTextColumn Header="{DynamicResource TableStructure.FkTargetTable}" Binding="{Binding TargetTable}" Width="160"/>
+                        <DataGridTextColumn Header="{DynamicResource TableStructure.FkTargetCol}" Binding="{Binding TargetColumn}" Width="160"/>
+                        <DataGridTextColumn Header="{DynamicResource TableStructure.FkOnUpdate}" Binding="{Binding OnUpdate}" Width="110"/>
+                        <DataGridTextColumn Header="{DynamicResource TableStructure.FkOnDelete}" Binding="{Binding OnDelete}" Width="110"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <!-- TAB 4: SQL DDL -->
+            <TabItem Header="{DynamicResource TableStructure.TabDdl}" FontSize="12">
+                <Grid RowDefinitions="*">
+                    <AvaloniaEdit:TextEditor Name="TxtDdl" IsReadOnly="True"
+                                             ShowLineNumbers="True"
+                                             FontFamily="Consolas,Menlo,Monaco,Courier New,monospace" FontSize="11.5"
+                                             Background="#090d14" Foreground="#f0f6fc"
+                                             LineNumbersForeground="#475569"
+                                             HorizontalScrollBarVisibility="Auto"
+                                             VerticalScrollBarVisibility="Auto"/>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

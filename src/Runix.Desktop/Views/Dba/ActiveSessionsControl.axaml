@@ -1,0 +1,94 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:dbaModels="clr-namespace:Runix.Core.Models.Dba;assembly=Runix.Core"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
+             x:Class="Runix.Desktop.Views.Dba.ActiveSessionsControl"
+             Background="#090d14">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- TOP TOOLBAR -->
+        <Border Grid.Row="0" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="14,10">
+            <Grid ColumnDefinitions="Auto,120,Auto,*,Auto">
+                <TextBlock Grid.Column="0" Text="Atualização:" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="#8b9cb3" Margin="0,0,8,0"/>
+                <ComboBox Name="ComboPolling" Grid.Column="1" HorizontalAlignment="Stretch" Background="#141d2b" Foreground="#f0f6fc"/>
+
+                <Button Name="BtnRefresh" Grid.Column="2" Content="🔄 Atualizar Agora" Classes="btn-secondary" Margin="10,0,0,0" Padding="12,6" FontSize="11"/>
+
+                <TextBox Name="TxtFilter" Grid.Column="3" Watermark="Filtrar por usuário, banco, query..." Margin="14,0,14,0"
+                         Background="#141d2b" Foreground="#f0f6fc" BorderBrush="#1e2d42" Padding="8,6" CornerRadius="4"/>
+
+                <TextBlock Name="TxtSessionStats" Grid.Column="4" Text="0 sessões" VerticalAlignment="Center" FontSize="11" Foreground="#008bb9" FontWeight="SemiBold"/>
+            </Grid>
+        </Border>
+
+        <!-- SESSIONS DATAGRID -->
+        <Grid Grid.Row="1">
+            <DataGrid Name="GridSessions" AutoGenerateColumns="False" IsReadOnly="True"
+                      x:DataType="dbaModels:PostgresActiveSession"
+                      GridLinesVisibility="All" HeadersVisibility="Column"
+                      BorderThickness="0" Background="#090d14" Foreground="#f0f6fc"
+                      RowBackground="#0c111a"
+                      HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="PID" Binding="{Binding Pid}" Width="80"/>
+                    <DataGridTextColumn Header="Usuário" Binding="{Binding UserName}" Width="120"/>
+                    <DataGridTextColumn Header="Banco" Binding="{Binding DatabaseName}" Width="110"/>
+                    <DataGridTextColumn Header="Aplicação" Binding="{Binding ApplicationName}" Width="120"/>
+                    <DataGridTextColumn Header="IP Cliente" Binding="{Binding ClientAddress}" Width="110"/>
+                    <DataGridTextColumn Header="Duração" Binding="{Binding DurationFormatted}" Width="90"/>
+                    <DataGridTextColumn Header="Estado" Binding="{Binding State}" Width="100"/>
+                    <DataGridTextColumn Header="Query" Binding="{Binding QueryText}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Loading Indicator -->
+            <Border Name="PanelLoading" Background="#a0090d14" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" IsVisible="False">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                    <ProgressBar IsIndeterminate="True" Width="180" Height="4" Foreground="#008bb9"/>
+                    <TextBlock Text="Consultando pg_stat_activity..." Foreground="#8b9cb3" FontSize="12" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- BOTTOM ACTION BAR -->
+        <Border Grid.Row="2" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="0,1,0,0" Padding="14,8">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Name="TxtSelectedSessionInfo" Text="Selecione um processo para gerenciar" FontSize="12" Foreground="#8b9cb3"/>
+                </StackPanel>
+
+                <Button Name="BtnCancelQuery" Grid.Column="1" Content="✋ Cancelar Query" Classes="btn-secondary" 
+                        IsEnabled="False" Margin="0,0,8,0" Padding="12,6" FontSize="11"/>
+                <Button Name="BtnTerminateBackend" Grid.Column="2" Content="☠ Encerrar Conexão" Classes="btn-danger" 
+                        IsEnabled="False" Padding="14,6" FontSize="11"/>
+            </Grid>
+        </Border>
+
+        <!-- CONFIRMATION MODAL OVERLAY -->
+        <Grid Name="PanelConfirmOverlay" Grid.RowSpan="3" Background="#b0000000" IsVisible="False" ZIndex="100">
+            <Border Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8"
+                    Padding="20" Width="480" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    BoxShadow="0 8 32 #50000000">
+                <StackPanel Spacing="14">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Name="TxtConfirmIcon" Text="⚠️" FontSize="18" VerticalAlignment="Center"/>
+                        <TextBlock Name="TxtConfirmTitle" Text="Confirmar Ação" FontSize="14" FontWeight="Bold" Foreground="#f0f6fc" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <TextBlock Name="TxtConfirmMessage" Text="" Foreground="#8b9cb3" FontSize="12" TextWrapping="Wrap"/>
+
+                    <Border Name="PanelQuerySnippet" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="4" Padding="10">
+                        <TextBlock Name="TxtConfirmQuery" Text="" FontFamily="Consolas, Menlo, monospace" FontSize="11" Foreground="#38bdf8" TextWrapping="Wrap" MaxHeight="100"/>
+                    </Border>
+
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <Button Name="BtnCancelAction" Grid.Column="1" Content="Voltar" Classes="btn-outline" Padding="14,6" Margin="0,0,8,0" FontSize="11"/>
+                        <Button Name="BtnExecuteAction" Grid.Column="2" Content="Confirmar" Classes="btn-danger" Padding="16,6" FontSize="11"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

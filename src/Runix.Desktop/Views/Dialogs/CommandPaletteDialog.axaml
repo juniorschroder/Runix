@@ -1,0 +1,99 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:models="clr-namespace:Runix.Core.Models;assembly=Runix.Core"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
+             x:Class="Runix.Desktop.Views.Dialogs.CommandPaletteDialog"
+             Background="#9905080d">
+
+    <Grid Name="BackdropGrid" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+        <Border Width="660" MaxHeight="480" VerticalAlignment="Top" Margin="0,56,0,0"
+                Background="#0e141f" BorderBrush="#008bb9" BorderThickness="1.5"
+                CornerRadius="10" BoxShadow="0 16 40 4 #CC000000" Padding="0">
+            <Grid RowDefinitions="Auto,Auto,*,Auto">
+                <!-- Search Input Bar -->
+                <Border Grid.Row="0" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="0,0,0,1"
+                        CornerRadius="10,10,0,0" Padding="14,12">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <TextBlock Grid.Column="0" Text="⌘K" FontSize="14" FontWeight="Bold"
+                                   Foreground="#38bdf8" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBox Name="TxtSearch" Grid.Column="1"
+                                 Watermark="Digite um comando, tabela (#), objeto DDL (@), query (?) ou ação (>)..."
+                                 Background="Transparent" Foreground="#f0f6fc" BorderThickness="0"
+                                 FontSize="13" VerticalContentAlignment="Center"/>
+                        <Button Name="BtnClose" Grid.Column="2" Content="ESC" Classes="btn-outline"
+                                Padding="6,2" FontSize="10" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+
+                <!-- Quick Scope Filter Pills -->
+                <Border Grid.Row="1" Background="#0b111a" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="12,6">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="Filtros rápidos:" FontSize="10" Foreground="#64748b" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <Button Name="BtnScopeAll" Content="Todos" Classes="btn-secondary" Padding="7,2" FontSize="10"/>
+                        <Button Name="BtnScopeActions" Content="&gt; Ações" Classes="btn-outline" Padding="7,2" FontSize="10"/>
+                        <Button Name="BtnScopeTables" Content="# Tabelas &amp; Views" Classes="btn-outline" Padding="7,2" FontSize="10"/>
+                        <Button Name="BtnScopeDdl" Content="@ Objetos DDL" Classes="btn-outline" Padding="7,2" FontSize="10"/>
+                        <Button Name="BtnScopeQueries" Content="? Queries &amp; Snippets" Classes="btn-outline" Padding="7,2" FontSize="10"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Results List -->
+                <ListBox Name="ListResults" Grid.Row="2" Background="Transparent" BorderThickness="0"
+                         Margin="6,6" MaxHeight="330">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="models:CommandPaletteItem">
+                            <Border Padding="10,7" CornerRadius="6" Margin="0,1" Background="Transparent">
+                                <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                                    <!-- Icon -->
+                                    <Border Grid.Column="0" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1"
+                                            CornerRadius="5" Width="28" Height="28" Margin="0,0,10,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Icon}" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+
+                                    <!-- Category Badge -->
+                                    <Border Grid.Column="1" Background="{Binding BadgeBackground}" CornerRadius="4"
+                                            Padding="6,2" Margin="0,0,10,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding BadgeText}" Foreground="{Binding BadgeForeground}"
+                                                   FontSize="9" FontWeight="Bold" FontFamily="Consolas,monospace"/>
+                                    </Border>
+
+                                    <!-- Title & Subtitle -->
+                                    <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="#f0f6fc" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding Subtitle}" FontSize="10" Foreground="#8b9cb3"
+                                                   IsVisible="{Binding HasSubtitle}" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+
+                                    <!-- Shortcut Hint -->
+                                    <Border Grid.Column="3" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1"
+                                            CornerRadius="4" Padding="6,2" Margin="8,0,0,0" VerticalAlignment="Center"
+                                            IsVisible="{Binding HasShortcut}">
+                                        <TextBlock Text="{Binding ShortcutHint}" FontSize="10" Foreground="#94a3b8"
+                                                   FontFamily="Consolas,monospace"/>
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Footer Keyboard Legend -->
+                <Border Grid.Row="3" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="0,1,0,0"
+                        CornerRadius="0,0,10,10" Padding="14,7">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Name="TxtResultCount" Grid.Column="0" Text="0 resultados" FontSize="10" Foreground="#64748b" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="↑↓ Navegar" FontSize="10" Foreground="#8b9cb3"/>
+                            <TextBlock Text="↵ Abrir / Executar" FontSize="10" Foreground="#38bdf8" FontWeight="SemiBold"/>
+                            <TextBlock Text="Ctrl+↵ Estrutura / DDL" FontSize="10" Foreground="#8b9cb3"/>
+                            <TextBlock Text="Esc Fechar" FontSize="10" Foreground="#8b9cb3"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

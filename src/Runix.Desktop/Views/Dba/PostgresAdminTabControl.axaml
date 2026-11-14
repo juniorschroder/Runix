@@ -1,0 +1,106 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:dba="clr-namespace:Runix.Desktop.Views.Dba"
+             xmlns:dbaModels="clr-namespace:Runix.Core.Models.Dba;assembly=Runix.Core"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
+             x:Class="Runix.Desktop.Views.Dba.PostgresAdminTabControl"
+             Background="#090d14">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- TOP SUB-TABS NAVIGATION -->
+        <Border Grid.Row="0" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="14,8">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <Button Name="BtnSubTabRoles" Content="👥 Usuários &amp; Roles" Classes="btn-secondary" Padding="14,6" FontSize="11"/>
+                <Button Name="BtnSubTabPrivileges" Content="🔐 Matriz de Privilégios" Classes="btn-outline" Padding="14,6" FontSize="11"/>
+                <Button Name="BtnSubTabSessions" Content="⚡ Sessões &amp; Processos Ativos" Classes="btn-outline" Padding="14,6" FontSize="11"/>
+            </StackPanel>
+        </Border>
+
+        <!-- SUB-VIEWS CONTAINER -->
+        <Grid Grid.Row="1">
+            <!-- 1. ROLES SUB-VIEW -->
+            <Grid Name="PanelSubTabRoles" RowDefinitions="Auto,*">
+                <!-- Roles Toolbar -->
+                <Border Grid.Row="0" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="14,10">
+                    <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto">
+                        <Button Name="BtnNewRole" Grid.Column="0" Content="+ Novo Usuário / Role" Classes="btn-primary" Padding="12,6" FontSize="11" Margin="0,0,8,0"/>
+                        <Button Name="BtnEditRole" Grid.Column="1" Content="✏ Editar Role" Classes="btn-secondary" Padding="12,6" FontSize="11" IsEnabled="False" Margin="0,0,8,0"/>
+                        <Button Name="BtnDeleteRole" Grid.Column="2" Content="🗑 Excluir Role" Classes="btn-danger" Padding="12,6" FontSize="11" IsEnabled="False" Margin="0,0,8,0"/>
+                        <Button Name="BtnRefreshRoles" Grid.Column="3" Content="🔄 Atualizar" Classes="btn-outline" Padding="12,6" FontSize="11"/>
+
+                        <TextBox Name="TxtRoleFilter" Grid.Column="4" Watermark="Filtrar role..." Margin="16,0,16,0"
+                                 Background="#141d2b" Foreground="#f0f6fc" BorderBrush="#1e2d42" Padding="8,6" CornerRadius="4"/>
+
+                        <TextBlock Name="TxtRoleCount" Grid.Column="5" Text="0 roles" VerticalAlignment="Center" FontSize="11" Foreground="#008bb9" FontWeight="SemiBold"/>
+                    </Grid>
+                </Border>
+
+                <!-- Roles DataGrid -->
+                <Grid Grid.Row="1">
+                    <DataGrid Name="GridRoles" AutoGenerateColumns="False" IsReadOnly="True"
+                              x:DataType="dbaModels:PostgresRoleInfo"
+                              GridLinesVisibility="All" HeadersVisibility="Column"
+                              BorderThickness="0" Background="#090d14" Foreground="#f0f6fc"
+                              RowBackground="#0c111a"
+                              HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Nome da Role" Binding="{Binding RoleName}" Width="160"/>
+                            <DataGridTextColumn Header="Tipo" Binding="{Binding RoleTypeBadge}" Width="100"/>
+                            <DataGridCheckBoxColumn Header="Login" Binding="{Binding CanLogin}" Width="70"/>
+                            <DataGridCheckBoxColumn Header="Superuser" Binding="{Binding IsSuperuser}" Width="90"/>
+                            <DataGridCheckBoxColumn Header="Criar DB" Binding="{Binding CanCreateDb}" Width="80"/>
+                            <DataGridCheckBoxColumn Header="Criar Role" Binding="{Binding CanCreateRole}" Width="90"/>
+                            <DataGridCheckBoxColumn Header="Herança" Binding="{Binding InheritsPrivileges}" Width="80"/>
+                            <DataGridTextColumn Header="Expiração" Binding="{Binding ValidUntilFormatted}" Width="150"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <Border Name="PanelLoadingRoles" Background="#a0090d14" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" IsVisible="False">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                            <ProgressBar IsIndeterminate="True" Width="180" Height="4" Foreground="#008bb9"/>
+                            <TextBlock Text="Carregando roles..." Foreground="#8b9cb3" FontSize="12" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- 2. PRIVILEGES SUB-VIEW -->
+            <dba:PrivilegeMatrixControl Name="ViewPrivilegeMatrix" IsVisible="False"/>
+
+            <!-- 3. SESSIONS SUB-VIEW -->
+            <dba:ActiveSessionsControl Name="ViewActiveSessions" IsVisible="False"/>
+        </Grid>
+
+        <!-- STATUS BAR -->
+        <Border Grid.Row="2" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="0,1,0,0" Padding="14,4">
+            <TextBlock Name="TxtStatusMessage" Text="Módulo DBA PostgreSQL pronto." FontSize="11" Foreground="#8b9cb3"/>
+        </Border>
+
+        <!-- MODAL OVERLAY HOST FOR ROLE EDITOR & CONFIRMATIONS -->
+        <Grid Name="PanelModalOverlay" Grid.RowSpan="3" Background="#b0000000" IsVisible="False" ZIndex="100">
+            <!-- Modal Content Host -->
+            <ContentControl Name="ModalContainer" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+            <!-- Delete Confirmation Dialog -->
+            <Border Name="PanelDeleteConfirm" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8"
+                    Padding="20" Width="440" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    BoxShadow="0 8 32 #50000000" IsVisible="False">
+                <StackPanel Spacing="14">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="🗑" FontSize="18" VerticalAlignment="Center"/>
+                        <TextBlock Text="Confirmar Exclusão de Role" FontSize="14" FontWeight="Bold" Foreground="#f0f6fc" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <TextBlock Name="TxtDeleteMessage" Text="" Foreground="#8b9cb3" FontSize="12" TextWrapping="Wrap"/>
+
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <Button Name="BtnCancelDelete" Grid.Column="1" Content="Cancelar" Classes="btn-outline" Padding="14,6" Margin="0,0,8,0" FontSize="11"/>
+                        <Button Name="BtnConfirmDelete" Grid.Column="2" Content="Excluir Permanentemente" Classes="btn-danger" Padding="16,6" FontSize="11"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

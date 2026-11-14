@@ -1,0 +1,68 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="820"
+        x:Class="Runix.Desktop.MainWindow"
+        Title="RUNIX v1.0.0 - Modern Cross-Platform Database Studio"
+        Width="1200" Height="800"
+        MinWidth="800" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        SystemDecorations="Full"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="PreferSystemChrome"
+        ExtendClientAreaTitleBarHeightHint="36"
+        Background="#090d14">
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- CUSTOM TITLE BAR -->
+        <Border Name="CustomTitleBar" Grid.Row="0" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Height="36">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <!-- Left Title & Branding Section -->
+                <StackPanel Name="PanelTitleLeft" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="76,0,0,0" Spacing="8">
+                    <TextBlock Text="⚡" FontSize="13" Foreground="#008bb9" VerticalAlignment="Center"/>
+                    <TextBlock Text="RUNIX" FontWeight="Bold" FontSize="12" Foreground="#008bb9" LetterSpacing="1.2" VerticalAlignment="Center"/>
+                    <TextBlock Text="Database Studio" FontSize="11" Foreground="#8b9cb3" VerticalAlignment="Center"/>
+
+                    <!-- Version & About Quick Trigger Badge -->
+                    <Button Name="BtnTitleBarAbout" Classes="btn-accent-subtle" Padding="7,2" Margin="4,0,0,0"
+                            VerticalAlignment="Center" ToolTip.Tip="{DynamicResource About.Title}">
+                        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                            <TextBlock Text="v1.0.0" FontSize="10" FontWeight="Bold" Foreground="#38bdf8" VerticalAlignment="Center"/>
+                            <TextBlock Text="ℹ" FontSize="10" Foreground="#7dd3fc" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Active Connected Database Badge -->
+                    <Border Name="BadgeActiveDb" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" 
+                            CornerRadius="4" Padding="8,2" Margin="6,0,0,0" VerticalAlignment="Center" IsVisible="False">
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <TextBlock Name="TxtActiveDbIcon" Text="📁" FontSize="11" VerticalAlignment="Center"/>
+                            <TextBlock Name="TxtActiveDbName" Text="demo.db" FontSize="11" FontWeight="SemiBold" Foreground="#38bdf8" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Center Drag Region -->
+                <Border Grid.Column="1" Background="Transparent"/>
+
+                <!-- Right Window Control Buttons (Windows & Linux) -->
+                <StackPanel Name="PanelWindowControls" Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Stretch">
+                    <Button Name="BtnMinimize" Content="🗕" Classes="titlebar-btn"/>
+                    <Button Name="BtnMaximize" Content="🗖" Classes="titlebar-btn"/>
+                    <Button Name="BtnCloseWindow" Content="✕" Classes="titlebar-btn titlebar-close"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- MAIN APP CONTENT -->
+        <Grid Name="MainRoot" Grid.Row="1">
+            <!-- Content switches between ConnectionView and WorkspaceView -->
+        </Grid>
+
+        <!-- GLOBAL MODAL OVERLAY (About Dialog) -->
+        <Grid Name="OverlayGlobalModal" Grid.Row="1" Background="#c4000000" IsVisible="False" ZIndex="500">
+            <ContentControl Name="GlobalModalContainer" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Grid>
+    </Grid>
+</Window>

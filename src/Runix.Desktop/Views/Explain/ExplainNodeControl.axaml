@@ -1,0 +1,47 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:models="clr-namespace:Runix.Core.Models;assembly=Runix.Core"
+             mc:Ignorable="d" d:DesignWidth="240" d:DesignHeight="110"
+             x:Class="Runix.Desktop.Views.Explain.ExplainNodeControl"
+             x:DataType="models:ExplainNode">
+
+    <Border Name="NodeBorder" Background="#141d2b" BorderBrush="#34d399" BorderThickness="1.5" CornerRadius="6"
+            Padding="10,8" Width="230" Cursor="Hand">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto">
+            <!-- Header: Operator Icon + Node Type + Cost Badge -->
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,6">
+                <TextBlock Name="TxtOperatorIcon" Grid.Column="0" Text="⚡" FontSize="13" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                <TextBlock Name="TxtNodeType" Grid.Column="1" Text="{Binding NodeType}" FontWeight="Bold" FontSize="11.5" 
+                           Foreground="#f0f6fc" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                
+                <!-- Cost Badge -->
+                <Border Name="BadgeCost" Grid.Column="2" CornerRadius="4" Padding="5,2" Background="#0c2338" VerticalAlignment="Center">
+                    <TextBlock Name="TxtCostPercent" Text="{Binding CostBadgeText}" FontSize="10.5" FontWeight="Bold" Foreground="#34d399"/>
+                </Border>
+            </Grid>
+
+            <!-- Target: Relation or Index Name -->
+            <TextBlock Name="TxtTargetDescription" Grid.Row="1" Text="{Binding TargetDescription}" FontSize="11" 
+                       Foreground="#38bdf8" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,0,0,4"/>
+
+            <!-- Metrics: Rows and Timings -->
+            <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,0,0,4">
+                <TextBlock Name="TxtFormattedRows" Grid.Column="0" Text="{Binding FormattedRows}" FontSize="10" 
+                           Foreground="#8b9cb3" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Name="TxtActualTime" Grid.Column="1" Text="{Binding FormattedActualTime}" FontSize="10" 
+                           Foreground="#f0f6fc" FontWeight="SemiBold"/>
+            </Grid>
+
+            <!-- Bottleneck Alert Badge (if IsBottleneck) -->
+            <Border Name="BadgeBottleneck" Grid.Row="3" Background="#2f0707" BorderBrush="#f87171" BorderThickness="1" 
+                    CornerRadius="3" Padding="4,2" HorizontalAlignment="Left" IsVisible="{Binding IsBottleneck}">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <TextBlock Text="⚠" FontSize="10" Foreground="#f87171" VerticalAlignment="Center"/>
+                    <TextBlock Text="Gargalo Crítico" FontSize="9.5" FontWeight="Bold" Foreground="#f87171" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

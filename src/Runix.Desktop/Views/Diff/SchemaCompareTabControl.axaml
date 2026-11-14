@@ -1,0 +1,171 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:diff="clr-namespace:Runix.Desktop.Views.Diff"
+             xmlns:diffModels="clr-namespace:Runix.Core.Models.Diff;assembly=Runix.Core"
+             mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="750"
+             x:Class="Runix.Desktop.Views.Diff.SchemaCompareTabControl"
+             Background="#090d14">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
+        <!-- TOP TOOLBAR: SOURCE / TARGET / OPTIONS -->
+        <Border Grid.Row="0" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="14,10">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto,Auto">
+                <!-- Source Info Badge -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="0,0,10,0">
+                    <TextBlock Text="Origem:" FontSize="11" Foreground="#8b9cb3" VerticalAlignment="Center"/>
+                    <Border Background="#162235" BorderBrush="#008bb9" BorderThickness="1" CornerRadius="4" Padding="8,4">
+                        <TextBlock Name="TxtSourceBadge" Text="[Ativa] Conexão Atual" FontSize="11" FontWeight="SemiBold" Foreground="#38bdf8"/>
+                    </Border>
+                    <Button Name="BtnSaveSnapshot" Content="💾 Salvar Snapshot" Classes="btn-outline" Padding="8,4" FontSize="11" ToolTip.Tip="Exportar snapshot do schema atual para arquivo JSON"/>
+                </StackPanel>
+
+                <!-- Direction Toggle -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" Margin="0,0,10,0">
+                    <Button Name="BtnInvertDirection" Content="⇄" Classes="btn-secondary" Padding="8,4" FontSize="12" ToolTip.Tip="Inverter direção de sincronização"/>
+                    <TextBlock Name="TxtDirection" Text="Origem ➔ Destino" FontSize="11" FontWeight="Bold" Foreground="#f0f6fc" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Target Selector -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="0,0,12,0">
+                    <TextBlock Text="Destino:" FontSize="11" Foreground="#8b9cb3" VerticalAlignment="Center"/>
+                    <ComboBox Name="CboTarget" Width="220" Padding="8,4" FontSize="11"
+                              Background="#141d2b" Foreground="#f0f6fc" BorderBrush="#1e2d42" CornerRadius="4"/>
+                    <Button Name="BtnLoadSnapshotFile" Content="📂 JSON" Classes="btn-outline" Padding="8,4" FontSize="11" ToolTip.Tip="Carregar arquivo snapshot JSON externo"/>
+                </StackPanel>
+
+                <!-- Safe Mode Checkbox -->
+                <CheckBox Name="ChkSafeMode" Grid.Column="6" Content="Modo Seguro (Sem DROPs)" IsChecked="True"
+                          FontSize="11" Foreground="#34d399" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0"
+                          ToolTip.Tip="Omite comandos DROP TABLE e DROP COLUMN para evitar perda de dados"/>
+
+                <!-- Compare Action Button -->
+                <Button Name="BtnCompare" Grid.Column="7" Content="⚖ Comparar Schemas ⚡" Classes="btn-primary" Padding="14,6" FontSize="11"/>
+            </Grid>
+        </Border>
+
+        <!-- STATS & SELECTION FILTER TOOLBAR -->
+        <Border Grid.Row="1" Background="#0c111a" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="14,8">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto,Auto,Auto">
+                <!-- Status Badges -->
+                <TextBlock Name="TxtSummaryTotal" Grid.Column="0" Text="Total: 0" FontSize="11" Foreground="#8b9cb3" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <TextBlock Name="TxtSummaryAdded" Grid.Column="1" Text="+ 0 Novos" FontSize="11" Foreground="#34d399" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <TextBlock Name="TxtSummaryModified" Grid.Column="2" Text="~ 0 Modificados" FontSize="11" Foreground="#fbbf24" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <TextBlock Name="TxtSummaryRemoved" Grid.Column="3" Text="- 0 Extras" FontSize="11" Foreground="#f87171" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0"/>
+
+                <!-- Selection Shortcuts -->
+                <Button Name="BtnSelectAll" Grid.Column="5" Content="✓ Todos" Classes="btn-outline" Padding="8,4" FontSize="10" Margin="0,0,4,0"/>
+                <Button Name="BtnDeselectAll" Grid.Column="6" Content="✕ Nenhum" Classes="btn-outline" Padding="8,4" FontSize="10" Margin="0,0,4,0"/>
+                <Button Name="BtnSelectAdditions" Grid.Column="7" Content="+ Apenas Novos" Classes="btn-outline" Padding="8,4" FontSize="10" Margin="0,0,10,0"/>
+
+                <!-- Filter Box -->
+                <TextBox Name="TxtFilterTable" Grid.Column="8" Width="180" Watermark="Filtrar tabela..."
+                         Background="#141d2b" Foreground="#f0f6fc" BorderBrush="#1e2d42" Padding="8,4" FontSize="11" CornerRadius="4"/>
+            </Grid>
+        </Border>
+
+        <!-- MAIN COMPARISON SPLIT VIEW: TABLES LIST (TOP) & INSPECTOR (BOTTOM) -->
+        <Grid Grid.Row="2" RowDefinitions="*,4,*">
+            <!-- TABLES DIFF DATAGRID -->
+            <Grid Grid.Row="0">
+                <DataGrid Name="GridTableDiffs" AutoGenerateColumns="False" IsReadOnly="False"
+                          x:DataType="diffModels:TableDiffItem"
+                          GridLinesVisibility="All" HeadersVisibility="Column"
+                          BorderThickness="0" Background="#090d14" Foreground="#f0f6fc"
+                          RowBackground="#0c111a"
+                          HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <DataGrid.Columns>
+                        <DataGridCheckBoxColumn Header="Sincronizar" Binding="{Binding IsSelectedForSync}" Width="90"/>
+                        <DataGridTemplateColumn Header="Status" Width="120">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate DataType="diffModels:TableDiffItem">
+                                    <Border Background="#162235" CornerRadius="4" Padding="6,2" Margin="4,2" HorizontalAlignment="Center">
+                                        <TextBlock Text="{Binding StatusBadge}" Foreground="{Binding StatusColor}"
+                                                   FontWeight="Bold" FontSize="11" HorizontalAlignment="Center"/>
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Tabela" Binding="{Binding FullName}" IsReadOnly="True" Width="220"/>
+                        <DataGridTextColumn Header="Resumo das Divergências" Binding="{Binding Summary}" IsReadOnly="True" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Empty State -->
+                <Border Name="PanelEmptyDiff" Background="#090d14" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" IsVisible="True">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+                        <TextBlock Text="⚖" FontSize="36" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Nenhuma comparação executada." FontSize="14" FontWeight="SemiBold" Foreground="#f0f6fc" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Selecione o banco de destino ou um snapshot JSON e clique em 'Comparar Schemas'."
+                                   FontSize="11" Foreground="#8b9cb3" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- SPLITTER -->
+            <GridSplitter Grid.Row="1" Background="#1e2d42" ResizeDirection="Rows"/>
+
+            <!-- BOTTOM INSPECTOR DRAWER -->
+            <Grid Grid.Row="2" RowDefinitions="Auto,*" Background="#090d14">
+                <Border Grid.Row="0" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="0,1,0,1" Padding="12,6">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="🔍 Detalhes da Tabela:" FontSize="11" Foreground="#8b9cb3" VerticalAlignment="Center"/>
+                            <TextBlock Name="TxtInspectorTableName" Text="(Nenhuma tabela selecionada)" FontSize="11" FontWeight="Bold" Foreground="#38bdf8" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Name="TxtInspectorColCount" Grid.Column="1" Text="0 colunas divergentes" FontSize="11" Foreground="#8b9cb3" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+
+                <!-- COLUMNS DIFF GRID -->
+                <DataGrid Name="GridColumnDiffs" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                          x:DataType="diffModels:ColumnDiffItem"
+                          GridLinesVisibility="All" HeadersVisibility="Column"
+                          BorderThickness="0" Background="#090d14" Foreground="#f0f6fc"
+                          RowBackground="#0c111a"
+                          HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Coluna" Binding="{Binding ColumnName}" Width="160"/>
+                        <DataGridTemplateColumn Header="Ação" Width="110">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate DataType="diffModels:ColumnDiffItem">
+                                    <Border Background="#162235" CornerRadius="4" Padding="6,2" Margin="4,2" HorizontalAlignment="Center">
+                                        <TextBlock Text="{Binding StatusBadge}" Foreground="{Binding StatusColor}"
+                                                   FontWeight="Bold" FontSize="11" HorizontalAlignment="Center"/>
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Tipo na Origem" Binding="{Binding SourceType}" Width="140"/>
+                        <DataGridTextColumn Header="Tipo no Destino" Binding="{Binding TargetType}" Width="140"/>
+                        <DataGridTextColumn Header="Divergência Detalhada" Binding="{Binding DifferenceDescription}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Grid>
+
+        <!-- BOTTOM STAGING ACTION BAR -->
+        <Border Grid.Row="3" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="0,1,0,0" Padding="14,10">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="⚡ Sincronização:" FontSize="11" Foreground="#8b9cb3" VerticalAlignment="Center"/>
+                    <TextBlock Name="TxtStagingCount" Text="0 tabelas selecionadas" FontSize="11" FontWeight="Bold" Foreground="#34d399" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <Button Name="BtnGenerateSync" Grid.Column="1" Content="⚡ Gerar Script de Sincronização"
+                        Classes="btn-primary" Padding="16,8" FontSize="11" FontWeight="Bold"/>
+            </Grid>
+        </Border>
+
+        <!-- STATUS BAR -->
+        <Border Grid.Row="4" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="0,1,0,0" Padding="14,4">
+            <TextBlock Name="TxtStatusMessage" Text="Pronto para comparar schemas." FontSize="11" Foreground="#8b9cb3"/>
+        </Border>
+
+        <!-- MODAL OVERLAY FOR DDL SYNC PREVIEW -->
+        <Grid Name="PanelModalOverlay" Grid.RowSpan="5" Background="#b0000000" IsVisible="False" ZIndex="100">
+            <diff:SyncPreviewDialog Name="ModalSyncPreview" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Grid>
+    </Grid>
+</UserControl>

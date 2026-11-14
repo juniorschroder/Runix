@@ -1,0 +1,49 @@
+# Local planning & AI agent artifacts
+.planning/
+.agents/
+.claude/
+.cursor/
+.gemini/
+
+# IDEs & Editors (JetBrains Rider, Visual Studio, VS Code)
+.idea/
+*.sln.iml
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# .NET Build, Publish & Test Outputs
+[Bb]in/
+[Oo]bj/
+[Dd]ist/
+publish/
+out/
+TestResults/
+*.dll
+*.pdb
+*.runtimeconfig.json
+*.deps.json
+Runix
+.avalonia-build-tasks/
+runtimes/
+
+# Legacy / Native build outputs
+target/
+
+# Local runtime & sandbox temp folders
+.local/
+Library/
+RUNIX/
+shots/
+
+# SQLite temporary lock/journal files
+*.db-wal
+*.db-shm
+*.db-journal
+
+# Operating System files
+.DS_Store
+Thumbs.db

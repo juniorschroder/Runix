@@ -1,0 +1,186 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="680" d:DesignHeight="610"
+             x:Class="Runix.Desktop.Views.Dialogs.AboutDialog">
+
+    <Border Width="680" Background="#0e141f" BorderBrush="#008bb9" BorderThickness="1.5"
+            CornerRadius="12" BoxShadow="0 20 50 8 #D9000000" Padding="0">
+        <Grid RowDefinitions="Auto,*,Auto">
+            <!-- 1. Hero Header Banner -->
+            <Border Grid.Row="0" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="0,0,0,1"
+                    CornerRadius="12,12,0,0" Padding="24,20">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <!-- Brand Icon -->
+                    <Border Grid.Column="0" Width="54" Height="54" CornerRadius="12" Background="#0064a5"
+                            BorderBrush="#38bdf8" BorderThickness="1.5" Margin="0,0,16,0" VerticalAlignment="Center">
+                        <TextBlock Text="⚡" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+
+                    <!-- Title, Version Badge & Tagline -->
+                    <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                            <TextBlock Text="RUNIX" FontSize="22" FontWeight="Bold" Foreground="#008bb9" LetterSpacing="1.5" VerticalAlignment="Center"/>
+                            <TextBlock Text="Database Studio" FontSize="18" FontWeight="SemiBold" Foreground="#f0f6fc" VerticalAlignment="Center"/>
+                            <Border Background="#0c2338" BorderBrush="#38bdf8" BorderThickness="1" CornerRadius="6" Padding="8,2" VerticalAlignment="Center">
+                                <TextBlock Name="TxtVersionBadge" Text="v1.0.0" FontSize="11" FontWeight="Bold" Foreground="#38bdf8"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{DynamicResource About.Tagline}" FontSize="12" Foreground="#8b9cb3" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <!-- Close Button -->
+                    <Button Name="BtnClose" Grid.Column="2" Content="✕" Classes="btn-icon" Padding="8,4" FontSize="12" VerticalAlignment="Top"/>
+                </Grid>
+            </Border>
+
+            <!-- 2. Main Body Content -->
+            <StackPanel Grid.Row="1" Margin="24,18" Spacing="16">
+                <!-- Project Overview Description -->
+                <TextBlock Text="{DynamicResource About.Description}" FontSize="12.5" Foreground="#cbd5e1"
+                           TextWrapping="Wrap" LineHeight="19"/>
+
+                <!-- Creator & Version Metadata Cards -->
+                <Grid ColumnDefinitions="1.35*,*">
+                    <!-- Creator Card -->
+                    <Border Grid.Column="0" Background="#090d14" BorderBrush="#008bb9" BorderThickness="1"
+                            CornerRadius="8" Padding="14,12" Margin="0,0,6,0">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Grid.Column="0" Width="40" Height="40" CornerRadius="20" Background="#141d2b"
+                                    BorderBrush="#38bdf8" BorderThickness="1" Margin="0,0,12,0" VerticalAlignment="Center">
+                                <TextBlock Text="👨‍💻" FontSize="19" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                <TextBlock Text="{DynamicResource About.CreatorLabel}" FontSize="9.5" FontWeight="Bold"
+                                           Foreground="#38bdf8" LetterSpacing="0.8"/>
+                                <TextBlock Name="TxtCreatorName" Text="José Carlos Schröder Júnior" FontSize="14.5"
+                                           FontWeight="Bold" Foreground="#f0f6fc"/>
+                                <TextBlock Text="{DynamicResource About.CreatorRole}" FontSize="11" Foreground="#8b9cb3"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Version & License Card -->
+                    <Border Grid.Column="1" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1"
+                            CornerRadius="8" Padding="14,12" Margin="6,0,0,0">
+                        <StackPanel Spacing="6" VerticalAlignment="Center">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="1">
+                                    <TextBlock Text="{DynamicResource About.VersionLabel}" FontSize="9.5" FontWeight="Bold"
+                                               Foreground="#64748b" LetterSpacing="0.6"/>
+                                    <TextBlock Name="TxtVersionDetail" Text="1.0.0 (Release)" FontSize="12.5"
+                                               FontWeight="Bold" Foreground="#34d399"/>
+                                </StackPanel>
+                                <Border Grid.Column="1" Background="#122a20" BorderBrush="#34d399" BorderThickness="1"
+                                        CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                                    <TextBlock Text="STABLE" FontSize="9" FontWeight="Bold" Foreground="#34d399"/>
+                                </Border>
+                            </Grid>
+                            <Border Height="1" Background="#141d2b"/>
+                            <StackPanel Spacing="1">
+                                <TextBlock Text="{DynamicResource About.LicenseLabel}" FontSize="9.5" FontWeight="Bold"
+                                           Foreground="#64748b" LetterSpacing="0.6"/>
+                                <TextBlock Name="TxtLicenseDetail" Text="MIT License • Open Source &amp; 100% Offline" FontSize="11" Foreground="#cbd5e1"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Core Pillars & Capabilities Grid (2x2) -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="{DynamicResource About.ArchitectureTitle}" FontSize="10" FontWeight="Bold"
+                               Foreground="#64748b" LetterSpacing="0.8"/>
+
+                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
+                        <!-- Pillar 1 -->
+                        <Border Grid.Row="0" Grid.Column="0" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1"
+                                CornerRadius="7" Padding="12,9" Margin="0,0,5,5">
+                            <StackPanel Spacing="3">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="💎" FontSize="12" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{DynamicResource About.Feature1Title}" FontSize="11.5" FontWeight="Bold" Foreground="#f0f6fc"/>
+                                </StackPanel>
+                                <TextBlock Text="{DynamicResource About.Feature1Desc}" FontSize="10.5" Foreground="#8b9cb3" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Pillar 2 -->
+                        <Border Grid.Row="0" Grid.Column="1" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1"
+                                CornerRadius="7" Padding="12,9" Margin="5,0,0,5">
+                            <StackPanel Spacing="3">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="🛡️" FontSize="12" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{DynamicResource About.Feature2Title}" FontSize="11.5" FontWeight="Bold" Foreground="#fbbf24"/>
+                                </StackPanel>
+                                <TextBlock Text="{DynamicResource About.Feature2Desc}" FontSize="10.5" Foreground="#8b9cb3" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Pillar 3 -->
+                        <Border Grid.Row="1" Grid.Column="0" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1"
+                                CornerRadius="7" Padding="12,9" Margin="0,5,5,0">
+                            <StackPanel Spacing="3">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="🔒" FontSize="12" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{DynamicResource About.Feature3Title}" FontSize="11.5" FontWeight="Bold" Foreground="#34d399"/>
+                                </StackPanel>
+                                <TextBlock Text="{DynamicResource About.Feature3Desc}" FontSize="10.5" Foreground="#8b9cb3" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Pillar 4 -->
+                        <Border Grid.Row="1" Grid.Column="1" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1"
+                                CornerRadius="7" Padding="12,9" Margin="5,5,0,0">
+                            <StackPanel Spacing="3">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="📐" FontSize="12" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{DynamicResource About.Feature4Title}" FontSize="11.5" FontWeight="Bold" Foreground="#38bdf8"/>
+                                </StackPanel>
+                                <TextBlock Text="{DynamicResource About.Feature4Desc}" FontSize="10.5" Foreground="#8b9cb3" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </StackPanel>
+
+                <!-- Tech Stack & Runtime Pills -->
+                <Border Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="7" Padding="12,8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <Border Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="4" Padding="6,2">
+                                <TextBlock Name="TxtRuntimeBadge" Text=".NET 10.0 • C# 13" FontSize="10" FontWeight="SemiBold" Foreground="#38bdf8" FontFamily="Consolas,Menlo,monospace"/>
+                            </Border>
+                            <Border Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="4" Padding="6,2">
+                                <TextBlock Text="Avalonia UI 11.1" FontSize="10" FontWeight="SemiBold" Foreground="#c084fc" FontFamily="Consolas,Menlo,monospace"/>
+                            </Border>
+                            <Border Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="4" Padding="6,2">
+                                <TextBlock Text="SkiaSharp • Vard 1.0" FontSize="10" FontWeight="SemiBold" Foreground="#fbbf24" FontFamily="Consolas,Menlo,monospace"/>
+                            </Border>
+                            <Border Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="4" Padding="6,2">
+                                <TextBlock Text="PostgreSQL • SQLite" FontSize="10" FontWeight="SemiBold" Foreground="#34d399" FontFamily="Consolas,Menlo,monospace"/>
+                            </Border>
+                        </StackPanel>
+
+                        <TextBlock Name="TxtOsArch" Grid.Column="1" Text="macOS ARM64" FontSize="10" Foreground="#64748b"
+                                   VerticalAlignment="Center" FontFamily="Consolas,Menlo,monospace"/>
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <!-- 3. Footer Bar -->
+            <Border Grid.Row="2" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="0,1,0,0"
+                    CornerRadius="0,0,12,12" Padding="24,12">
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                    <TextBlock Name="TxtCopyFeedback" Grid.Column="0" Text="© 2026 José Carlos Schröder Júnior"
+                               FontSize="11.5" Foreground="#8b9cb3" VerticalAlignment="Center"/>
+
+                    <Button Name="BtnCopySystemInfo" Grid.Column="1" Content="{DynamicResource About.CopyInfo}"
+                            Classes="btn-secondary" Padding="14,7" FontSize="11.5" Margin="0,0,10,0"/>
+
+                    <Button Name="BtnOk" Grid.Column="2" Content="{DynamicResource Common.Close}"
+                            Classes="btn-primary" Padding="22,7" FontSize="11.5"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

@@ -1,0 +1,219 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:models="clr-namespace:Runix.Core.Models;assembly=Runix.Core"
+             xmlns:chart="clr-namespace:Runix.Desktop.Views.Chart"
+             mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="680"
+             x:Class="Runix.Desktop.Views.DatabaseHealthTabControl"
+             Background="#090d14">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*,32">
+        <!-- 1. Top Header Bar -->
+        <Border Grid.Row="0" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="14,8">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,12,0">
+                    <TextBlock Text="🩺" FontSize="15" VerticalAlignment="Center"/>
+                    <TextBlock Text="Saúde do Banco &amp; Telemetria" FontWeight="Bold" FontSize="13.5" Foreground="#f0f6fc" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <Border Name="BadgeOverallSeverity" Grid.Column="1" Background="#123524" BorderBrush="#34d399" BorderThickness="1"
+                        CornerRadius="5" Padding="8,3" VerticalAlignment="Center" Margin="0,0,10,0">
+                    <TextBlock Name="TxtOverallSeverity" Text="SAUDÁVEL" FontSize="10" FontWeight="Bold" Foreground="#34d399"/>
+                </Border>
+
+                <TextBlock Name="TxtStatusSummary" Grid.Column="2" Text="Coletando telemetria..." FontSize="11.5"
+                           Foreground="#cbd5e1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Button Name="BtnCopyMarkdownReport" Content="📋 Copiar Diagnóstico (MD)" Classes="btn-outline" Padding="10,5" FontSize="11"/>
+                    <Button Name="BtnCopyJsonReport" Content="📄 Copiar JSON" Classes="btn-outline" Padding="10,5" FontSize="11"/>
+                    <Button Name="BtnRefreshTelemetry" Content="🔄 Atualizar Agora" Classes="btn-primary" Padding="12,5" FontSize="11"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 2. Four Semantic KPI Cards -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,*,*,*" Margin="12,10,12,6">
+            <!-- KPI 1: Storage -->
+            <Border Grid.Column="0" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,6,0">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="ARMAZENAMENTO TOTAL" FontSize="10" FontWeight="Bold" Foreground="#8b9cb3"/>
+                    <TextBlock Name="TxtKpiTotalSize" Text="0 KB" FontSize="20" FontWeight="Bold" Foreground="#38bdf8"/>
+                    <TextBlock Name="TxtKpiSizeBreakdown" Text="Dados: 0 KB • Índices: 0 KB" FontSize="10.5" Foreground="#64748b"/>
+                </StackPanel>
+            </Border>
+
+            <!-- KPI 2: Cache Hit / Page Efficiency -->
+            <Border Grid.Column="1" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="3,0,6,0">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="EFICIÊNCIA CACHE / PÁGINAS" FontSize="10" FontWeight="Bold" Foreground="#8b9cb3"/>
+                    <TextBlock Name="TxtKpiEfficiency" Text="100.0%" FontSize="20" FontWeight="Bold" Foreground="#34d399"/>
+                    <TextBlock Name="TxtKpiJournalMode" Text="Modo WAL • Page Size 4096 B" FontSize="10.5" Foreground="#64748b"/>
+                </StackPanel>
+            </Border>
+
+            <!-- KPI 3: Fragmentation / Dead Tuples -->
+            <Border Grid.Column="2" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="3,0,6,0">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="FRAGMENTAÇÃO / DEAD TUPLES" FontSize="10" FontWeight="Bold" Foreground="#8b9cb3"/>
+                    <TextBlock Name="TxtKpiFragmentation" Text="0.0%" FontSize="20" FontWeight="Bold" Foreground="#fbbf24"/>
+                    <TextBlock Name="TxtKpiReclaimable" Text="Recuperável via VACUUM: 0 B" FontSize="10.5" Foreground="#64748b"/>
+                </StackPanel>
+            </Border>
+
+            <!-- KPI 4: Objects & Connections -->
+            <Border Grid.Column="3" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="3,0,0,0">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="CATÁLOGO &amp; SESSÕES" FontSize="10" FontWeight="Bold" Foreground="#8b9cb3"/>
+                    <TextBlock Name="TxtKpiCatalogCounts" Text="0 Tabelas • 0 Índices" FontSize="18" FontWeight="Bold" Foreground="#f0f6fc"/>
+                    <TextBlock Name="TxtKpiConnections" Text="0 Views • 1 conexão ativa" FontSize="10.5" Foreground="#64748b"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- 3. Sub-Navigation Bar (Telemetry vs Maintenance Center) -->
+        <Border Grid.Row="2" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="0,1,0,1" Padding="12,6">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Name="BtnSubTabTelemetry" Content="📊 Ocupação por Tabela &amp; Gráfico SkiaSharp" Classes="btn-secondary" Padding="12,5" FontSize="11"/>
+                <Button Name="BtnSubTabMaintenance" Content="🛠️ Manutenção Assistida (VACUUM / ANALYZE / Integridade)" Classes="btn-outline" Padding="12,5" FontSize="11"/>
+            </StackPanel>
+        </Border>
+
+        <!-- 4A. Sub-Tab 1: Table Storage Metrics + SkiaSharp Chart -->
+        <Grid Name="PanelTelemetryView" Grid.Row="3" ColumnDefinitions="*,5,*" Margin="12,8">
+            <Border Grid.Column="0" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8">
+                <Grid RowDefinitions="Auto,*">
+                    <Border Grid.Row="0" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="12,8" CornerRadius="8,8,0,0">
+                        <TextBlock Text="📦 Armazenamento Detalhado por Tabela (Ordenado por Tamanho)" FontSize="11.5" FontWeight="Bold" Foreground="#f0f6fc"/>
+                    </Border>
+
+                    <ListBox Name="ListTableMetrics" Grid.Row="1" Background="Transparent" BorderThickness="0" Margin="6">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="models:TableStorageMetric">
+                                <Border Padding="10,7" CornerRadius="6" Margin="0,2" Background="#090d14" BorderBrush="#151f2e" BorderThickness="1">
+                                    <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="Bold" Foreground="#f0f6fc"/>
+                                            <TextBlock Text="{Binding RowCount, StringFormat='{}{0:N0} linhas'}" FontSize="10.5" Foreground="#8b9cb3"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Dados" FontSize="9" Foreground="#64748b"/>
+                                            <TextBlock Text="{Binding DataSizeFormatted}" FontSize="11" Foreground="#38bdf8" FontFamily="Consolas,monospace"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Margin="12,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Índices" FontSize="9" Foreground="#64748b"/>
+                                            <TextBlock Text="{Binding IndexSizeFormatted}" FontSize="11" Foreground="#c084fc" FontFamily="Consolas,monospace"/>
+                                        </StackPanel>
+                                        <Border Grid.Column="3" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="4" Padding="8,4" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding TotalSizeFormatted}" FontSize="11" FontWeight="Bold" Foreground="#34d399" FontFamily="Consolas,monospace"/>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <GridSplitter Grid.Column="1" Background="#1e2d42" ResizeDirection="Columns" HorizontalAlignment="Stretch"/>
+
+            <Border Grid.Column="2" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8">
+                <chart:SkiaChartControl Name="ViewStorageChart"/>
+            </Border>
+        </Grid>
+
+        <!-- 4B. Sub-Tab 2: Assisted Maintenance & Integrity / Index Health Center -->
+        <Grid Name="PanelMaintenanceView" Grid.Row="3" RowDefinitions="Auto,*" Margin="12,8" IsVisible="False">
+            <!-- Maintenance Action Card -->
+            <Border Grid.Row="0" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,0,10">
+                <Grid RowDefinitions="Auto,Auto,Auto">
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto,240,*,Auto" Margin="0,0,0,10">
+                        <TextBlock Grid.Column="0" Text="Escopo Alvo:" FontSize="11.5" FontWeight="SemiBold" Foreground="#cbd5e1" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <ComboBox Name="CmbTargetTable" Grid.Column="1" SelectedIndex="0" Background="#090d14" Foreground="#f0f6fc" FontSize="11.5"/>
+
+                        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6">
+                            <Button Name="BtnRunVacuum" Content="🧹 Executar VACUUM" Classes="btn-primary" Padding="12,6" FontSize="11"/>
+                            <Button Name="BtnRunAnalyze" Content="📊 Executar ANALYZE" Classes="btn-secondary" Padding="12,6" FontSize="11"/>
+                            <Button Name="BtnRunVacuumAnalyze" Content="⚡ VACUUM + ANALYZE" Classes="btn-secondary" Padding="12,6" FontSize="11"/>
+                            <Button Name="BtnRunReindex" Content="📇 REINDEX" Classes="btn-secondary" Padding="12,6" FontSize="11"/>
+                            <Button Name="BtnRunIntegrityCheck" Content="🛡️ Verificar Integridade &amp; FKs" Classes="btn-outline" Padding="12,6" FontSize="11"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- SQL Preview Box -->
+                    <Border Grid.Row="1" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="5" Padding="10,6" Margin="0,0,0,8">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <TextBlock Grid.Column="0" Text="SQL Preview:" FontSize="10.5" FontWeight="Bold" Foreground="#38bdf8" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                            <TextBlock Name="TxtMaintenanceSqlPreview" Grid.Column="1" Text="VACUUM;" FontSize="11.5" Foreground="#f0f6fc" FontFamily="Consolas,monospace" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Execution Result Feedback -->
+                    <TextBlock Name="TxtMaintenanceFeedback" Grid.Row="2" Text="Selecione uma operação de manutenção acima para otimizar o armazenamento ou auditar a integridade."
+                               FontSize="11.5" Foreground="#8b9cb3"/>
+                </Grid>
+            </Border>
+
+            <!-- Bottom Split: Left = Index Health Findings, Right = Integrity Check Issues -->
+            <Grid Grid.Row="1" ColumnDefinitions="*,10,*">
+                <!-- Left: Index Optimization Findings -->
+                <Border Grid.Column="0" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8">
+                    <Grid RowDefinitions="Auto,*">
+                        <Border Grid.Row="0" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="12,8" CornerRadius="8,8,0,0">
+                            <TextBlock Name="TxtIndexFindingsHeader" Text="📇 Diagnóstico de Saúde de Índices (0 alertas)" FontSize="11.5" FontWeight="Bold" Foreground="#f0f6fc"/>
+                        </Border>
+                        <ListBox Name="ListIndexFindings" Grid.Row="1" Background="Transparent" BorderThickness="0" Margin="6">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="models:IndexHealthFinding">
+                                    <Border Padding="10,8" CornerRadius="6" Margin="0,2" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1">
+                                        <StackPanel Spacing="4">
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <Border Grid.Column="0" Background="#2e1f0e" CornerRadius="3" Padding="5,1" Margin="0,0,8,0">
+                                                    <TextBlock Text="{Binding SeverityBadge}" Foreground="{Binding SeverityColor}" FontSize="9" FontWeight="Bold"/>
+                                                </Border>
+                                                <TextBlock Grid.Column="1" Text="{Binding IndexName}" FontSize="11.5" FontWeight="Bold" Foreground="#f0f6fc"/>
+                                                <TextBlock Grid.Column="2" Text="{Binding TableName}" FontSize="10.5" Foreground="#38bdf8"/>
+                                            </Grid>
+                                            <TextBlock Text="{Binding Description}" FontSize="10.5" Foreground="#cbd5e1" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding RecommendationSql}" FontSize="10" Foreground="#fbbf24" FontFamily="Consolas,monospace"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+
+                <!-- Right: Structural & Foreign Key Integrity Results -->
+                <Border Grid.Column="2" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8">
+                    <Grid RowDefinitions="Auto,*">
+                        <Border Grid.Row="0" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="12,8" CornerRadius="8,8,0,0">
+                            <TextBlock Name="TxtIntegrityHeader" Text="🛡️ Auditoria de Integridade &amp; Foreign Keys" FontSize="11.5" FontWeight="Bold" Foreground="#f0f6fc"/>
+                        </Border>
+                        <ListBox Name="ListIntegrityIssues" Grid.Row="1" Background="Transparent" BorderThickness="0" Margin="6">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="models:IntegrityCheckIssue">
+                                    <Border Padding="10,8" CornerRadius="6" Margin="0,2" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1">
+                                        <StackPanel Spacing="3">
+                                            <TextBlock Text="{Binding CheckType}" FontSize="10" FontWeight="Bold" Foreground="#f87171"/>
+                                            <TextBlock Text="{Binding Description}" FontSize="11" Foreground="#f0f6fc" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- 5. Footer Bar -->
+        <Border Grid.Row="4" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="0,1,0,0" Padding="14,4">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Name="TxtFooterTimestamp" Grid.Column="0" Text="Última coleta: —" FontSize="11" Foreground="#8b9cb3" VerticalAlignment="Center"/>
+                <TextBlock Name="TxtFooterEngine" Grid.Column="1" Text="" FontSize="11" Foreground="#008bb9" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

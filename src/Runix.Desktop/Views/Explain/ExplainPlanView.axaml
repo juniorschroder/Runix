@@ -1,0 +1,154 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="600"
+             x:Class="Runix.Desktop.Views.Explain.ExplainPlanView"
+             Background="#090d14">
+
+    <Grid RowDefinitions="Auto,*" ColumnDefinitions="*,Auto">
+        <!-- TOP RECOMMENDATION BANNER -->
+        <Border Name="PanelRecommendations" Grid.Row="0" Grid.ColumnSpan="2" Background="#0c2338" 
+                BorderBrush="#16426a" BorderThickness="0,0,0,1" Padding="14,10" IsVisible="False">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Column="0" Text="💡" FontSize="18" Foreground="#38bdf8" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                
+                <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Name="TxtRecommendationTitle" Text="Otimização Recomendada: Criação de Índice" FontWeight="Bold" FontSize="12.5" Foreground="#38bdf8"/>
+                    <TextBlock Name="TxtRecommendationReason" Text="Varredura sequencial detectada." FontSize="11" Foreground="#f0f6fc" TextWrapping="Wrap"/>
+                    <TextBox Name="TxtIndexSql" Text="CREATE INDEX ..." IsReadOnly="True" Background="#090d14" 
+                             Foreground="#34d399" BorderBrush="#1e2d42" CornerRadius="4" Padding="6,3" FontSize="11" 
+                             FontFamily="Consolas,Menlo,Monaco,monospace" Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="14,0,0,0">
+                    <Button Name="BtnCopyIndexSql" Content="📋 Copiar SQL" Classes="btn-secondary" Padding="12,6" FontSize="11"/>
+                    <Button Name="BtnApplyIndex" Content="Criar Índice Agora ⚡" Classes="btn-primary" Padding="14,6" FontSize="11"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- CENTER CANVAS: TOP-DOWN EXECUTION TREE -->
+        <ScrollViewer Grid.Row="1" Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="20">
+            <StackPanel Name="PanelTreeGraph" HorizontalAlignment="Center" VerticalAlignment="Top" Spacing="16"/>
+        </ScrollViewer>
+
+        <!-- EMPTY STATE MESSAGE (if no plan loaded) -->
+        <StackPanel Name="PanelEmptyState" Grid.Row="1" Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" IsVisible="True">
+            <TextBlock Text="⚡" FontSize="36" HorizontalAlignment="Center" Foreground="#1e2d42"/>
+            <TextBlock Text="Nenhum plano de execução carregado." FontSize="14" FontWeight="SemiBold" Foreground="#8b9cb3" HorizontalAlignment="Center"/>
+            <TextBlock Text="Clique em '🔍 Explain' na barra superior para analisar a consulta ativa." FontSize="11.5" Foreground="#475569" HorizontalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- RIGHT DRAWER: INSPECTOR PANEL -->
+        <Border Name="PanelInspector" Grid.Row="1" Grid.Column="1" Width="290" Background="#0e141f" 
+                BorderBrush="#1e2d42" BorderThickness="1,0,0,0" Padding="14,12" IsVisible="False">
+            <Grid RowDefinitions="Auto,*">
+                <!-- Inspector Header -->
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <TextBlock Text="🔍" FontSize="13" Foreground="#38bdf8"/>
+                        <TextBlock Text="Inspetor do Nó" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
+                    </StackPanel>
+                    <Button Name="BtnCloseInspector" Grid.Column="1" Content="✕" Classes="btn-icon" FontSize="11"/>
+                </Grid>
+
+                <!-- Inspector Attribute Fields -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="12">
+                        <!-- Node Operator & Relation -->
+                        <Border Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="5" Padding="10">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="OPERADOR" FontSize="9.5" FontWeight="Bold" Foreground="#8b9cb3"/>
+                                <TextBlock Name="TxtInspectorNodeType" Text="Seq Scan" FontSize="12.5" FontWeight="Bold" Foreground="#f0f6fc"/>
+                                <TextBlock Name="TxtInspectorRelation" Text="Tabela: cheeses" FontSize="11" Foreground="#38bdf8"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Cost Metrics -->
+                        <Border Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="5" Padding="10">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="CUSTO DO PLANEJADOR" FontSize="9.5" FontWeight="Bold" Foreground="#8b9cb3"/>
+                                <Grid ColumnDefinitions="*,*">
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Custo Total:" FontSize="10.5" Foreground="#8b9cb3"/>
+                                        <TextBlock Name="TxtInspectorTotalCost" Text="120.0" FontSize="11.5" FontWeight="SemiBold" Foreground="#f0f6fc"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="% da Query:" FontSize="10.5" Foreground="#8b9cb3"/>
+                                        <TextBlock Name="TxtInspectorCostPercent" Text="65.0%" FontSize="11.5" FontWeight="Bold" Foreground="#f87171"/>
+                                    </StackPanel>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,*">
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Linhas Est.:" FontSize="10.5" Foreground="#8b9cb3"/>
+                                        <TextBlock Name="TxtInspectorPlanRows" Text="1,000" FontSize="11.5" Foreground="#f0f6fc"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="Largura Est.:" FontSize="10.5" Foreground="#8b9cb3"/>
+                                        <TextBlock Name="TxtInspectorPlanWidth" Text="64 bytes" FontSize="11.5" Foreground="#f0f6fc"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Execution Timings (Analyze) -->
+                        <Border Name="CardInspectorTimings" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="5" Padding="10">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="EXECUÇÃO REAL (ANALYZE)" FontSize="9.5" FontWeight="Bold" Foreground="#34d399"/>
+                                <Grid ColumnDefinitions="*,*">
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Tempo Total:" FontSize="10.5" Foreground="#8b9cb3"/>
+                                        <TextBlock Name="TxtInspectorActualTime" Text="1.25 ms" FontSize="11.5" FontWeight="Bold" Foreground="#34d399"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="Linhas Reais:" FontSize="10.5" Foreground="#8b9cb3"/>
+                                        <TextBlock Name="TxtInspectorActualRows" Text="850" FontSize="11.5" FontWeight="SemiBold" Foreground="#f0f6fc"/>
+                                    </StackPanel>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,*">
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Loops:" FontSize="10.5" Foreground="#8b9cb3"/>
+                                        <TextBlock Name="TxtInspectorLoops" Text="1" FontSize="11.5" Foreground="#f0f6fc"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="Startup:" FontSize="10.5" Foreground="#8b9cb3"/>
+                                        <TextBlock Name="TxtInspectorStartupTime" Text="0.05 ms" FontSize="11.5" Foreground="#f0f6fc"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Buffers & I/O -->
+                        <Border Name="CardInspectorBuffers" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="5" Padding="10">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="BUFFERS &amp; I/O" FontSize="9.5" FontWeight="Bold" Foreground="#8b9cb3"/>
+                                <Grid ColumnDefinitions="*,*">
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Shared Hits (RAM):" FontSize="10.5" Foreground="#8b9cb3"/>
+                                        <TextBlock Name="TxtInspectorSharedHits" Text="14 blocks" FontSize="11.5" FontWeight="SemiBold" Foreground="#34d399"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="Disk Reads:" FontSize="10.5" Foreground="#8b9cb3"/>
+                                        <TextBlock Name="TxtInspectorSharedReads" Text="0 blocks" FontSize="11.5" FontWeight="SemiBold" Foreground="#f0f6fc"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Filter and Conditions -->
+                        <Border Name="CardInspectorFilters" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="5" Padding="10">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="CONDIÇÕES &amp; FILTROS" FontSize="9.5" FontWeight="Bold" Foreground="#8b9cb3"/>
+                                <TextBlock Text="Filtro Aplicado:" FontSize="10.5" Foreground="#8b9cb3"/>
+                                <TextBlock Name="TxtInspectorFilter" Text="(price > 50.0)" FontSize="11" Foreground="#f0f6fc" FontFamily="Consolas,Menlo,monospace" TextWrapping="Wrap"/>
+                                <TextBlock Text="Linhas Removidas pelo Filtro:" FontSize="10.5" Foreground="#8b9cb3" Margin="0,4,0,0"/>
+                                <TextBlock Name="TxtInspectorRowsRemoved" Text="150 linhas" FontSize="11.5" FontWeight="SemiBold" Foreground="#fbbf24"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

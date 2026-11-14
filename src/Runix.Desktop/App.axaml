@@ -1,0 +1,211 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Runix.Desktop.App"
+             RequestedThemeVariant="Dark">
+
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
+        <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml"/>
+
+        <!-- ============================================== -->
+        <!-- RUNIX MODERN BUTTON DESIGN SYSTEM              -->
+        <!-- ============================================== -->
+
+        <!-- Base Button Defaults -->
+        <Style Selector="Button">
+            <Setter Property="FontFamily" Value="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.12"/>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.12"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button /template/ ContentPresenter">
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <!-- Primary Accent Button (Brand Blue Glow) -->
+        <Style Selector="Button.btn-primary">
+            <Setter Property="Background" Value="#008bb9"/>
+            <Setter Property="Foreground" Value="#ffffff"/>
+            <Setter Property="BorderBrush" Value="#38bdf8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        <Style Selector="Button.btn-primary:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#029cd0"/>
+            <Setter Property="Foreground" Value="#ffffff"/>
+            <Setter Property="BorderBrush" Value="#7dd3fc"/>
+        </Style>
+        <Style Selector="Button.btn-primary:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#007399"/>
+            <Setter Property="Foreground" Value="#ffffff"/>
+            <Setter Property="BorderBrush" Value="#0284c7"/>
+        </Style>
+
+        <!-- Secondary Surface Button (Dark Slate Card) -->
+        <Style Selector="Button.btn-secondary">
+            <Setter Property="Background" Value="#141d2b"/>
+            <Setter Property="Foreground" Value="#f0f6fc"/>
+            <Setter Property="BorderBrush" Value="#1e2d42"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        <Style Selector="Button.btn-secondary:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1e2b40"/>
+            <Setter Property="Foreground" Value="#ffffff"/>
+            <Setter Property="BorderBrush" Value="#2e4363"/>
+        </Style>
+        <Style Selector="Button.btn-secondary:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#0e1520"/>
+            <Setter Property="Foreground" Value="#8b9cb3"/>
+            <Setter Property="BorderBrush" Value="#141d2b"/>
+        </Style>
+
+        <!-- Subtle Blue Accent (Quick actions, sample queries, structure views) -->
+        <Style Selector="Button.btn-accent-subtle">
+            <Setter Property="Background" Value="#0c2338"/>
+            <Setter Property="Foreground" Value="#38bdf8"/>
+            <Setter Property="BorderBrush" Value="#16426a"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        <Style Selector="Button.btn-accent-subtle:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#113250"/>
+            <Setter Property="Foreground" Value="#7dd3fc"/>
+            <Setter Property="BorderBrush" Value="#1d578c"/>
+        </Style>
+        <Style Selector="Button.btn-accent-subtle:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#081725"/>
+            <Setter Property="Foreground" Value="#0284c7"/>
+            <Setter Property="BorderBrush" Value="#123554"/>
+        </Style>
+
+        <!-- Outline Button (Clean borders for utility actions) -->
+        <Style Selector="Button.btn-outline">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#8b9cb3"/>
+            <Setter Property="BorderBrush" Value="#1e2d42"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        <Style Selector="Button.btn-outline:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#141d2b"/>
+            <Setter Property="Foreground" Value="#f0f6fc"/>
+            <Setter Property="BorderBrush" Value="#2e4363"/>
+        </Style>
+        <Style Selector="Button.btn-outline:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#0e141f"/>
+            <Setter Property="Foreground" Value="#64748b"/>
+            <Setter Property="BorderBrush" Value="#141d2b"/>
+        </Style>
+
+        <!-- Success Button (Save changes, commits) -->
+        <Style Selector="Button.btn-success">
+            <Setter Property="Background" Value="#064e3b"/>
+            <Setter Property="Foreground" Value="#ecfdf5"/>
+            <Setter Property="BorderBrush" Value="#059669"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        <Style Selector="Button.btn-success:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#047857"/>
+            <Setter Property="Foreground" Value="#ffffff"/>
+            <Setter Property="BorderBrush" Value="#10b981"/>
+        </Style>
+        <Style Selector="Button.btn-success:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#064e3b"/>
+            <Setter Property="Foreground" Value="#a7f3d0"/>
+            <Setter Property="BorderBrush" Value="#047857"/>
+        </Style>
+
+        <!-- Danger / Destructive Button (Delete, Disconnect, Discard) -->
+        <Style Selector="Button.btn-danger">
+            <Setter Property="Background" Value="#2d1519"/>
+            <Setter Property="Foreground" Value="#f87171"/>
+            <Setter Property="BorderBrush" Value="#4c1d24"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        <Style Selector="Button.btn-danger:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#3d1a20"/>
+            <Setter Property="Foreground" Value="#fca5a5"/>
+            <Setter Property="BorderBrush" Value="#7f1d1d"/>
+        </Style>
+        <Style Selector="Button.btn-danger:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#200d11"/>
+            <Setter Property="Foreground" Value="#ef4444"/>
+            <Setter Property="BorderBrush" Value="#3d1a20"/>
+        </Style>
+
+        <!-- Small Icon Button (Zoom, Refresh, Compact utility) -->
+        <Style Selector="Button.btn-icon">
+            <Setter Property="Background" Value="#141d2b"/>
+            <Setter Property="Foreground" Value="#8b9cb3"/>
+            <Setter Property="BorderBrush" Value="#1e2d42"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="CornerRadius" Value="5"/>
+        </Style>
+        <Style Selector="Button.btn-icon:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1e2b40"/>
+            <Setter Property="Foreground" Value="#f0f6fc"/>
+            <Setter Property="BorderBrush" Value="#2e4363"/>
+        </Style>
+        <Style Selector="Button.btn-icon:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#0e1520"/>
+            <Setter Property="Foreground" Value="#8b9cb3"/>
+            <Setter Property="BorderBrush" Value="#141d2b"/>
+        </Style>
+        <!-- Titlebar Control Buttons (Windows/Linux) -->
+        <Style Selector="Button.titlebar-btn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#8b9cb3"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="Width" Value="46"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+        <Style Selector="Button.titlebar-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1e2d42"/>
+            <Setter Property="Foreground" Value="#f0f6fc"/>
+        </Style>
+        <Style Selector="Button.titlebar-close:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#dc2626"/>
+            <Setter Property="Foreground" Value="#ffffff"/>
+        </Style>
+    </Application.Styles>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://Runix.Desktop/Locale/Strings.pt-BR.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Custom RUNIX Palette -->
+            <SolidColorBrush x:Key="RunixDarkBlue">#0064a5</SolidColorBrush>
+            <SolidColorBrush x:Key="RunixBaseBlue">#336791</SolidColorBrush>
+            <SolidColorBrush x:Key="RunixLightBlue">#008bb9</SolidColorBrush>
+            <SolidColorBrush x:Key="RunixBgDark">#090d14</SolidColorBrush>
+            <SolidColorBrush x:Key="RunixBgSidebar">#0e141f</SolidColorBrush>
+            <SolidColorBrush x:Key="RunixBgCard">#141d2b</SolidColorBrush>
+            <SolidColorBrush x:Key="RunixBgInput">#0a0f17</SolidColorBrush>
+            <SolidColorBrush x:Key="RunixBorder">#1e2d42</SolidColorBrush>
+            <SolidColorBrush x:Key="RunixTextPrimary">#f0f6fc</SolidColorBrush>
+            <SolidColorBrush x:Key="RunixTextSecondary">#8b9cb3</SolidColorBrush>
+            <SolidColorBrush x:Key="RunixAccentGlow">#1a3a5c</SolidColorBrush>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Runix.Core/Runix.Core.csproj" />
+    <Project Path="src/Runix.Desktop/Runix.Desktop.csproj" />
+    <Project Path="src/Runix.Infrastructure/Runix.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Runix.Core.Tests/Runix.Core.Tests.csproj" />
+    <Project Path="tests/Runix.Infrastructure.Tests/Runix.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>

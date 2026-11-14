@@ -1,0 +1,195 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:models="clr-namespace:Runix.Core.Models;assembly=Runix.Core"
+             mc:Ignorable="d" d:DesignWidth="860" d:DesignHeight="600"
+             x:Class="Runix.Desktop.Views.Dialogs.ConnectionBundleDialog">
+
+    <Border Width="840" MaxHeight="610" Background="#0e141f" BorderBrush="#008bb9" BorderThickness="1.5"
+            CornerRadius="10" BoxShadow="0 18 45 6 #CC000000" Padding="0">
+        <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
+            <!-- 1. Header -->
+            <Border Grid.Row="0" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="0,0,0,1"
+                    CornerRadius="10,10,0,0" Padding="18,12">
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Name="TxtDialogTitle" Text="📤 Exportar Conexões, Queries &amp; Snippets (.rcf)"
+                                   FontSize="15" FontWeight="Bold" Foreground="#f0f6fc"/>
+                        <TextBlock Name="TxtDialogSubtitle"
+                                   Text="Selecione os itens que deseja compartilhar e defina uma senha para criptografar o arquivo .rcf."
+                                   FontSize="11.5" Foreground="#8b9cb3"/>
+                    </StackPanel>
+
+                    <Border Grid.Column="1" Background="#122a20" BorderBrush="#34d399" BorderThickness="1"
+                            CornerRadius="5" Padding="8,3" VerticalAlignment="Center" Margin="12,0">
+                        <TextBlock Text="🔒 AES-256-GCM (.rcf)" FontSize="10" FontWeight="Bold" Foreground="#34d399"/>
+                    </Border>
+
+                    <Button Name="BtnClose" Grid.Column="2" Content="✕" Classes="btn-icon" Padding="7,3" FontSize="11" VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- 2. Import Unlock Bar (Visible in Import Mode) -->
+            <Border Name="PanelImportUnlock" Grid.Row="1" Background="#0b111a" BorderBrush="#1e2d42"
+                    BorderThickness="0,0,0,1" Padding="18,12" IsVisible="False">
+                <Grid ColumnDefinitions="*,220,Auto" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,10,0">
+                        <TextBlock Text="Arquivo Runix Connections (.rcf)" FontSize="11" FontWeight="SemiBold" Foreground="#8b9cb3"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox Name="TxtImportFilePath" Grid.Column="0" Watermark="Selecione um arquivo .rcf..."
+                                     Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42"
+                                     CornerRadius="5,0,0,5" Padding="9,6" FontSize="11.5"/>
+                            <Button Name="BtnBrowseRcf" Grid.Column="1" Content="Procurar..."
+                                    Classes="btn-secondary" Padding="12,6" CornerRadius="0,5,5,0" FontSize="11.5"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Spacing="4" Margin="0,0,10,0">
+                        <TextBlock Text="Senha do Arquivo .rcf" FontSize="11" FontWeight="SemiBold" Foreground="#8b9cb3"/>
+                        <TextBox Name="TxtImportPassword" PasswordChar="•" Watermark="Digite a senha..."
+                                 Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42"
+                                 CornerRadius="5" Padding="9,6" FontSize="11.5"/>
+                    </StackPanel>
+
+                    <Button Name="BtnUnlockRcf" Grid.Column="2" Content="🔓 Desbloquear .rcf"
+                            Classes="btn-primary" Padding="14,7" FontSize="11.5" VerticalAlignment="Bottom"/>
+                </Grid>
+            </Border>
+
+            <!-- 3. Three Selection Columns (Connections | Saved Queries | Snippets) -->
+            <Grid Name="PanelBundleSelection" Grid.Row="2" ColumnDefinitions="*,*,*" Margin="14,12">
+                <!-- Col 1: Connections -->
+                <Border Grid.Column="0" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8" Margin="0,0,6,0">
+                    <Grid RowDefinitions="Auto,*">
+                        <Border Grid.Row="0" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="10,7" CornerRadius="8,8,0,0">
+                            <Grid ColumnDefinitions="*,Auto,Auto">
+                                <TextBlock Name="TxtHeaderConnections" Grid.Column="0" Text="🔌 Conexões (0)" FontSize="11.5" FontWeight="Bold" Foreground="#38bdf8" VerticalAlignment="Center"/>
+                                <Button Name="BtnConnAll" Grid.Column="1" Content="Todos" Classes="btn-outline" Padding="5,1" FontSize="9.5" Margin="0,0,4,0"/>
+                                <Button Name="BtnConnNone" Grid.Column="2" Content="Nenhum" Classes="btn-outline" Padding="5,1" FontSize="9.5"/>
+                            </Grid>
+                        </Border>
+
+                        <ListBox Name="ListConnections" Grid.Row="1" Background="Transparent" BorderThickness="0" Margin="4" Height="260">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="models:BundleCheckItem">
+                                    <Border Padding="7,5" CornerRadius="5" Margin="0,1" Background="#0e141f" BorderBrush="#151f2e" BorderThickness="1">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                            <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Title}" FontSize="11.5" FontWeight="SemiBold" Foreground="#f0f6fc" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding Subtitle}" FontSize="10" Foreground="#8b9cb3" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="2" Background="#141d2b" CornerRadius="3" Padding="5,1" Margin="6,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Badge}" FontSize="9" FontWeight="Bold" Foreground="#38bdf8"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+
+                <!-- Col 2: Saved Queries -->
+                <Border Grid.Column="1" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8" Margin="3,0,3,0">
+                    <Grid RowDefinitions="Auto,*">
+                        <Border Grid.Row="0" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="10,7" CornerRadius="8,8,0,0">
+                            <Grid ColumnDefinitions="*,Auto,Auto">
+                                <TextBlock Name="TxtHeaderQueries" Grid.Column="0" Text="⭐ Queries Salvas (0)" FontSize="11.5" FontWeight="Bold" Foreground="#fbbf24" VerticalAlignment="Center"/>
+                                <Button Name="BtnQueriesAll" Grid.Column="1" Content="Todos" Classes="btn-outline" Padding="5,1" FontSize="9.5" Margin="0,0,4,0"/>
+                                <Button Name="BtnQueriesNone" Grid.Column="2" Content="Nenhum" Classes="btn-outline" Padding="5,1" FontSize="9.5"/>
+                            </Grid>
+                        </Border>
+
+                        <ListBox Name="ListQueries" Grid.Row="1" Background="Transparent" BorderThickness="0" Margin="4" Height="260">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="models:BundleCheckItem">
+                                    <Border Padding="7,5" CornerRadius="5" Margin="0,1" Background="#0e141f" BorderBrush="#151f2e" BorderThickness="1">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                            <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Title}" FontSize="11.5" FontWeight="SemiBold" Foreground="#f0f6fc" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding Subtitle}" FontSize="10" Foreground="#8b9cb3" TextTrimming="CharacterEllipsis" FontFamily="Consolas,monospace"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+
+                <!-- Col 3: Custom Snippets -->
+                <Border Grid.Column="2" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8" Margin="6,0,0,0">
+                    <Grid RowDefinitions="Auto,*">
+                        <Border Grid.Row="0" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="10,7" CornerRadius="8,8,0,0">
+                            <Grid ColumnDefinitions="*,Auto,Auto">
+                                <TextBlock Name="TxtHeaderSnippets" Grid.Column="0" Text="✂ Snippets SQL (0)" FontSize="11.5" FontWeight="Bold" Foreground="#34d399" VerticalAlignment="Center"/>
+                                <Button Name="BtnSnippetsAll" Grid.Column="1" Content="Todos" Classes="btn-outline" Padding="5,1" FontSize="9.5" Margin="0,0,4,0"/>
+                                <Button Name="BtnSnippetsNone" Grid.Column="2" Content="Nenhum" Classes="btn-outline" Padding="5,1" FontSize="9.5"/>
+                            </Grid>
+                        </Border>
+
+                        <ListBox Name="ListSnippets" Grid.Row="1" Background="Transparent" BorderThickness="0" Margin="4" Height="260">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="models:BundleCheckItem">
+                                    <Border Padding="7,5" CornerRadius="5" Margin="0,1" Background="#0e141f" BorderBrush="#151f2e" BorderThickness="1">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                            <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Title}" FontSize="11.5" FontWeight="SemiBold" Foreground="#f0f6fc" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding Subtitle}" FontSize="10" Foreground="#8b9cb3" TextTrimming="CharacterEllipsis" FontFamily="Consolas,monospace"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="2" Background="#141d2b" CornerRadius="3" Padding="5,1" Margin="6,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Badge}" FontSize="9" FontWeight="Bold" Foreground="#34d399" FontFamily="Consolas,monospace"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- 4. Export Password Panel (Visible in Export Mode) -->
+            <Border Name="PanelExportPassword" Grid.Row="3" Background="#0b111a" BorderBrush="#1e2d42"
+                    BorderThickness="0,1,0,0" Padding="18,12">
+                <Grid ColumnDefinitions="*,*">
+                    <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,10,0">
+                        <TextBlock Text="🔑 Definir Senha de Criptografia (.rcf)" FontSize="11" FontWeight="SemiBold" Foreground="#38bdf8"/>
+                        <TextBox Name="TxtExportPassword" PasswordChar="•"
+                                 Watermark="Crie uma senha para proteger o arquivo .rcf..."
+                                 Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42"
+                                 CornerRadius="5" Padding="9,6" FontSize="11.5"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Spacing="4" Margin="10,0,0,0">
+                        <TextBlock Text="🔑 Confirmar Senha" FontSize="11" FontWeight="SemiBold" Foreground="#38bdf8"/>
+                        <TextBox Name="TxtExportConfirmPassword" PasswordChar="•"
+                                 Watermark="Repita a senha..."
+                                 Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42"
+                                 CornerRadius="5" Padding="9,6" FontSize="11.5"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- 5. Footer Status & Action Buttons -->
+            <Border Grid.Row="4" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="0,1,0,0"
+                    CornerRadius="0,0,10,10" Padding="18,10">
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                    <TextBlock Name="TxtStatus" Grid.Column="0"
+                               Text="Pronto. O arquivo .rcf inclui senhas de banco e chaves SSH protegidas com sua senha."
+                               FontSize="11.5" Foreground="#8b9cb3" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
+
+                    <Button Name="BtnCancel" Grid.Column="1" Content="Cancelar"
+                            Classes="btn-outline" Padding="14,7" FontSize="11.5" Margin="0,0,8,0"/>
+
+                    <Button Name="BtnPrimaryAction" Grid.Column="2" Content="📤 Exportar Arquivo .rcf..."
+                            Classes="btn-primary" Padding="18,7" FontSize="11.5"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

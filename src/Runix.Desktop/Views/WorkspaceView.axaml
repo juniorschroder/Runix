@@ -1,0 +1,423 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:models="clr-namespace:Runix.Core.Models;assembly=Runix.Core"
+             xmlns:dialogs="clr-namespace:Runix.Desktop.Views.Dialogs"
+             mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="700"
+             x:Class="Runix.Desktop.Views.WorkspaceView"
+             Background="#090d14">
+
+    <UserControl.Styles>
+        <Style Selector="TreeViewItem">
+            <Setter Property="MinHeight" Value="24"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style Selector="TreeViewItem /template/ Border#PART_LayoutRoot">
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Margin" Value="1,1"/>
+        </Style>
+        <Style Selector="TreeViewItem:pointerover /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="#141d2b"/>
+        </Style>
+        <Style Selector="TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="#1a3a5c"/>
+        </Style>
+        <Style Selector="TreeViewItem:selected:pointerover /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="#1e446d"/>
+        </Style>
+        <Style Selector="Button.btn-header-icon">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.btn-header-icon > PathIcon">
+            <Setter Property="Width" Value="15"/>
+            <Setter Property="Height" Value="15"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="44,*">
+        <!-- TOP WORKSPACE HEADER BAR -->
+        <Border Grid.Row="0" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="12,4">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <!-- Active Database Badge & Resilience Status -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,8,0">
+                    <Border Background="#141d2b" CornerRadius="5" Padding="8,4" BorderBrush="#1e2d42" BorderThickness="1">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Name="TxtConnectionType" Text="[SQLite]" FontWeight="Bold" FontSize="11" Foreground="#008bb9"/>
+                            <TextBlock Name="TxtConnectionTarget" Text="demo.db" FontSize="11" Foreground="#f0f6fc" MaxWidth="220" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Resilience Status Badge -->
+                    <Border Name="BadgeResilience" Background="#2e1f0e" BorderBrush="#f59e0b" BorderThickness="1" CornerRadius="5" Padding="6,3" IsVisible="False">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="⚡" FontSize="10" Foreground="#f59e0b" VerticalAlignment="Center"/>
+                            <TextBlock Name="TxtResilienceStatus" Text="{DynamicResource Resilience.Healthy}" FontSize="10" FontWeight="SemiBold" Foreground="#fbbf24" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Global Command Palette Trigger (Always Accessible) -->
+                    <Button Name="BtnOpenCommandPalette" Classes="btn-outline" Padding="9,4" FontSize="11"
+                            ToolTip.Tip="Command Palette Global — Buscar tabelas, comandos, DDL e queries (Ctrl+K / Cmd+K)">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="⌘K" FontWeight="Bold" Foreground="#38bdf8" FontSize="11" VerticalAlignment="Center"/>
+                            <TextBlock Text="Comandos / Ir para..." Foreground="#cbd5e1" FontSize="11" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- Actions Right: Compact Icon Bar with Tooltips (Crisp Centered Vector Icons) -->
+                <StackPanel Name="PanelActionButtons" Grid.Column="1" Orientation="Horizontal" Spacing="5" 
+                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0">
+                    <!-- Hidden label preserved for localization binding compatibility -->
+                    <TextBlock Name="TxtLanguageLabel" Text="PT | EN" IsVisible="False"/>
+
+                    <!-- 1. Language Toggle (Globe Icon) -->
+                    <Button Name="BtnLanguageToggle" Classes="btn-secondary btn-header-icon"
+                            ToolTip.Tip="Alternar Idioma (PT-BR / EN-US)">
+                        <PathIcon Foreground="#38bdf8" Data="M12,2A10,10 0 1,0 22,12A10,10 0 0,0 12,2M19.9,11H16.9C16.7,8.5 16,6.2 14.9,4.5C17.6,5.5 19.5,8 19.9,11M12,4.1C13.3,5.8 14.2,8.3 14.4,11H9.6C9.8,8.3 10.7,5.8 12,4.1M4.1,13H7.1C7.3,15.5 8,17.8 9.1,19.5C6.4,18.5 4.5,16 4.1,13M7.1,11H4.1C4.5,8 6.4,5.5 9.1,4.5C8,6.2 7.3,8.5 7.1,11M12,19.9C10.7,18.2 9.8,15.7 9.6,13H14.4C14.2,15.7 13.3,18.2 12,19.9M14.9,19.5C16,17.8 16.7,15.5 16.9,13H19.9C19.5,16 17.6,18.5 14.9,19.5Z"/>
+                    </Button>
+
+                    <!-- 2. New SQL Query (Plus Icon) -->
+                    <Button Name="BtnNewQueryTab" Classes="btn-primary btn-header-icon"
+                            ToolTip.Tip="Nova Consulta SQL (+ Query)">
+                        <PathIcon Foreground="#ffffff" Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+                    </Button>
+
+                    <!-- 3. Visual Query Builder (Puzzle / Blocks Icon) -->
+                    <Button Name="BtnOpenQueryBuilderTab" Classes="btn-secondary btn-header-icon"
+                            ToolTip.Tip="Construtor Visual de Consultas (Query Builder)">
+                        <PathIcon Foreground="#34d399" Data="M20.5,11H19V7C19,5.89 18.1,5 17,5H13V3.5A2.5,2.5 0 0,0 10.5,1A2.5,2.5 0 0,0 8,3.5V5H4A2,2 0 0,0 2,7V10.8H3.5C5,10.8 6.2,12 6.2,13.5C6.2,15 5,16.2 3.5,16.2H2V20A2,2 0 0,0 4,22H7.8V20.5C7.8,19 9,17.8 10.5,17.8C12,17.8 13.2,19 13.2,20.5V22H17A2,2 0 0,0 19,20V16H20.5A2.5,2.5 0 0,0 23,13.5A2.5,2.5 0 0,0 20.5,11Z"/>
+                    </Button>
+
+                    <!-- 4. Global Data Search (Magnifier Icon) -->
+                    <Button Name="BtnOpenGlobalSearchTab" Classes="btn-secondary btn-header-icon"
+                            ToolTip.Tip="Busca Global de Dados em Todas as Tabelas">
+                        <PathIcon Foreground="#38bdf8" Data="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
+                    </Button>
+
+                    <!-- 5. Database Health & Telemetry (Heart Pulse Icon) -->
+                    <Button Name="BtnOpenHealthTab" Classes="btn-secondary btn-header-icon"
+                            ToolTip.Tip="Dashboard de Saúde do Banco, Telemetria &amp; Manutenção (VACUUM / ANALYZE)">
+                        <PathIcon Foreground="#f43f5e" Data="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35M7.5,11H9.5L11,7.5L13,13.5L14.5,10H16.5V11.5H15.3L13,16.5L11,10.5L9.7,12.5H7.5V11Z"/>
+                    </Button>
+
+                    <!-- 6. Visual ERD Diagram (Hierarchy / Nodes Icon) -->
+                    <Button Name="BtnOpenErdTab" Classes="btn-secondary btn-header-icon"
+                            ToolTip.Tip="Diagrama Entidade-Relacionamento (DER Visual)">
+                        <PathIcon Foreground="#fbbf24" Data="M3,3H9V7H3V3M15,10H21V14H15V10M15,17H21V21H15V17M13,13H7V18H13V20H7L5,20V9H7V11H13V13Z"/>
+                    </Button>
+
+                    <!-- 7. PostgreSQL DBA Admin (Shield Icon) -->
+                    <Button Name="BtnOpenDbaTab" Classes="btn-secondary btn-header-icon"
+                            ToolTip.Tip="Administração PostgreSQL (Roles, Privilégios &amp; Sessões)">
+                        <PathIcon Foreground="#c084fc" Data="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,7C13.4,7 14.8,8.1 14.8,9.5V11C15.4,11 16,11.6 16,12.3V15.8C16,16.4 15.4,17 14.7,17H9.2C8.6,17 8,16.4 8,15.7V12.2C8,11.6 8.6,11 9.2,11V9.5C9.2,8.1 10.6,7 12,7M12,8.2C11.2,8.2 10.5,8.7 10.5,9.5V11H13.5V9.5C13.5,8.7 12.8,8.2 12,8.2Z"/>
+                    </Button>
+
+                    <!-- 8. Schema Compare / Diff (Compare Arrows / Scale Icon) -->
+                    <Button Name="BtnOpenCompareTab" Classes="btn-secondary btn-header-icon"
+                            ToolTip.Tip="Comparador de Schemas (Database Diff &amp; Sync)">
+                        <PathIcon Foreground="#38bdf8" Data="M9,3L5,6.99H8V14H10V6.99H13L9,3M16,17.01V10H14V17.01H11L15,21L19,17.01H16Z"/>
+                    </Button>
+
+                    <!-- 9. Backup & Restore Manager (Database Floppy / Archive Icon) -->
+                    <Button Name="BtnOpenBackupTab" Classes="btn-secondary btn-header-icon"
+                            ToolTip.Tip="Gerenciador Integrado de Backup &amp; Restore">
+                        <PathIcon Foreground="#34d399" Data="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z"/>
+                    </Button>
+
+                    <!-- 10. Refresh Schema (Sync / Reload Icon) -->
+                    <Button Name="BtnRefreshSchema" Classes="btn-outline btn-header-icon"
+                            ToolTip.Tip="Atualizar Catálogo de Schema e Tabelas">
+                        <PathIcon Foreground="#cbd5e1" Data="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/>
+                    </Button>
+
+                    <!-- 11. About RUNIX (Info Circle Icon) -->
+                    <Button Name="BtnAbout" Classes="btn-secondary btn-header-icon"
+                            ToolTip.Tip="{DynamicResource About.Title}">
+                        <PathIcon Foreground="#38bdf8" Data="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z"/>
+                    </Button>
+
+                    <!-- 12. Disconnect (Power / Logout Icon) -->
+                    <Button Name="BtnDisconnect" Classes="btn-danger btn-header-icon"
+                            ToolTip.Tip="Desconectar da Sessão Atual">
+                        <PathIcon Foreground="#f87171" Data="M16.56,5.44L15.11,6.89C16.84,7.94 18,9.83 18,12A6,6 0 0,1 12,18A6,6 0 0,1 6,12C6,9.83 7.16,7.94 8.88,6.88L7.44,5.44C5.36,6.88 4,9.28 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12C20,9.28 18.64,6.88 16.56,5.44M13,3H11V13H13V3Z"/>
+                    </Button>
+                </StackPanel>
+
+                <!-- Dropdown Menu Button "Ações" (Always Visible with Text) -->
+                <Button Name="BtnMoreActions" Grid.Column="2" Classes="btn-primary" Height="30" Padding="12,0"
+                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                        ToolTip.Tip="Menu Completo de Ações" VerticalAlignment="Center" IsVisible="True">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <TextBlock Text="⚡" FontSize="12" VerticalAlignment="Center"/>
+                        <TextBlock Text="Ações" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"/>
+                        <TextBlock Text="▼" FontSize="9" VerticalAlignment="Center" Margin="2,1,0,0"/>
+                    </StackPanel>
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedRight">
+                            <MenuItem Name="MenuCommandPalette" Header="⌘K Command Palette Global (Ctrl+K)"/>
+                            <Separator/>
+                            <MenuItem Name="MenuNewQuery" Header="{DynamicResource Workspace.NewQuery}"/>
+                            <MenuItem Name="MenuOpenQueryBuilder" Header="🧩 Construtor Visual (Query Builder)"/>
+                            <MenuItem Name="MenuOpenGlobalSearch" Header="🔎 Busca Global de Dados"/>
+                            <MenuItem Name="MenuOpenHealth" Header="🩺 Saúde do Banco &amp; Telemetria"/>
+                            <MenuItem Name="MenuOpenErd" Header="{DynamicResource Erd.OpenErdTab}"/>
+                            <MenuItem Name="MenuOpenDba" Header="{DynamicResource Dba.HeaderButton}"/>
+                            <MenuItem Name="MenuOpenCompare" Header="{DynamicResource Diff.HeaderButton}"/>
+                            <MenuItem Name="MenuOpenBackup" Header="💾 Backup &amp; Restore"/>
+                            <Separator/>
+                            <MenuItem Name="MenuRefreshSchema" Header="{DynamicResource Workspace.Refresh}"/>
+                            <MenuItem Name="MenuLanguageToggle" Header="Mudar Idioma (PT / EN)"/>
+                            <MenuItem Name="MenuAbout" Header="{DynamicResource About.MenuItem}"/>
+                            <Separator/>
+                            <MenuItem Name="MenuDisconnect" Header="{DynamicResource Workspace.Disconnect}"/>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- MAIN SPLIT WORKSPACE -->
+        <Grid Grid.Row="1" ColumnDefinitions="250,4,*">
+            <!-- SIDEBAR -->
+            <Border Grid.Column="0" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="0,0,1,0" MinWidth="180">
+                <Grid RowDefinitions="Auto,Auto,*,Auto">
+                    <!-- Sidebar Navigation Tabs (Tables | Queries | History) -->
+                    <Grid Grid.Row="0" ColumnDefinitions="*,*,*" Margin="8,10,8,6">
+                        <Button Name="BtnSidebarTables" Grid.Column="0" Content="{DynamicResource Workspace.TablesTab}" 
+                                Background="#0064a5" Foreground="White" FontWeight="Bold" FontSize="11" 
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,6" CornerRadius="5,0,0,5"/>
+                        <Button Name="BtnSidebarQueries" Grid.Column="1" Content="{DynamicResource Workspace.QueriesTab}" 
+                                Background="#141d2b" Foreground="#8b9cb3" FontWeight="SemiBold" FontSize="11" 
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,6" CornerRadius="0"/>
+                        <Button Name="BtnSidebarHistory" Grid.Column="2" Content="{DynamicResource Workspace.HistoryTab}" 
+                                Background="#141d2b" Foreground="#8b9cb3" FontWeight="SemiBold" FontSize="11" 
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,6" CornerRadius="0,5,5,0"/>
+                    </Grid>
+
+                    <!-- Filter Area (Dynamic per Tab) -->
+                    <!-- 1. Tables Search + New Programmable Object -->
+                    <Border Name="BorderTableSearch" Grid.Row="1" Padding="8,4,8,8">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox Name="TxtTableFilter" Grid.Column="0" Watermark="{DynamicResource Workspace.FilterTables}" 
+                                     Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42" CornerRadius="5" 
+                                     Padding="8,5" FontSize="11" Margin="0,0,6,0"/>
+                            <Button Name="BtnNewProgObject" Grid.Column="1" Content="+ DDL" Classes="btn-secondary"
+                                    Padding="7,5" FontSize="10" ToolTip.Tip="Novo Objeto Programável (View, Trigger, Function, Index)"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- 2. Queries Search + Favorites Filter -->
+                    <Border Name="BorderQueriesSearch" Grid.Row="1" Padding="8,4,8,8" IsVisible="False">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox Name="TxtQueriesFilter" Grid.Column="0" Watermark="{DynamicResource Workspace.FilterQueries}" 
+                                     Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42" CornerRadius="5" 
+                                     Padding="8,5" FontSize="11" Margin="0,0,6,0"/>
+                            <Button Name="BtnFilterFavoritesToggle" Grid.Column="1" Content="⭐" Classes="btn-secondary" 
+                                    Padding="8,5" ToolTip.Tip="Filtrar Favoritas"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- 3. History Search + Clear -->
+                    <Border Name="BorderHistorySearch" Grid.Row="1" Padding="8,4,8,8" IsVisible="False">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox Name="TxtHistoryFilter" Grid.Column="0" Watermark="{DynamicResource Workspace.FilterHistory}" 
+                                     Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42" CornerRadius="5" 
+                                     Padding="8,5" FontSize="11" Margin="0,0,6,0"/>
+                            <Button Name="BtnClearHistory" Grid.Column="1" Content="Limpar" Classes="btn-outline" 
+                                    Padding="8,5" FontSize="11"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Content Area (Grid.Row="2") -->
+                    <!-- 1. Hierarchical Tables TreeView (Groups, Tables, Columns) -->
+                    <TreeView Name="TreeTables" Grid.Row="2" Background="Transparent" BorderThickness="0" Margin="2,0"
+                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <TreeView.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Name="MenuOpenTable" Header="📊 Abrir Dados da Tabela"/>
+                                <MenuItem Name="MenuQuickQuery" Header="⚡ Consultar (SELECT * LIMIT 100)"/>
+                                <MenuItem Name="MenuViewStructure" Header="📐 Ver Estrutura / DDL"/>
+                                <MenuItem Name="MenuEditProgObject" Header="📝 Editar Objeto Programável (DDL)"/>
+                                <MenuItem Name="MenuNewProgObject" Header="➕ Novo Objeto (View / Trigger / Index)"/>
+                                <Separator/>
+                                <MenuItem Name="MenuToggleFavorite" Header="⭐ Fixar / Desafixar dos Favoritos"/>
+                                <MenuItem Name="MenuCopyTableName" Header="📋 Copiar Nome"/>
+                                <MenuItem Name="MenuCopyDdl" Header="📋 Copiar DDL (CREATE TABLE)"/>
+                                <Separator/>
+                                <MenuItem Name="MenuImportTableData" Header="📥 Importar dados..."/>
+                                <MenuItem Name="MenuExportTableData" Header="⤓ Exportar dados..."/>
+                            </ContextMenu>
+                        </TreeView.ContextMenu>
+                        <TreeView.DataTemplates>
+                            <!-- Group Template (Favoritas, Tabelas, Views, Schemas) -->
+                            <TreeDataTemplate DataType="models:SchemaOrGroupSidebarItem" ItemsSource="{Binding Children}">
+                                <Border Padding="4,3" CornerRadius="4" Margin="0,1,18,0" Background="#0b111a">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <TextBlock Grid.Column="0" Text="{Binding Icon}" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding HeaderText}" FontWeight="Bold" FontSize="11" 
+                                                   Foreground="#38bdf8" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                            </TreeDataTemplate>
+
+                            <!-- Table / View Template -->
+                            <TreeDataTemplate DataType="models:TableSidebarItem" ItemsSource="{Binding Children}">
+                                <Border Padding="3,2" CornerRadius="4" Margin="0,1" Background="Transparent">
+                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                        <!-- Table Icon -->
+                                        <Border Grid.Column="0" CornerRadius="3" Padding="2,1" Margin="0,0,6,0" Background="#141d2b" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Icon}" FontSize="11" VerticalAlignment="Center"/>
+                                        </Border>
+
+                                        <!-- Table Name -->
+                                        <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontSize="12" 
+                                                   Foreground="#f0f6fc" FontWeight="SemiBold" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+
+                                        <!-- Row Count Badge -->
+                                        <Border Grid.Column="2" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" 
+                                                CornerRadius="3" Padding="4,1" Margin="4,0" IsVisible="{Binding HasRowCount}">
+                                            <TextBlock Text="{Binding RowCount, StringFormat='{}{0:N0}'}" FontSize="10" Foreground="#8b9cb3"/>
+                                        </Border>
+
+                                        <!-- Quick Action Buttons on Table (Safe 18px margin from vertical scrollbar) -->
+                                        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" Margin="6,0,18,0">
+                                            <Button Name="BtnTableFavorite" Content="{Binding FavoriteIcon}" Classes="btn-icon"
+                                                    Padding="3,1" FontSize="11" Background="Transparent" BorderThickness="0"
+                                                    ToolTip.Tip="Fixar / Desafixar dos Favoritos"/>
+                                            <Button Name="BtnTableQuery" Content="⚡" Classes="btn-icon"
+                                                    Padding="4,2" FontSize="11" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="4"
+                                                    ToolTip.Tip="Consultar (SELECT * LIMIT 100)"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </TreeDataTemplate>
+
+                            <!-- Column Template (Leaf Node) -->
+                            <DataTemplate DataType="models:ColumnSidebarItem">
+                                <Border Padding="6,2" Margin="2,0,18,0" Background="Transparent">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <!-- Key Badge: 🔑, 🔗, • -->
+                                        <TextBlock Grid.Column="0" Text="{Binding KeyBadge}" FontSize="11" Margin="0,0,6,0" 
+                                                   VerticalAlignment="Center" ToolTip.Tip="{Binding KeyTooltip}"/>
+
+                                        <!-- Column Name -->
+                                        <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontSize="11" 
+                                                   Foreground="#cbd5e1" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+
+                                        <!-- Data Type Badge -->
+                                        <Border Grid.Column="2" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" 
+                                                CornerRadius="3" Padding="4,1" Margin="4,0">
+                                            <TextBlock Text="{Binding DataType}" FontSize="9" Foreground="#64748b" FontFamily="Consolas,monospace"/>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+
+                            <!-- Programmable Object Template (Trigger, Function, Procedure, Index) -->
+                            <DataTemplate DataType="models:ProgrammabilitySidebarItem">
+                                <Border Padding="3,2" CornerRadius="4" Margin="0,1" Background="Transparent">
+                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                        <Border Grid.Column="0" CornerRadius="3" Padding="3,1" Margin="0,0,6,0" Background="#141d2b" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Icon}" FontSize="11" VerticalAlignment="Center"/>
+                                        </Border>
+
+                                        <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontSize="11"
+                                                   Foreground="#e2e8f0" FontWeight="SemiBold" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+
+                                        <Border Grid.Column="2" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1"
+                                                CornerRadius="3" Padding="4,1" Margin="4,0" IsVisible="{Binding HasSubtitle}">
+                                            <TextBlock Text="{Binding Subtitle}" FontSize="9" Foreground="#64748b" FontFamily="Consolas,monospace"/>
+                                        </Border>
+
+                                        <Button Grid.Column="3" Name="BtnEditProgObject" Content="📝" Classes="btn-icon"
+                                                Padding="4,2" Margin="6,0,18,0" FontSize="10" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="4"
+                                                ToolTip.Tip="Inspecionar / Editar Definição DDL"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </TreeView.DataTemplates>
+                    </TreeView>
+
+                    <!-- 2. Saved Queries List -->
+                    <ListBox Name="ListSavedQueries" Grid.Row="2" Background="Transparent" BorderThickness="0" Margin="4,0" IsVisible="False">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="models:SavedQuery">
+                                <Border Padding="8,6" Margin="0,2" CornerRadius="5" Background="#141d2b">
+                                    <Grid RowDefinitions="Auto,Auto,Auto">
+                                        <!-- Header: Favorite Star + Title + Delete Button -->
+                                        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
+                                            <Button Grid.Column="0" Name="BtnToggleFavorite" Content="{Binding FavoriteStar}" FontSize="13" 
+                                                    Foreground="#fbbf24" Background="Transparent" BorderThickness="0" Padding="2,0" 
+                                                    VerticalAlignment="Center" Margin="0,0,6,0" Cursor="Hand" ToolTip.Tip="Alternar Favorita"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" 
+                                                       Foreground="#f0f6fc" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                            <Button Grid.Column="2" Name="BtnDeleteSavedQueryItem" Content="✕" 
+                                                    Classes="btn-icon" Padding="4,2" FontSize="10" ToolTip.Tip="Excluir Consulta"/>
+                                        </Grid>
+
+                                        <!-- Tags Badges (if any) -->
+                                        <TextBlock Grid.Row="1" Text="{Binding TagsSummary}" FontSize="10" Foreground="#38bdf8" 
+                                                   Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
+
+                                        <!-- SQL Preview Snippet -->
+                                        <TextBlock Grid.Row="2" Text="{Binding SqlText}" FontSize="10" Foreground="#8b9cb3" 
+                                                   Margin="0,3,0,0" TextTrimming="CharacterEllipsis" MaxLines="2"
+                                                   FontFamily="Consolas,Menlo,Monaco,monospace"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- 3. History List -->
+                    <ListBox Name="ListHistory" Grid.Row="2" Background="Transparent" BorderThickness="0" Margin="4,0" IsVisible="False">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="models:QueryHistoryEntry">
+                                <Border Padding="8,6" Margin="0,2" CornerRadius="5" Background="#141d2b">
+                                    <StackPanel Spacing="3">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <TextBlock Grid.Column="0" Text="{Binding StatusIcon}" FontSize="11" 
+                                                       Foreground="#34d399" FontWeight="Bold" Margin="0,0,6,0"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Summary}" FontSize="11" 
+                                                       Foreground="#008bb9" FontWeight="SemiBold"/>
+                                        </Grid>
+                                        <TextBlock Text="{Binding SqlText}" FontSize="11" Foreground="#f0f6fc" 
+                                                   TextTrimming="CharacterEllipsis" MaxLines="2"
+                                                   FontFamily="Consolas,Menlo,monospace"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Sidebar Footer Stats -->
+                    <Border Grid.Row="3" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="0,1,0,0" Padding="12,8">
+                        <TextBlock Name="TxtTableCount" Text="0 tables" FontSize="11" Foreground="#8b9cb3"/>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- SPLITTER -->
+            <GridSplitter Grid.Column="1" Background="#1e2d42" ResizeDirection="Columns" HorizontalAlignment="Stretch"/>
+
+            <!-- MAIN TAB WORKSPACE -->
+            <Grid Grid.Column="2" Background="#090d14" MinWidth="200">
+                <TabControl Name="WorkspaceTabs" Background="#090d14" BorderThickness="0" Padding="0"/>
+            </Grid>
+        </Grid>
+
+        <!-- GLOBAL COMMAND PALETTE OVERLAY -->
+        <dialogs:CommandPaletteDialog Name="OverlayCommandPalette" Grid.RowSpan="2" IsVisible="False" ZIndex="250"/>
+    </Grid>
+</UserControl>

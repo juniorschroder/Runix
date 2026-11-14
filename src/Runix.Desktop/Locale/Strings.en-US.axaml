@@ -1,0 +1,233 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=netstandard">
+
+    <!-- App & Brand -->
+    <sys:String x:Key="App.Title">RUNIX</sys:String>
+    <sys:String x:Key="App.Subtitle">Database Studio</sys:String>
+
+    <!-- Common Actions & Labels -->
+    <sys:String x:Key="Common.Cancel">Cancel</sys:String>
+    <sys:String x:Key="Common.Close">Close</sys:String>
+    <sys:String x:Key="Common.Save">Save</sys:String>
+    <sys:String x:Key="Common.Delete">Delete</sys:String>
+    <sys:String x:Key="Common.Refresh">Refresh</sys:String>
+    <sys:String x:Key="Common.Status">Status</sys:String>
+    <sys:String x:Key="Common.Loading">Loading...</sys:String>
+    <sys:String x:Key="Common.Error">Error</sys:String>
+    <sys:String x:Key="Common.Success">Success</sys:String>
+    <sys:String x:Key="Common.Language">Language</sys:String>
+
+    <!-- Connection View -->
+    <sys:String x:Key="Connection.SavedConnections">SAVED CONNECTIONS</sys:String>
+    <sys:String x:Key="Connection.New">+ New</sys:String>
+    <sys:String x:Key="Connection.Title">Connection Settings</sys:String>
+    <sys:String x:Key="Connection.Subtitle">Configure connection parameters for SQLite or PostgreSQL</sys:String>
+    <sys:String x:Key="Connection.Name">Connection Name</sys:String>
+    <sys:String x:Key="Connection.NameWatermark">e.g. Production PostgreSQL, Analytics SQLite</sys:String>
+    <sys:String x:Key="Connection.Engine">Database Engine</sys:String>
+    <sys:String x:Key="Connection.SqliteTitle">SQLite</sys:String>
+    <sys:String x:Key="Connection.SqliteDesc">Local / Embedded database</sys:String>
+    <sys:String x:Key="Connection.PostgresTitle">PostgreSQL</sys:String>
+    <sys:String x:Key="Connection.PostgresDesc">Network / Server database</sys:String>
+    <sys:String x:Key="Connection.FilePath">Database File Path</sys:String>
+    <sys:String x:Key="Connection.Browse">Browse...</sys:String>
+    <sys:String x:Key="Connection.TipFile">Tip: You can use existing .db, .sqlite, .sqlite3 files or specify a new file.</sys:String>
+    <sys:String x:Key="Connection.Host">Host</sys:String>
+    <sys:String x:Key="Connection.Port">Port</sys:String>
+    <sys:String x:Key="Connection.Database">Database Name</sys:String>
+    <sys:String x:Key="Connection.Username">Username</sys:String>
+    <sys:String x:Key="Connection.Password">Password</sys:String>
+    <sys:String x:Key="Connection.SslMode">SSL Mode</sys:String>
+    <sys:String x:Key="Connection.Test">Test Connection</sys:String>
+    <sys:String x:Key="Connection.Testing">Testing...</sys:String>
+    <sys:String x:Key="Connection.Connect">Connect ➔</sys:String>
+    <sys:String x:Key="Connection.Connecting">Connecting...</sys:String>
+    <sys:String x:Key="Connection.QuickDemo">🧀 Open Cheeses Demo Database</sys:String>
+
+    <!-- Workspace View -->
+    <sys:String x:Key="Workspace.Disconnect">← Disconnect</sys:String>
+    <sys:String x:Key="Workspace.NewQuery">+ New Query</sys:String>
+    <sys:String x:Key="Workspace.Refresh">⟳ Refresh</sys:String>
+    <sys:String x:Key="Workspace.TablesTab">Tables</sys:String>
+    <sys:String x:Key="Workspace.QueriesTab">Queries</sys:String>
+    <sys:String x:Key="Workspace.HistoryTab">History</sys:String>
+    <sys:String x:Key="Workspace.FilterTables">🔍 Filter tables...</sys:String>
+    <sys:String x:Key="Workspace.FilterQueries">🔍 Search saved queries...</sys:String>
+    <sys:String x:Key="Workspace.FilterHistory">🔍 Filter history...</sys:String>
+    <sys:String x:Key="Workspace.OnlyFavorites">⭐ Favorites</sys:String>
+    <sys:String x:Key="Workspace.NoTables">No tables found</sys:String>
+    <sys:String x:Key="Workspace.TablesAndViews">TABLES &amp; VIEWS</sys:String>
+    <sys:String x:Key="Workspace.HistoryEmpty">No queries executed yet</sys:String>
+    <sys:String x:Key="Workspace.NoSavedQueries">No saved queries yet</sys:String>
+    <sys:String x:Key="Workspace.CloseTab">Close tab</sys:String>
+
+    <!-- Query Tab -->
+    <sys:String x:Key="Query.Run">▶ Run Query</sys:String>
+    <sys:String x:Key="Query.Running">Executing query...</sys:String>
+    <sys:String x:Key="Query.Clear">Clear</sys:String>
+    <sys:String x:Key="Query.SampleSelect">Sample SELECT</sys:String>
+    <sys:String x:Key="Query.ExportCsv">Export CSV</sys:String>
+    <sys:String x:Key="Query.Export">Export ⤓</sys:String>
+    <sys:String x:Key="Query.PlaceholderTitle">Run a query to view results</sys:String>
+    <sys:String x:Key="Query.PlaceholderHint">Press Run Query button or Ctrl+Enter / Cmd+Enter</sys:String>
+    <sys:String x:Key="Query.RowsReturned">{0} rows returned in {1}ms</sys:String>
+    <sys:String x:Key="Query.ErrorBanner">Query execution failed</sys:String>
+
+    <!-- Table Data Tab -->
+    <sys:String x:Key="TableData.FilterPlaceholder">Filter rows (e.g. id &gt; 5 OR name LIKE '%cheese%')...</sys:String>
+    <sys:String x:Key="TableData.FilterButton">Filter</sys:String>
+    <sys:String x:Key="TableData.StructureButton">View Structure</sys:String>
+    <sys:String x:Key="TableData.ExportCsv">Export CSV</sys:String>
+    <sys:String x:Key="TableData.ShowingRows">Showing {0} rows</sys:String>
+    <sys:String x:Key="TableData.Page">Page</sys:String>
+    <sys:String x:Key="TableData.Of">of</sys:String>
+    <sys:String x:Key="TableData.First">⏮ First</sys:String>
+    <sys:String x:Key="TableData.Previous">◀ Prev</sys:String>
+    <sys:String x:Key="TableData.Next">Next ▶</sys:String>
+    <sys:String x:Key="TableData.Last">Last ⏭</sys:String>
+    <sys:String x:Key="TableData.AddRow">+ New Row</sys:String>
+    <sys:String x:Key="TableData.DeleteRow">- Delete Row</sys:String>
+    <sys:String x:Key="TableData.StagedChanges">{0} pending changes ({1} modified, {2} added, {3} deleted)</sys:String>
+    <sys:String x:Key="TableData.SaveChanges">Save Changes</sys:String>
+    <sys:String x:Key="TableData.DiscardChanges">Discard</sys:String>
+    <sys:String x:Key="TableData.SaveSuccess">Changes committed successfully ({0} rows affected).</sys:String>
+    <sys:String x:Key="TableData.SaveError">Error saving changes: {0}</sys:String>
+    <sys:String x:Key="TableData.NoPkWarning">Table has no primary key. Edits will target rowid or matching columns.</sys:String>
+
+    <!-- Table Structure Tab -->
+    <sys:String x:Key="TableStructure.TitlePrefix">Structure of</sys:String>
+    <sys:String x:Key="TableStructure.TabColumns">Columns</sys:String>
+    <sys:String x:Key="TableStructure.TabIndexes">Indexes</sys:String>
+    <sys:String x:Key="TableStructure.TabForeignKeys">Foreign Keys</sys:String>
+    <sys:String x:Key="TableStructure.TabDdl">SQL DDL</sys:String>
+    <sys:String x:Key="TableStructure.ColPos">#</sys:String>
+    <sys:String x:Key="TableStructure.ColName">Column Name</sys:String>
+    <sys:String x:Key="TableStructure.ColType">Data Type</sys:String>
+    <sys:String x:Key="TableStructure.ColNullable">Nullable</sys:String>
+    <sys:String x:Key="TableStructure.ColKey">Key</sys:String>
+    <sys:String x:Key="TableStructure.ColDefault">Default Value</sys:String>
+    <sys:String x:Key="TableStructure.IndexName">Index Name</sys:String>
+    <sys:String x:Key="TableStructure.IndexColumns">Columns</sys:String>
+    <sys:String x:Key="TableStructure.IndexMethod">Method</sys:String>
+    <sys:String x:Key="TableStructure.IndexUnique">Unique</sys:String>
+    <sys:String x:Key="TableStructure.IndexPk">Primary Key</sys:String>
+    <sys:String x:Key="TableStructure.FkConstraint">Constraint</sys:String>
+    <sys:String x:Key="TableStructure.FkSourceCol">Source Column</sys:String>
+    <sys:String x:Key="TableStructure.FkTargetTable">Target Table</sys:String>
+    <sys:String x:Key="TableStructure.FkTargetCol">Target Column</sys:String>
+    <sys:String x:Key="TableStructure.FkOnUpdate">On Update</sys:String>
+    <sys:String x:Key="TableStructure.FkOnDelete">On Delete</sys:String>
+    <sys:String x:Key="TableStructure.DdlTitle">DDL STATEMENT</sys:String>
+
+    <!-- Resilience Badges -->
+    <sys:String x:Key="Resilience.Healthy">Healthy</sys:String>
+    <sys:String x:Key="Resilience.Retrying">Retrying {0}/{1}</sys:String>
+    <sys:String x:Key="Resilience.CircuitOpen">Circuit Open</sys:String>
+    <sys:String x:Key="Resilience.CircuitHalfOpen">Half-Open</sys:String>
+
+    <!-- ERD / DER Visual Editor -->
+    <sys:String x:Key="Erd.TabTitle">ERD Diagram</sys:String>
+    <sys:String x:Key="Erd.OpenErdTab">📐 ERD / DER</sys:String>
+    <sys:String x:Key="Erd.AutoLayout">Auto-Layout</sys:String>
+    <sys:String x:Key="Erd.NewTable">+ New Table</sys:String>
+    <sys:String x:Key="Erd.ExportPng">Export PNG</sys:String>
+    <sys:String x:Key="Erd.ExportSql">Export SQL</sys:String>
+    <sys:String x:Key="Erd.ZoomIn">Zoom +</sys:String>
+    <sys:String x:Key="Erd.ZoomOut">Zoom -</sys:String>
+    <sys:String x:Key="Erd.ResetZoom">Reset</sys:String>
+    <sys:String x:Key="Erd.ModalTitle">Create New Table</sys:String>
+    <sys:String x:Key="Erd.TableName">Table Name</sys:String>
+    <sys:String x:Key="Erd.AddColumn">+ Add Column</sys:String>
+    <sys:String x:Key="Erd.DdlPreview">GENERATED DDL PREVIEW</sys:String>
+    <sys:String x:Key="Erd.ExecuteDdl">Execute &amp; Create Table</sys:String>
+    <sys:String x:Key="Erd.TableCreatedSuccess">Table created successfully!</sys:String>
+
+    <!-- Data Import Wizard -->
+    <sys:String x:Key="TableData.Import">Import 📥</sys:String>
+    <sys:String x:Key="Import.WizardTitle">Data Import Wizard</sys:String>
+    <sys:String x:Key="Import.Step1Title">1. File &amp; Detection</sys:String>
+    <sys:String x:Key="Import.Step2Title">2. Mapping &amp; Rules</sys:String>
+    <sys:String x:Key="Import.Step3Title">3. Execution &amp; Progress</sys:String>
+    <sys:String x:Key="Import.SelectFile">Select File</sys:String>
+    <sys:String x:Key="Import.Browse">Browse...</sys:String>
+    <sys:String x:Key="Import.AutoMap">Auto Map Columns</sys:String>
+    <sys:String x:Key="Import.Next">Next ➔</sys:String>
+    <sys:String x:Key="Import.Back">⬅ Back</sys:String>
+    <sys:String x:Key="Import.Start">Start Import 📥</sys:String>
+    <sys:String x:Key="Import.RollbackOnError">Rollback all on error (Transactional)</sys:String>
+    <sys:String x:Key="Import.SkipErrors">Skip invalid rows and continue</sys:String>
+    <sys:String x:Key="Import.BatchSize">Batch Size:</sys:String>
+    <sys:String x:Key="Import.SuccessSummary">Import completed successfully!</sys:String>
+    <sys:String x:Key="Import.ErrorSummary">Import failed or completed with partial errors.</sys:String>
+
+    <!-- Visual Explain Plan & Performance Profiler -->
+    <sys:String x:Key="Explain.Button">🔍 Explain</sys:String>
+    <sys:String x:Key="Explain.Quick">Quick Explain (Estimated)</sys:String>
+    <sys:String x:Key="Explain.Analyze">Explain &amp; Analyze (Actual Metrics)</sys:String>
+    <sys:String x:Key="Explain.TabTitle">⚡ Execution Plan (Explain)</sys:String>
+    <sys:String x:Key="Explain.ResultsTab">📊 Results</sys:String>
+    <sys:String x:Key="Explain.InspectorTitle">Node Inspector</sys:String>
+    <sys:String x:Key="Explain.Recommendations">Recommended Optimization</sys:String>
+    <sys:String x:Key="Explain.ApplyIndex">Create Index Now ⚡</sys:String>
+    <sys:String x:Key="Explain.Bottleneck">Critical Bottleneck</sys:String>
+
+    <!-- PostgreSQL Administration: Roles, Permissions & Active Sessions -->
+    <sys:String x:Key="Dba.HeaderButton">🛡 DBA</sys:String>
+    <sys:String x:Key="Dba.TabTitle">🛡 Administration</sys:String>
+    <sys:String x:Key="Dba.PostgresOnlyTooltip">User and Session Administration is available for PostgreSQL connections.</sys:String>
+    <sys:String x:Key="Dba.RolesTab">👥 Users &amp; Roles</sys:String>
+    <sys:String x:Key="Dba.PrivilegesTab">🔐 Privilege Matrix</sys:String>
+    <sys:String x:Key="Dba.SessionsTab">⚡ Active Sessions &amp; Processes</sys:String>
+    <sys:String x:Key="Dba.NewRole">+ New User / Role</sys:String>
+    <sys:String x:Key="Dba.EditRole">✏ Edit Role</sys:String>
+    <sys:String x:Key="Dba.DeleteRole">🗑 Delete Role</sys:String>
+
+    <!-- Schema Compare & Database Diff / Sync Tool -->
+    <sys:String x:Key="Diff.HeaderButton">⚖ Compare</sys:String>
+    <sys:String x:Key="Diff.TabTitle">⚖ Schema Diff</sys:String>
+    <sys:String x:Key="Diff.SourceLabel">Source:</sys:String>
+    <sys:String x:Key="Diff.TargetLabel">Target:</sys:String>
+    <sys:String x:Key="Diff.SaveSnapshot">💾 Save Snapshot</sys:String>
+    <sys:String x:Key="Diff.InvertDirection">⇄ Swap</sys:String>
+    <sys:String x:Key="Diff.CompareAction">⚖ Compare Schemas ⚡</sys:String>
+    <sys:String x:Key="Diff.SafeMode">Safe Mode (No DROPs)</sys:String>
+    <sys:String x:Key="Diff.GenerateSyncScript">⚡ Generate Sync Script</sys:String>
+    <sys:String x:Key="Diff.InspectorTitle">🔍 Table Details:</sys:String>
+
+    <!-- Data Visualization & Native SkiaSharp Quick Charts -->
+    <sys:String x:Key="Chart.TabButton">📈 Chart</sys:String>
+    <sys:String x:Key="Chart.TabTitle">Chart</sys:String>
+    <sys:String x:Key="Chart.Type">Type:</sys:String>
+    <sys:String x:Key="Chart.XAxis">X Axis:</sys:String>
+    <sys:String x:Key="Chart.YAxis">Y Axis:</sys:String>
+    <sys:String x:Key="Chart.Aggregation">Aggregation:</sys:String>
+    <sys:String x:Key="Chart.TopN">Limit:</sys:String>
+    <sys:String x:Key="Chart.ExportPng">💾 PNG</sys:String>
+    <sys:String x:Key="Chart.ExportSvg">💾 SVG</sys:String>
+    <sys:String x:Key="Chart.CopyImage">📋 Copy</sys:String>
+    <sys:String x:Key="Chart.Copied">✓ Copied!</sys:String>
+
+    <!-- About Dialog -->
+    <sys:String x:Key="About.Button">ℹ About</sys:String>
+    <sys:String x:Key="About.MenuItem">ℹ About RUNIX (v1.0.0)</sys:String>
+    <sys:String x:Key="About.Title">About RUNIX Database Studio</sys:String>
+    <sys:String x:Key="About.Tagline">Modern, Cross-Platform, High-Performance Relational Database Studio</sys:String>
+    <sys:String x:Key="About.Description">Built natively with .NET 10, C# 13, Avalonia UI 11, and SkiaSharp under strict Clean Architecture — zero cloud dependency, 100% offline, AES-256-GCM encryption, and network resilience powered by Vard.</sys:String>
+    <sys:String x:Key="About.CreatorLabel">CREATOR &amp; LEAD ARCHITECT</sys:String>
+    <sys:String x:Key="About.CreatorRole">Author &amp; Creator of RUNIX Database Studio</sys:String>
+    <sys:String x:Key="About.VersionLabel">APPLICATION VERSION</sys:String>
+    <sys:String x:Key="About.LicenseLabel">LICENSE &amp; COPYRIGHT</sys:String>
+    <sys:String x:Key="About.ArchitectureTitle">CORE PILLARS &amp; CAPABILITIES</sys:String>
+    <sys:String x:Key="About.Feature1Title">Clean Architecture &amp; Native Speed</sys:String>
+    <sys:String x:Key="About.Feature1Desc">C# 13, .NET 10.0, Avalonia UI 11.1, and SkiaSharp with zero Electron overhead.</sys:String>
+    <sys:String x:Key="About.Feature2Title">Network Resilience with Vard</sys:String>
+    <sys:String x:Key="About.Feature2Desc">Transient fault tolerance via Exponential Backoff Retry and Circuit Breaker.</sys:String>
+    <sys:String x:Key="About.Feature3Title">Military-Grade Security &amp; SSH Tunnel</sys:String>
+    <sys:String x:Key="About.Feature3Desc">Local credential vault and .rcf bundles encrypted with AES-256-GCM + PBKDF2-SHA256.</sys:String>
+    <sys:String x:Key="About.Feature4Title">Visual ERD, IntelliSense &amp; DBA Suite</sys:String>
+    <sys:String x:Key="About.Feature4Desc">Bidirectional ERD editor, Visual Explain Plan, Schema Diff, and SkiaSharp charts.</sys:String>
+    <sys:String x:Key="About.CopyInfo">📋 Copy System Info</sys:String>
+    <sys:String x:Key="About.CopiedStatus">✓ System information copied to clipboard!</sys:String>
+
+</ResourceDictionary>
