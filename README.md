@@ -2,10 +2,11 @@
 
 # ⚡ RUNIX Database Studio
 
-**Modern, Cross-Platform, High-Performance Relational Database Studio**  
+**Modern, Cross-Platform (macOS, Linux & Windows), High-Performance Relational Database Studio**  
 *Built natively with .NET 10, C# 13, Avalonia UI 11 & SkiaSharp — Zero Electron overhead, 100% offline & privacy-first.*
 
 [![Version](https://img.shields.io/badge/Version-1.0.0-008bb9?style=for-the-badge)](#)
+[![Platforms](https://img.shields.io/badge/Platform-macOS_%7C_Linux_%7C_Windows-0f172a?style=for-the-badge)](#)
 [![.NET 10.0](https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![C# 13](https://img.shields.io/badge/C%23-13.0-239120?style=for-the-badge&logo=csharp&logoColor=white)](https://learn.microsoft.com/en-us/dotnet/csharp/)
 [![Avalonia UI](https://img.shields.io/badge/Avalonia_UI-11.1.0-8B5CF6?style=for-the-badge)](https://avaloniaui.net/)
@@ -24,7 +25,7 @@
 
 ## 📖 Overview
 
-**RUNIX Database Studio** is a fast, modern, and resilient desktop client for inspecting, querying, administering, and visually modeling relational databases (**PostgreSQL** and **SQLite**).
+**RUNIX Database Studio** is a fast, modern, and resilient **cross-platform desktop client (running natively on macOS, Linux, and Windows)** for inspecting, querying, administering, and visually modeling relational databases (**PostgreSQL** and **SQLite**).
 
 Engineered with strict **Clean Architecture** and natively rendered via **Avalonia UI** and **SkiaSharp**, RUNIX delivers instant startup, low memory footprint, transient network fault tolerance powered by [**Vard**](https://github.com/juniorschroder/vard) (Exponential Backoff Retry & Circuit Breaker), military-grade **AES-256-GCM** encryption for credentials and shareable bundles (`.rcf`), and real-time bilingual support (**English `en-US`** and **Portuguese `pt-BR`**).
 
