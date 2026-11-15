@@ -100,8 +100,9 @@ jobs:
           mkdir -p "${APP_DIR}/Contents/Resources"
           mkdir -p ./artifacts
 
-          # Copy self-contained binaries into .app bundle
+          # Copy self-contained binaries and macOS app icon into .app bundle
           cp -R ./publish/${RID}/* "${APP_DIR}/Contents/MacOS/"
+          cp packaging/macos/runix.icns "${APP_DIR}/Contents/Resources/runix.icns"
           chmod +x "${APP_DIR}/Contents/MacOS/Runix.Desktop"
 
           # Populate Info.plist with current release version
@@ -229,6 +230,8 @@ jobs:
           mkdir -p "${STAGE_DIR}/opt/runix"
           mkdir -p "${STAGE_DIR}/usr/bin"
           mkdir -p "${STAGE_DIR}/usr/share/applications"
+          mkdir -p "${STAGE_DIR}/usr/share/icons/hicolor/256x256/apps"
+          mkdir -p "${STAGE_DIR}/usr/share/icons/hicolor/scalable/apps"
           mkdir -p ./artifacts
 
           # Copy self-contained application files to /opt/runix
@@ -242,8 +245,10 @@ jobs:
           EOF
           chmod +x "${STAGE_DIR}/usr/bin/runix"
 
-          # Copy desktop entry
+          # Copy desktop entry and application icons
           cp packaging/linux/runix.desktop "${STAGE_DIR}/usr/share/applications/runix.desktop"
+          cp src/Runix.Desktop/Assets/runix.png "${STAGE_DIR}/usr/share/icons/hicolor/256x256/apps/runix.png"
+          cp src/Runix.Desktop/Assets/runix.svg "${STAGE_DIR}/usr/share/icons/hicolor/scalable/apps/runix.svg"
 
           # 1. Build Debian/Ubuntu package (.deb)
           fpm -s dir -t deb \
@@ -261,7 +266,7 @@ jobs:
             --depends libfontconfig1 \
             -C "${STAGE_DIR}" \
             -p "./artifacts/runix_${VERSION}_amd64.deb" \
-            opt/runix usr/bin/runix usr/share/applications/runix.desktop
+            opt/runix usr/bin/runix usr/share/applications/runix.desktop usr/share/icons
 
           # 2. Build Fedora/RHEL/openSUSE package (.rpm)
           fpm -s dir -t rpm \
@@ -277,7 +282,7 @@ jobs:
             --description "RUNIX Database Studio - Modern, Cross-Platform Relational Database Studio" \
             -C "${STAGE_DIR}" \
             -p "./artifacts/runix-${VERSION}-1.x86_64.rpm" \
-            opt/runix usr/bin/runix usr/share/applications/runix.desktop
+            opt/runix usr/bin/runix usr/share/applications/runix.desktop usr/share/icons
 
       - name: Upload Linux .deb & .rpm Artifacts
         uses: actions/upload-artifact@v4

@@ -32,6 +32,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
+SetupIconFile=..\..\src\Runix.Desktop\Assets\runix.ico
 UninstallDisplayIcon={app}\Runix.Desktop.exe
 
 [Languages]

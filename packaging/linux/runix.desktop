@@ -5,6 +5,7 @@ Name=RUNIX Database Studio
 GenericName=Database Studio
 Comment=Modern, Cross-Platform, High-Performance Relational Database Studio
 Exec=/usr/bin/runix %F
+Icon=runix
 Terminal=false
 Categories=Development;Database;IDE;
 Keywords=sql;postgres;postgresql;sqlite;database;erd;runix;
