@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using Avalonia.Controls;
@@ -22,9 +23,8 @@ public partial class AboutDialog : UserControl
     private void PopulateMetadata()
     {
         TxtVersionBadge.Text = $"v{AppConstants.AppVersion}";
-        TxtVersionDetail.Text = $"{AppConstants.AppVersion} (Release)";
         TxtCreatorName.Text = AppConstants.AppAuthor;
-        TxtLicenseDetail.Text = $"{AppConstants.AppLicense} • 100% Offline";
+        TxtLicenseDetail.Text = AppConstants.AppLicense;
         TxtCopyFeedback.Text = AppConstants.AppCopyright;
 
         string osName = OperatingSystem.IsMacOS()
@@ -44,6 +44,9 @@ public partial class AboutDialog : UserControl
         BtnClose.Click += (s, e) => CloseRequested?.Invoke();
         BtnOk.Click += (s, e) => CloseRequested?.Invoke();
 
+        BtnCreatorLinkedIn.Click += (s, e) => OpenExternalUrl(AppConstants.AppAuthorLinkedInUrl);
+        BtnGitHubRepo.Click += (s, e) => OpenExternalUrl(AppConstants.AppRepositoryUrl);
+
         BtnCopySystemInfo.Click += async (s, e) =>
         {
             var topLevel = TopLevel.GetTopLevel(this);
@@ -51,7 +54,8 @@ public partial class AboutDialog : UserControl
             {
                 var sb = new StringBuilder();
                 sb.AppendLine($"{AppConstants.AppName} v{AppConstants.AppVersion}");
-                sb.AppendLine($"Creator: {AppConstants.AppAuthor}");
+                sb.AppendLine($"Creator: {AppConstants.AppAuthor} ({AppConstants.AppAuthorLinkedInUrl})");
+                sb.AppendLine($"Repository: {AppConstants.AppRepositoryUrl}");
                 sb.AppendLine($"License: {AppConstants.AppLicense} ({AppConstants.AppCopyright})");
                 sb.AppendLine($"Runtime: {RuntimeInformation.FrameworkDescription} ({RuntimeInformation.OSArchitecture})");
                 sb.AppendLine($"OS: {RuntimeInformation.OSDescription}");
@@ -64,5 +68,35 @@ public partial class AboutDialog : UserControl
                 TxtCopyFeedback.Foreground = Brush.Parse("#34d399");
             }
         };
+    }
+
+    private void OpenExternalUrl(string url)
+    {
+        try
+        {
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel?.Launcher != null)
+            {
+                _ = topLevel.Launcher.LaunchUriAsync(new Uri(url));
+                return;
+            }
+        }
+        catch
+        {
+            // Fallback to Process.Start below
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch
+        {
+            // Ignore if no browser available in headless environment
+        }
     }
 }

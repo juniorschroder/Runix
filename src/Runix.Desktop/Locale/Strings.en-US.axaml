@@ -21,6 +21,13 @@
     <!-- Connection View -->
     <sys:String x:Key="Connection.SavedConnections">SAVED CONNECTIONS</sys:String>
     <sys:String x:Key="Connection.New">+ New</sys:String>
+    <sys:String x:Key="Connection.NewCategory">+ Category</sys:String>
+    <sys:String x:Key="Connection.CategoryLabel">Category / Group (Optional)</sys:String>
+    <sys:String x:Key="Connection.CategoryWatermark">e.g. Production, Staging, Client X, Local</sys:String>
+    <sys:String x:Key="Connection.UncategorizedGroup">Uncategorized</sys:String>
+    <sys:String x:Key="Connection.FilterPlaceholder">🔍 Filter connections or categories...</sys:String>
+    <sys:String x:Key="Connection.NewCategoryWatermark">New category name...</sys:String>
+    <sys:String x:Key="Connection.AddCategoryBtn">Add</sys:String>
     <sys:String x:Key="Connection.Title">Connection Settings</sys:String>
     <sys:String x:Key="Connection.Subtitle">Configure connection parameters for SQLite or PostgreSQL</sys:String>
     <sys:String x:Key="Connection.Name">Connection Name</sys:String>
@@ -212,22 +219,15 @@
     <sys:String x:Key="About.Button">ℹ About</sys:String>
     <sys:String x:Key="About.MenuItem">ℹ About RUNIX (v1.0.0)</sys:String>
     <sys:String x:Key="About.Title">About RUNIX Database Studio</sys:String>
-    <sys:String x:Key="About.Tagline">Modern, Cross-Platform, High-Performance Relational Database Studio</sys:String>
-    <sys:String x:Key="About.Description">Built natively with .NET 10, C# 13, Avalonia UI 11, and SkiaSharp under strict Clean Architecture — zero cloud dependency, 100% offline, AES-256-GCM encryption, and network resilience powered by Vard.</sys:String>
-    <sys:String x:Key="About.CreatorLabel">CREATOR &amp; LEAD ARCHITECT</sys:String>
-    <sys:String x:Key="About.CreatorRole">Author &amp; Creator of RUNIX Database Studio</sys:String>
-    <sys:String x:Key="About.VersionLabel">APPLICATION VERSION</sys:String>
-    <sys:String x:Key="About.LicenseLabel">LICENSE &amp; COPYRIGHT</sys:String>
-    <sys:String x:Key="About.ArchitectureTitle">CORE PILLARS &amp; CAPABILITIES</sys:String>
-    <sys:String x:Key="About.Feature1Title">Clean Architecture &amp; Native Speed</sys:String>
-    <sys:String x:Key="About.Feature1Desc">C# 13, .NET 10.0, Avalonia UI 11.1, and SkiaSharp with zero Electron overhead.</sys:String>
-    <sys:String x:Key="About.Feature2Title">Network Resilience with Vard</sys:String>
-    <sys:String x:Key="About.Feature2Desc">Transient fault tolerance via Exponential Backoff Retry and Circuit Breaker.</sys:String>
-    <sys:String x:Key="About.Feature3Title">Military-Grade Security &amp; SSH Tunnel</sys:String>
-    <sys:String x:Key="About.Feature3Desc">Local credential vault and .rcf bundles encrypted with AES-256-GCM + PBKDF2-SHA256.</sys:String>
-    <sys:String x:Key="About.Feature4Title">Visual ERD, IntelliSense &amp; DBA Suite</sys:String>
-    <sys:String x:Key="About.Feature4Desc">Bidirectional ERD editor, Visual Explain Plan, Schema Diff, and SkiaSharp charts.</sys:String>
-    <sys:String x:Key="About.CopyInfo">📋 Copy System Info</sys:String>
+    <sys:String x:Key="About.Tagline">Cross-Platform Relational Database Studio (macOS, Linux &amp; Windows)</sys:String>
+    <sys:String x:Key="About.Description">Modern, high-performance desktop client for inspecting, querying, administering, and visually modeling PostgreSQL and SQLite databases.</sys:String>
+    <sys:String x:Key="About.CreatorLabel">CREATOR &amp; AUTHOR</sys:String>
+    <sys:String x:Key="About.CreatorRole">Open LinkedIn profile ↗</sys:String>
+    <sys:String x:Key="About.RepositoryLabel">OFFICIAL REPOSITORY</sys:String>
+    <sys:String x:Key="About.RepositoryHint">View source code on GitHub ↗</sys:String>
+    <sys:String x:Key="About.VersionLabel">VERSION</sys:String>
+    <sys:String x:Key="About.LicenseLabel">LICENSE</sys:String>
+    <sys:String x:Key="About.CopyInfo">📋 Copy Info</sys:String>
     <sys:String x:Key="About.CopiedStatus">✓ System information copied to clipboard!</sys:String>
 
 </ResourceDictionary>

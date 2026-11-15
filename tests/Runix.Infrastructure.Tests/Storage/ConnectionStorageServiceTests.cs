@@ -46,6 +46,7 @@ public class ConnectionStorageServiceTests : IDisposable
             new()
             {
                 Name = "Prod Postgres",
+                Category = "Produção",
                 Type = DatabaseType.PostgreSQL,
                 Host = "pg.company.internal",
                 Port = 5432,
@@ -56,6 +57,7 @@ public class ConnectionStorageServiceTests : IDisposable
             new()
             {
                 Name = "Local Analytics",
+                Category = "Analytics",
                 Type = DatabaseType.SQLite,
                 FilePath = "/tmp/analytics.db"
             }
@@ -68,10 +70,33 @@ public class ConnectionStorageServiceTests : IDisposable
 
         loaded.Should().HaveCount(2);
         loaded[0].Name.Should().Be("Prod Postgres");
+        loaded[0].Category.Should().Be("Produção");
         loaded[0].Type.Should().Be(DatabaseType.PostgreSQL);
         loaded[0].Host.Should().Be("pg.company.internal");
         loaded[1].Name.Should().Be("Local Analytics");
+        loaded[1].Category.Should().Be("Analytics");
         loaded[1].FilePath.Should().Be("/tmp/analytics.db");
+    }
+
+    [Fact]
+    public void SaveCustomCategories_And_LoadCustomCategories_RoundTripsAndDeduplicates()
+    {
+        var tempCats = Path.Combine(Path.GetTempPath(), $"runix_cats_{Guid.NewGuid():N}.json");
+        try
+        {
+            ConnectionStorageService.SaveCustomCategories(new[] { " Produção ", "Homologação", "produção", "" }, tempCats);
+            var loaded = ConnectionStorageService.LoadCustomCategories(tempCats);
+
+            loaded.Should().HaveCount(2);
+            loaded.Should().Contain(new[] { "Homologação", "Produção" });
+        }
+        finally
+        {
+            if (File.Exists(tempCats))
+            {
+                try { File.Delete(tempCats); } catch { }
+            }
+        }
     }
 
     [Fact]

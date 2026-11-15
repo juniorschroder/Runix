@@ -21,6 +21,13 @@
     <!-- Connection View -->
     <sys:String x:Key="Connection.SavedConnections">CONEXÕES SALVAS</sys:String>
     <sys:String x:Key="Connection.New">+ Nova</sys:String>
+    <sys:String x:Key="Connection.NewCategory">+ Categoria</sys:String>
+    <sys:String x:Key="Connection.CategoryLabel">Categoria / Grupo (Opcional)</sys:String>
+    <sys:String x:Key="Connection.CategoryWatermark">ex: Produção, Homologação, Cliente X, Local</sys:String>
+    <sys:String x:Key="Connection.UncategorizedGroup">Sem Categoria</sys:String>
+    <sys:String x:Key="Connection.FilterPlaceholder">🔍 Filtrar conexões ou categorias...</sys:String>
+    <sys:String x:Key="Connection.NewCategoryWatermark">Nome da nova categoria...</sys:String>
+    <sys:String x:Key="Connection.AddCategoryBtn">Criar</sys:String>
     <sys:String x:Key="Connection.Title">Configurações de Conexão</sys:String>
     <sys:String x:Key="Connection.Subtitle">Configure os parâmetros de conexão para SQLite ou PostgreSQL</sys:String>
     <sys:String x:Key="Connection.Name">Nome da Conexão</sys:String>
@@ -212,22 +219,15 @@
     <sys:String x:Key="About.Button">ℹ Sobre</sys:String>
     <sys:String x:Key="About.MenuItem">ℹ Sobre o RUNIX (v1.0.0)</sys:String>
     <sys:String x:Key="About.Title">Sobre o RUNIX Database Studio</sys:String>
-    <sys:String x:Key="About.Tagline">Estúdio Moderno, Multiplataforma e de Alta Performance para Bancos de Dados Relacionais</sys:String>
-    <sys:String x:Key="About.Description">Desenvolvido nativamente com .NET 10, C# 13, Avalonia UI 11 e SkiaSharp sob Clean Architecture estrita — zero dependência de nuvem, 100% offline, criptografia AES-256-GCM e resiliência de rede via Vard.</sys:String>
-    <sys:String x:Key="About.CreatorLabel">CRIADOR &amp; ARQUITETO PRINCIPAL</sys:String>
-    <sys:String x:Key="About.CreatorRole">Autor &amp; Criador do RUNIX Database Studio</sys:String>
-    <sys:String x:Key="About.VersionLabel">VERSÃO DA APLICAÇÃO</sys:String>
-    <sys:String x:Key="About.LicenseLabel">LICENÇA &amp; COPYRIGHT</sys:String>
-    <sys:String x:Key="About.ArchitectureTitle">PILARES TECNOLÓGICOS &amp; RECURSOS</sys:String>
-    <sys:String x:Key="About.Feature1Title">Clean Architecture &amp; Performance Nativa</sys:String>
-    <sys:String x:Key="About.Feature1Desc">C# 13, .NET 10.0, Avalonia UI 11.1 e SkiaSharp com zero overhead de Electron.</sys:String>
-    <sys:String x:Key="About.Feature2Title">Resiliência de Rede com Vard</sys:String>
-    <sys:String x:Key="About.Feature2Desc">Tolerância a falhas transitórias com Exponential Backoff Retry e Circuit Breaker.</sys:String>
-    <sys:String x:Key="About.Feature3Title">Segurança Militar &amp; Túnel SSH</sys:String>
-    <sys:String x:Key="About.Feature3Desc">Cofre local e pacotes .rcf criptografados com AES-256-GCM + PBKDF2-SHA256.</sys:String>
-    <sys:String x:Key="About.Feature4Title">Modelagem DER, IntelliSense &amp; DBA Suite</sys:String>
-    <sys:String x:Key="About.Feature4Desc">Editor DER bidirecional, Explain Plan visual, Diff de Schemas e gráficos SkiaSharp.</sys:String>
-    <sys:String x:Key="About.CopyInfo">📋 Copiar Informações do Sistema</sys:String>
+    <sys:String x:Key="About.Tagline">Estúdio Multiplataforma para Bancos de Dados Relacionais (macOS, Linux &amp; Windows)</sys:String>
+    <sys:String x:Key="About.Description">Cliente desktop moderno e de alta performance para inspeção, consulta, administração e modelagem visual de bancos de dados PostgreSQL e SQLite.</sys:String>
+    <sys:String x:Key="About.CreatorLabel">CRIADOR &amp; AUTOR</sys:String>
+    <sys:String x:Key="About.CreatorRole">Abrir perfil no LinkedIn ↗</sys:String>
+    <sys:String x:Key="About.RepositoryLabel">REPOSITÓRIO OFICIAL</sys:String>
+    <sys:String x:Key="About.RepositoryHint">Ver código-fonte no GitHub ↗</sys:String>
+    <sys:String x:Key="About.VersionLabel">VERSÃO</sys:String>
+    <sys:String x:Key="About.LicenseLabel">LICENÇA</sys:String>
+    <sys:String x:Key="About.CopyInfo">📋 Copiar Info</sys:String>
     <sys:String x:Key="About.CopiedStatus">✓ Informações copiadas para a área de transferência!</sys:String>
 
 </ResourceDictionary>

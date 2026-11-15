@@ -16,7 +16,62 @@ public class ConnectionStorageService
         "RUNIX");
 
     private static readonly string ConfigFilePath = Path.Combine(ConfigDir, "connections.json");
+    private static readonly string CategoriesFilePath = Path.Combine(ConfigDir, "connection_categories.json");
     private static readonly string LastUsedFilePath = Path.Combine(ConfigDir, "last_used_connection.txt");
+
+    public static List<string> LoadCustomCategories(string? filePath = null)
+    {
+        var targetFile = filePath ?? CategoriesFilePath;
+        try
+        {
+            if (File.Exists(targetFile))
+            {
+                var json = File.ReadAllText(targetFile);
+                var items = JsonSerializer.Deserialize<List<string>>(json);
+                if (items != null)
+                {
+                    return items
+                        .Where(x => !string.IsNullOrWhiteSpace(x))
+                        .Select(x => x.Trim())
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+                }
+            }
+        }
+        catch
+        {
+            // Ignore error
+        }
+        return new List<string>();
+    }
+
+    public static void SaveCustomCategories(IEnumerable<string> categories, string? filePath = null)
+    {
+        var targetFile = filePath ?? CategoriesFilePath;
+        try
+        {
+            var targetDir = Path.GetDirectoryName(targetFile);
+            if (!string.IsNullOrEmpty(targetDir))
+            {
+                Directory.CreateDirectory(targetDir);
+            }
+
+            var cleaned = categories
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var json = JsonSerializer.Serialize(cleaned, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(targetFile, json);
+        }
+        catch
+        {
+            // Ignore error
+        }
+    }
 
     public static string? GetLastUsedConnectionId(string? filePath = null)
     {
@@ -133,6 +188,7 @@ public class ConnectionStorageService
             {
                 Id = "demo-sqlite",
                 Name = "Cheeses Demo (SQLite)",
+                Category = "Local / Demo",
                 Type = DatabaseType.SQLite,
                 FilePath = demoPath
             },
@@ -140,6 +196,7 @@ public class ConnectionStorageService
             {
                 Id = "local-postgres",
                 Name = "Local PostgreSQL",
+                Category = "Desenvolvimento",
                 Type = DatabaseType.PostgreSQL,
                 Host = "localhost",
                 Port = 5432,

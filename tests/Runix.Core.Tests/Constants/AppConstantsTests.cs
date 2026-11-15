@@ -31,5 +31,7 @@ public class AppConstantsTests
         AppConstants.AppAuthor.Should().Be("José Carlos Schröder Júnior");
         AppConstants.AppCopyright.Should().Contain("José Carlos Schröder Júnior");
         AppConstants.AppLicense.Should().Be("MIT License");
+        AppConstants.AppRepositoryUrl.Should().Be("https://github.com/juniorschroder/Runix");
+        AppConstants.AppAuthorLinkedInUrl.Should().Be("https://www.linkedin.com/in/juniorschroder/");
     }
 }

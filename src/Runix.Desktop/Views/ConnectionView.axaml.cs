@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
@@ -20,6 +22,8 @@ namespace Runix.Desktop.Views;
 public partial class ConnectionView : UserControl
 {
     private List<ConnectionConfig> _savedConnections = new();
+    private List<string> _customCategories = new();
+    private readonly ObservableCollection<ConnectionCategoryGroup> _categoryGroups = new();
     private ConnectionConfig _currentConfig = new();
     public event Action<ConnectionConfig>? ConnectionRequested;
     public event Action? AboutRequested;
@@ -27,6 +31,7 @@ public partial class ConnectionView : UserControl
     public ConnectionView()
     {
         InitializeComponent();
+        TreeSavedConnections.ItemsSource = _categoryGroups;
         SetupEvents();
         LoadSavedConnections();
         UpdateLanguageButton();
@@ -38,15 +43,57 @@ public partial class ConnectionView : UserControl
         {
             LocalizationManager.ToggleLanguage();
             UpdateLanguageButton();
+            RebuildCategoryTree();
+            RebuildCategoryFlyout();
         };
 
         BtnAbout.Click += (s, e) => AboutRequested?.Invoke();
 
-        LocalizationManager.LanguageChanged += lang => UpdateLanguageButton();
+        LocalizationManager.LanguageChanged += lang =>
+        {
+            UpdateLanguageButton();
+            RebuildCategoryTree();
+            RebuildCategoryFlyout();
+        };
 
         BtnSelectSQLite.Click += (s, e) => SwitchEngine(DatabaseType.SQLite);
         BtnSelectPostgres.Click += (s, e) => SwitchEngine(DatabaseType.PostgreSQL);
         BtnNewConnection.Click += (s, e) => CreateNewConnection();
+
+        BtnNewCategory.Click += (s, e) =>
+        {
+            PanelNewCategoryBar.IsVisible = !PanelNewCategoryBar.IsVisible;
+            if (PanelNewCategoryBar.IsVisible)
+            {
+                TxtNewCategoryInput.Text = string.Empty;
+                TxtNewCategoryInput.Focus();
+            }
+        };
+
+        BtnConfirmNewCategory.Click += (s, e) => ConfirmAddNewCategory();
+        BtnCancelNewCategory.Click += (s, e) =>
+        {
+            PanelNewCategoryBar.IsVisible = false;
+            TxtNewCategoryInput.Text = string.Empty;
+        };
+
+        TxtNewCategoryInput.KeyDown += (s, e) =>
+        {
+            if (e.Key == Key.Enter)
+            {
+                e.Handled = true;
+                ConfirmAddNewCategory();
+            }
+            else if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                PanelNewCategoryBar.IsVisible = false;
+                TxtNewCategoryInput.Text = string.Empty;
+            }
+        };
+
+        TxtFilterConnections.TextChanged += (s, e) => RebuildCategoryTree();
+
         BtnBrowseSqlite.Click += OnBrowseSqlite;
         BtnBrowseSshKey.Click += OnBrowseSshKey;
         BtnTestConnection.Click += OnTestConnection;
@@ -68,14 +115,63 @@ public partial class ConnectionView : UserControl
             PanelSshKeyAuth.IsVisible = isKey;
         };
 
-        ListSavedConnections.SelectionChanged += (s, e) =>
+        TreeSavedConnections.SelectionChanged += (s, e) =>
         {
-            if (ListSavedConnections.SelectedItem is ConnectionConfig cfg)
+            if (TreeSavedConnections.SelectedItem is ConnectionConfig cfg)
             {
                 SelectConnection(cfg);
                 ConnectionStorageService.SetLastUsedConnectionId(cfg.Id);
             }
+            else if (TreeSavedConnections.SelectedItem is ConnectionCategoryGroup grp)
+            {
+                grp.IsExpanded = !grp.IsExpanded;
+            }
         };
+
+        TreeSavedConnections.DoubleTapped += (s, e) =>
+        {
+            if (TreeSavedConnections.SelectedItem is ConnectionConfig cfg)
+            {
+                SelectConnection(cfg);
+                OnConnect(this, new RoutedEventArgs());
+            }
+        };
+    }
+
+    private void OnAddConnectionInCategoryClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn)
+        {
+            string category = btn.Tag as string ?? string.Empty;
+            CreateNewConnection(category);
+            TxtConnectionName.Focus();
+        }
+    }
+
+    private void ConfirmAddNewCategory()
+    {
+        string newCat = (TxtNewCategoryInput.Text ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(newCat))
+        {
+            PanelNewCategoryBar.IsVisible = false;
+            return;
+        }
+
+        if (!_customCategories.Contains(newCat, StringComparer.OrdinalIgnoreCase))
+        {
+            _customCategories.Add(newCat);
+            ConnectionStorageService.SaveCustomCategories(_customCategories);
+        }
+
+        PanelNewCategoryBar.IsVisible = false;
+        TxtNewCategoryInput.Text = string.Empty;
+
+        // Assign to current form as convenience
+        TxtConnectionCategory.Text = newCat;
+        _currentConfig.Category = newCat;
+
+        RebuildCategoryTree();
+        RebuildCategoryFlyout();
     }
 
     private void UpdateLanguageButton()
@@ -93,10 +189,28 @@ public partial class ConnectionView : UserControl
 
     private void LoadSavedConnections()
     {
-        ListSavedConnections.SelectedItem = null;
+        TreeSavedConnections.SelectedItem = null;
         _savedConnections = ConnectionStorageService.LoadConnections();
-        ListSavedConnections.ItemsSource = null;
-        ListSavedConnections.ItemsSource = _savedConnections.ToList();
+        _customCategories = ConnectionStorageService.LoadCustomCategories();
+
+        // Ensure categories present on saved connections are also tracked
+        bool updatedCats = false;
+        foreach (var conn in _savedConnections)
+        {
+            if (!string.IsNullOrWhiteSpace(conn.Category) &&
+                !_customCategories.Contains(conn.Category.Trim(), StringComparer.OrdinalIgnoreCase))
+            {
+                _customCategories.Add(conn.Category.Trim());
+                updatedCats = true;
+            }
+        }
+        if (updatedCats)
+        {
+            ConnectionStorageService.SaveCustomCategories(_customCategories);
+        }
+
+        RebuildCategoryTree();
+        RebuildCategoryFlyout();
 
         var lastUsedId = ConnectionStorageService.GetLastUsedConnectionId();
         ConnectionConfig? target = null;
@@ -113,12 +227,150 @@ public partial class ConnectionView : UserControl
 
         if (target != null)
         {
-            ListSavedConnections.SelectedItem = target;
+            SelectConnection(target);
+            TreeSavedConnections.SelectedItem = target;
         }
         else
         {
             CreateNewConnection();
         }
+    }
+
+    private void RebuildCategoryTree()
+    {
+        string filter = (TxtFilterConnections?.Text ?? string.Empty).Trim();
+        _categoryGroups.Clear();
+
+        var allCategoryNames = _customCategories
+            .Concat(_savedConnections
+                .Where(c => !string.IsNullOrWhiteSpace(c.Category))
+                .Select(c => c.Category.Trim()))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(c => c, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var catName in allCategoryNames)
+        {
+            var matches = _savedConnections
+                .Where(c => string.Equals(c.Category?.Trim(), catName, StringComparison.OrdinalIgnoreCase))
+                .Where(c => MatchesConnectionFilter(c, catName, filter))
+                .ToList();
+
+            bool categoryItselfMatches = string.IsNullOrEmpty(filter) ||
+                                         catName.Contains(filter, StringComparison.OrdinalIgnoreCase);
+
+            if (matches.Count > 0 || categoryItselfMatches)
+            {
+                var group = new ConnectionCategoryGroup
+                {
+                    CategoryName = catName,
+                    DisplayTitle = catName,
+                    Icon = GetCategoryIcon(catName),
+                    IsUncategorized = false,
+                    IsExpanded = true
+                };
+                foreach (var conn in matches)
+                {
+                    group.Connections.Add(conn);
+                }
+                _categoryGroups.Add(group);
+            }
+        }
+
+        // Uncategorized connections group
+        var uncategorizedLabel = LocalizationManager.GetString("Connection.UncategorizedGroup", "Sem Categoria");
+        var uncategorizedConns = _savedConnections
+            .Where(c => string.IsNullOrWhiteSpace(c.Category))
+            .Where(c => MatchesConnectionFilter(c, uncategorizedLabel, filter))
+            .ToList();
+
+        if (uncategorizedConns.Count > 0 || _categoryGroups.Count == 0)
+        {
+            var defaultGroup = new ConnectionCategoryGroup
+            {
+                CategoryName = string.Empty,
+                DisplayTitle = uncategorizedLabel,
+                Icon = "🗂️",
+                IsUncategorized = true,
+                IsExpanded = true
+            };
+            foreach (var conn in uncategorizedConns)
+            {
+                defaultGroup.Connections.Add(conn);
+            }
+            _categoryGroups.Add(defaultGroup);
+        }
+    }
+
+    private static bool MatchesConnectionFilter(ConnectionConfig conn, string categoryLabel, string filter)
+    {
+        if (string.IsNullOrWhiteSpace(filter))
+        {
+            return true;
+        }
+
+        return conn.Name.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+               conn.DisplaySubtitle.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+               categoryLabel.Contains(filter, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetCategoryIcon(string categoryName)
+    {
+        string lower = categoryName.ToLowerInvariant();
+        if (lower.Contains("prod")) return "🔴";
+        if (lower.Contains("homolog") || lower.Contains("stag") || lower.Contains("qa")) return "🟡";
+        if (lower.Contains("dev") || lower.Contains("local") || lower.Contains("test")) return "🟢";
+        if (lower.Contains("analytic") || lower.Contains("bi") || lower.Contains("data")) return "📊";
+        return "📂";
+    }
+
+    private void RebuildCategoryFlyout()
+    {
+        if (BtnCategoryPresets?.Flyout is not MenuFlyout flyout) return;
+        flyout.Items.Clear();
+
+        var defaultSuggestions = new[]
+        {
+            "Produção",
+            "Homologação / Staging",
+            "Desenvolvimento",
+            "Local / Testes",
+            "Analytics / BI"
+        };
+
+        var allSuggestions = _customCategories
+            .Concat(_savedConnections.Where(c => !string.IsNullOrWhiteSpace(c.Category)).Select(c => c.Category.Trim()))
+            .Concat(defaultSuggestions)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(c => c, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var cat in allSuggestions)
+        {
+            var item = new MenuItem
+            {
+                Header = $"{GetCategoryIcon(cat)}  {cat}"
+            };
+            string captured = cat;
+            item.Click += (s, e) =>
+            {
+                TxtConnectionCategory.Text = captured;
+                _currentConfig.Category = captured;
+            };
+            flyout.Items.Add(item);
+        }
+
+        flyout.Items.Add(new Separator());
+        var clearItem = new MenuItem
+        {
+            Header = $"🗂️  {LocalizationManager.GetString("Connection.UncategorizedGroup", "Sem Categoria")}"
+        };
+        clearItem.Click += (s, e) =>
+        {
+            TxtConnectionCategory.Text = string.Empty;
+            _currentConfig.Category = string.Empty;
+        };
+        flyout.Items.Add(clearItem);
     }
 
     private void SwitchEngine(DatabaseType type)
@@ -154,6 +406,7 @@ public partial class ConnectionView : UserControl
     {
         _currentConfig = cfg;
         TxtConnectionName.Text = cfg.Name;
+        TxtConnectionCategory.Text = cfg.Category;
         SwitchEngine(cfg.Type);
 
         TxtSqlitePath.Text = cfg.FilePath;
@@ -189,16 +442,18 @@ public partial class ConnectionView : UserControl
         HideStatus();
     }
 
-    private void CreateNewConnection()
+    private void CreateNewConnection(string initialCategory = "")
     {
         _currentConfig = new ConnectionConfig
         {
             Name = "New Connection",
+            Category = initialCategory,
             Type = DatabaseType.SQLite,
             FilePath = ""
         };
 
         TxtConnectionName.Text = _currentConfig.Name;
+        TxtConnectionCategory.Text = _currentConfig.Category;
         TxtSqlitePath.Text = "";
         TxtPgHost.Text = "localhost";
         TxtPgPort.Text = "5432";
@@ -219,13 +474,14 @@ public partial class ConnectionView : UserControl
 
         SwitchEngine(DatabaseType.SQLite);
         BtnDeleteConnection.IsVisible = false;
-        ListSavedConnections.SelectedItem = null;
+        TreeSavedConnections.SelectedItem = null;
         HideStatus();
     }
 
     private void SyncConfigFromForm()
     {
         _currentConfig.Name = string.IsNullOrWhiteSpace(TxtConnectionName.Text) ? "Untitled Connection" : TxtConnectionName.Text;
+        _currentConfig.Category = (TxtConnectionCategory.Text ?? string.Empty).Trim();
         if (_currentConfig.Type == DatabaseType.SQLite)
         {
             _currentConfig.FilePath = TxtSqlitePath.Text ?? "";
@@ -335,7 +591,7 @@ public partial class ConnectionView : UserControl
     private void OnSaveConnection(object? sender, RoutedEventArgs e)
     {
         SyncConfigFromForm();
-        ListSavedConnections.SelectedItem = null;
+        TreeSavedConnections.SelectedItem = null;
         var existing = _savedConnections.FirstOrDefault(c => c.Id == _currentConfig.Id);
         if (existing == null)
         {
@@ -347,10 +603,17 @@ public partial class ConnectionView : UserControl
             _savedConnections[idx] = _currentConfig;
         }
 
+        if (!string.IsNullOrWhiteSpace(_currentConfig.Category) &&
+            !_customCategories.Contains(_currentConfig.Category, StringComparer.OrdinalIgnoreCase))
+        {
+            _customCategories.Add(_currentConfig.Category);
+            ConnectionStorageService.SaveCustomCategories(_customCategories);
+        }
+
         ConnectionStorageService.SaveConnections(_savedConnections);
-        ListSavedConnections.ItemsSource = null;
-        ListSavedConnections.ItemsSource = _savedConnections.ToList();
-        ListSavedConnections.SelectedItem = _currentConfig;
+        RebuildCategoryTree();
+        RebuildCategoryFlyout();
+        TreeSavedConnections.SelectedItem = _currentConfig;
 
         ShowStatus("Saved connection configuration.", isError: false, isLoading: false);
     }
@@ -360,8 +623,7 @@ public partial class ConnectionView : UserControl
         if (_currentConfig != null)
         {
             var targetId = _currentConfig.Id;
-            ListSavedConnections.SelectedItem = null;
-            ListSavedConnections.ItemsSource = null;
+            TreeSavedConnections.SelectedItem = null;
             _savedConnections.RemoveAll(c => c.Id == targetId);
             ConnectionStorageService.SaveConnections(_savedConnections);
             LoadSavedConnections();

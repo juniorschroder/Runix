@@ -1,4 +1,7 @@
 using System;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace Runix.Core.Models;
 
@@ -12,6 +15,7 @@ public class ConnectionConfig
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name { get; set; } = "New Connection";
+    public string Category { get; set; } = string.Empty;
     public DatabaseType Type { get; set; } = DatabaseType.SQLite;
     
     // SQLite specific
@@ -51,12 +55,15 @@ public class ConnectionConfig
         _ => "🗄"
     };
 
+    public bool HasCategory => !string.IsNullOrWhiteSpace(Category);
+
     public ConnectionConfig Clone()
     {
         return new ConnectionConfig
         {
             Id = Id,
             Name = Name,
+            Category = Category,
             Type = Type,
             FilePath = FilePath,
             Host = Host,
@@ -77,4 +84,38 @@ public class ConnectionConfig
     }
 
     public override string ToString() => $"{Name} ({Type})";
+}
+
+public class ConnectionCategoryGroup : INotifyPropertyChanged
+{
+    private bool _isExpanded = true;
+
+    public string CategoryName { get; set; } = string.Empty;
+    public string DisplayTitle { get; set; } = string.Empty;
+    public string Icon { get; set; } = "📂";
+    public bool IsUncategorized { get; set; }
+    public ObservableCollection<ConnectionConfig> Connections { get; } = new();
+
+    public int Count => Connections.Count;
+    public string HeaderBadge => Count.ToString();
+
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set
+        {
+            if (_isExpanded != value)
+            {
+                _isExpanded = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
 }

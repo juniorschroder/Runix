@@ -7,7 +7,8 @@ public static class AppConstants
     public const string AppAuthor = "José Carlos Schröder Júnior";
     public const string AppCopyright = "© 2026 José Carlos Schröder Júnior";
     public const string AppLicense = "MIT License";
-    public const string AppRepositoryUrl = "https://github.com/juniorschroder/runix";
+    public const string AppRepositoryUrl = "https://github.com/juniorschroder/Runix";
+    public const string AppAuthorLinkedInUrl = "https://www.linkedin.com/in/juniorschroder/";
 
     public const int WindowDefaultWidth = 1200;
     public const int WindowDefaultHeight = 800;
