@@ -2,7 +2,9 @@ using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Runix.Core.Constants;
 using Runix.Core.Interfaces;
 using Runix.Core.Models;
@@ -18,6 +20,7 @@ public partial class MainWindow : Window
     private ConnectionView _connectionView;
     private WorkspaceView? _workspaceView;
     private IDatabaseService? _currentService;
+    private WindowEdge? _activeResizeEdge;
 
     public WorkspaceView? CurrentWorkspaceView => _workspaceView;
 
@@ -75,29 +78,58 @@ public partial class MainWindow : Window
         if (OperatingSystem.IsMacOS())
         {
             // On macOS, PreferSystemChrome allows macOS to draw the native 🔴 🟡 🟢 traffic lights on the top-left
-            ExtendClientAreaChromeHints = Avalonia.Platform.ExtendClientAreaChromeHints.PreferSystemChrome;
+            SystemDecorations = SystemDecorations.Full;
+            ExtendClientAreaToDecorationsHint = true;
+            ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.PreferSystemChrome;
+            ExtendClientAreaTitleBarHeightHint = 36;
             PanelTitleLeft.Margin = new Thickness(76, 0, 0, 0);
             PanelWindowControls.IsVisible = false;
         }
+        else if (OperatingSystem.IsLinux())
+        {
+            // On Linux (Ubuntu/GNOME, KDE/KWin, etc.), Avalonia X11 does not extend client area into server-side decorations.
+            // Using SystemDecorations.None removes the duplicate OS titlebar while keeping our custom RUNIX titlebar and edge resizing.
+            SystemDecorations = SystemDecorations.None;
+            ExtendClientAreaToDecorationsHint = false;
+            ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.NoChrome;
+            PanelTitleLeft.Margin = new Thickness(14, 0, 0, 0);
+            PanelWindowControls.IsVisible = true;
+            WindowOuterFrame.BorderThickness = new Thickness(1);
+
+            SetupLinuxBorderlessResize();
+        }
         else
         {
-            // On Windows and Linux, NoChrome allows our custom styled RUNIX buttons on the top-right
-            ExtendClientAreaChromeHints = Avalonia.Platform.ExtendClientAreaChromeHints.NoChrome;
+            // On Windows, extend client area with NoChrome and TitleBarHeightHint = -1 so Win32 neither draws duplicate caption buttons
+            // nor intercepts clicks on our custom RUNIX minimize/maximize/close controls.
+            SystemDecorations = SystemDecorations.Full;
+            ExtendClientAreaToDecorationsHint = true;
+            ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.NoChrome;
+            ExtendClientAreaTitleBarHeightHint = -1;
             PanelTitleLeft.Margin = new Thickness(14, 0, 0, 0);
             PanelWindowControls.IsVisible = true;
         }
 
-        // Dragging the titlebar moves the window
+        // Dragging the titlebar moves the window; double-clicking toggles maximize/restore
         CustomTitleBar.PointerPressed += (s, e) =>
         {
             if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             {
+                if (GetLinuxResizeEdge(e.GetPosition(this)) != null)
+                {
+                    return;
+                }
+
+                if (e.ClickCount >= 2)
+                {
+                    ToggleWindowState();
+                    e.Handled = true;
+                    return;
+                }
+
                 BeginMoveDrag(e);
             }
         };
-
-        // Double clicking titlebar toggles maximize/restore
-        CustomTitleBar.DoubleTapped += (s, e) => ToggleWindowState();
 
         // Window control buttons (Windows & Linux)
         BtnMinimize.Click += (s, e) => WindowState = WindowState.Minimized;
@@ -106,12 +138,93 @@ public partial class MainWindow : Window
 
         PropertyChanged += (s, e) =>
         {
-            if (e.Property == WindowStateProperty)
+            if (e.Property == WindowStateProperty || e.Property == OffScreenMarginProperty)
             {
                 BtnMaximize.Content = WindowState == WindowState.Maximized ? "🗗" : "🗖";
+
+                if (OperatingSystem.IsLinux())
+                {
+                    WindowOuterFrame.BorderThickness = WindowState == WindowState.Maximized
+                        ? new Thickness(0)
+                        : new Thickness(1);
+                }
+                else if (OperatingSystem.IsWindows())
+                {
+                    // Prevent maximized borderless window overhang on Windows 10/11
+                    Padding = WindowState == WindowState.Maximized ? OffScreenMargin : new Thickness(0);
+                }
             }
         };
     }
+
+    private void SetupLinuxBorderlessResize()
+    {
+        AddHandler(PointerMovedEvent, (s, e) =>
+        {
+            var edge = GetLinuxResizeEdge(e.GetPosition(this));
+            if (edge != _activeResizeEdge)
+            {
+                _activeResizeEdge = edge;
+                Cursor = edge.HasValue ? GetResizeCursor(edge.Value) : Cursor.Default;
+            }
+        }, RoutingStrategies.Tunnel);
+
+        AddHandler(PointerPressedEvent, (s, e) =>
+        {
+            if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            {
+                var edge = GetLinuxResizeEdge(e.GetPosition(this));
+                if (edge.HasValue)
+                {
+                    e.Handled = true;
+                    BeginResizeDrag(edge.Value, e);
+                }
+            }
+        }, RoutingStrategies.Tunnel);
+    }
+
+    private WindowEdge? GetLinuxResizeEdge(Point pt)
+    {
+        if (!OperatingSystem.IsLinux() || WindowState != WindowState.Normal)
+        {
+            return null;
+        }
+
+        const double grip = 6.0;
+        double w = Bounds.Width;
+        double h = Bounds.Height;
+        if (w <= 0 || h <= 0)
+        {
+            return null;
+        }
+
+        bool left = pt.X <= grip;
+        bool right = pt.X >= w - grip;
+        bool top = pt.Y <= grip;
+        bool bottom = pt.Y >= h - grip;
+
+        if (top && left) return WindowEdge.NorthWest;
+        if (top && right) return WindowEdge.NorthEast;
+        if (bottom && left) return WindowEdge.SouthWest;
+        if (bottom && right) return WindowEdge.SouthEast;
+        if (top) return WindowEdge.North;
+        if (bottom) return WindowEdge.South;
+        if (left) return WindowEdge.West;
+        if (right) return WindowEdge.East;
+
+        return null;
+    }
+
+    private static Cursor GetResizeCursor(WindowEdge edge) => edge switch
+    {
+        WindowEdge.North or WindowEdge.South => new Cursor(StandardCursorType.SizeNorthSouth),
+        WindowEdge.West or WindowEdge.East => new Cursor(StandardCursorType.SizeWestEast),
+        WindowEdge.NorthWest => new Cursor(StandardCursorType.TopLeftCorner),
+        WindowEdge.NorthEast => new Cursor(StandardCursorType.TopRightCorner),
+        WindowEdge.SouthWest => new Cursor(StandardCursorType.BottomLeftCorner),
+        WindowEdge.SouthEast => new Cursor(StandardCursorType.BottomRightCorner),
+        _ => Cursor.Default
+    };
 
     private void ToggleWindowState()
     {
