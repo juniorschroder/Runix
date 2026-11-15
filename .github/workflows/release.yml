@@ -36,6 +36,11 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
           dotnet-quality: 'ga'
 
+      - name: Install Linux fontconfig for SkiaSharp tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfontconfig1 libfreetype6
+
       - name: Restore dependencies
         run: dotnet restore Runix.sln
 
