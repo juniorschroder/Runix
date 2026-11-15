@@ -1,0 +1,321 @@
+name: Build & Release Installers
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number to build (e.g. 1.0.0)'
+        required: false
+        default: '1.0.0'
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1'
+  DOTNET_NOLOGO: 'true'
+
+jobs:
+  # ============================================================================
+  # 1. Automated Unit & Integration Test Gate
+  # ============================================================================
+  test:
+    name: Test Suite (.NET 10)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          dotnet-quality: 'ga'
+
+      - name: Restore dependencies
+        run: dotnet restore Runix.sln
+
+      - name: Run unit & integration tests
+        run: dotnet test Runix.sln -c Release --no-restore --verbosity normal
+
+  # ============================================================================
+  # 2. macOS Self-Contained Build & .dmg Installer (Apple Silicon + Intel)
+  # ============================================================================
+  package-macos:
+    name: macOS (${{ matrix.rid }}) .dmg
+    needs: test
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: osx-arm64
+            arch_label: arm64
+          - rid: osx-x64
+            arch_label: x64
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          dotnet-quality: 'ga'
+
+      - name: Resolve Release Version
+        id: vars
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION="${{ github.event.inputs.version || '1.0.0' }}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish self-contained macOS binary (${{ matrix.rid }})
+        run: |
+          dotnet publish src/Runix.Desktop/Runix.Desktop.csproj \
+            -c Release \
+            -r ${{ matrix.rid }} \
+            --self-contained true \
+            -p:Version=${{ steps.vars.outputs.version }} \
+            -o ./publish/${{ matrix.rid }}
+
+      - name: Build macOS .app Bundle & .dmg Installer
+        run: |
+          VERSION="${{ steps.vars.outputs.version }}"
+          RID="${{ matrix.rid }}"
+          APP_DIR="./build/dmg-staging/RUNIX.app"
+          mkdir -p "${APP_DIR}/Contents/MacOS"
+          mkdir -p "${APP_DIR}/Contents/Resources"
+          mkdir -p ./artifacts
+
+          # Copy self-contained binaries into .app bundle
+          cp -R ./publish/${RID}/* "${APP_DIR}/Contents/MacOS/"
+          chmod +x "${APP_DIR}/Contents/MacOS/Runix.Desktop"
+
+          # Populate Info.plist with current release version
+          sed "s/__VERSION__/${VERSION}/g" packaging/macos/Info.plist > "${APP_DIR}/Contents/Info.plist"
+
+          # Ad-hoc codesign bundle so macOS Gatekeeper does not report damaged bundle
+          codesign --force --deep --sign - "${APP_DIR}"
+
+          # Add Applications symlink for drag-and-drop installation
+          ln -s /Applications ./build/dmg-staging/Applications
+
+          # Package into compressed .dmg image
+          DMG_NAME="Runix-${VERSION}-${RID}.dmg"
+          hdiutil create \
+            -volname "RUNIX Database Studio ${VERSION}" \
+            -srcfolder ./build/dmg-staging \
+            -ov -format UDZO \
+            "./artifacts/${DMG_NAME}"
+
+      - name: Upload macOS .dmg Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-macos-${{ matrix.rid }}
+          path: ./artifacts/*.dmg
+
+  # ============================================================================
+  # 3. Windows Self-Contained Build & Inno Setup .exe Installer
+  # ============================================================================
+  package-windows:
+    name: Windows (win-x64) .exe Installer
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          dotnet-quality: 'ga'
+
+      - name: Resolve Release Version
+        id: vars
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION="${{ github.event.inputs.version || '1.0.0' }}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish self-contained Windows binary (win-x64)
+        run: |
+          dotnet publish src/Runix.Desktop/Runix.Desktop.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:Version=${{ steps.vars.outputs.version }} `
+            -o ./publish/win-x64
+
+      - name: Build Windows Setup .exe via Inno Setup
+        run: |
+          New-Item -ItemType Directory -Force -Path ./artifacts | Out-Null
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc `
+            "/DAppVersion=${{ steps.vars.outputs.version }}" `
+            "/DPublishDir=..\..\publish\win-x64" `
+            "/DOutputDir=..\..\artifacts" `
+            "packaging\windows\runix.iss"
+
+      - name: Upload Windows .exe Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-windows-win-x64
+          path: ./artifacts/*.exe
+
+  # ============================================================================
+  # 4. Linux Self-Contained Build & .deb / .rpm Packages
+  # ============================================================================
+  package-linux:
+    name: Linux (linux-x64) .deb & .rpm
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          dotnet-quality: 'ga'
+
+      - name: Resolve Release Version
+        id: vars
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION="${{ github.event.inputs.version || '1.0.0' }}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Install Linux packaging tools (fpm & rpm)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ruby ruby-dev rubygems build-essential rpm
+          sudo gem install --no-document fpm
+
+      - name: Publish self-contained Linux binary (linux-x64)
+        run: |
+          dotnet publish src/Runix.Desktop/Runix.Desktop.csproj \
+            -c Release \
+            -r linux-x64 \
+            --self-contained true \
+            -p:Version=${{ steps.vars.outputs.version }} \
+            -o ./publish/linux-x64
+
+      - name: Stage Linux root filesystem & build .deb and .rpm packages
+        run: |
+          VERSION="${{ steps.vars.outputs.version }}"
+          STAGE_DIR="./build/linux-root"
+          mkdir -p "${STAGE_DIR}/opt/runix"
+          mkdir -p "${STAGE_DIR}/usr/bin"
+          mkdir -p "${STAGE_DIR}/usr/share/applications"
+          mkdir -p ./artifacts
+
+          # Copy self-contained application files to /opt/runix
+          cp -R ./publish/linux-x64/* "${STAGE_DIR}/opt/runix/"
+          chmod +x "${STAGE_DIR}/opt/runix/Runix.Desktop"
+
+          # Create launcher script in /usr/bin/runix
+          cat << 'EOF' > "${STAGE_DIR}/usr/bin/runix"
+          #!/usr/bin/env bash
+          exec /opt/runix/Runix.Desktop "$@"
+          EOF
+          chmod +x "${STAGE_DIR}/usr/bin/runix"
+
+          # Copy desktop entry
+          cp packaging/linux/runix.desktop "${STAGE_DIR}/usr/share/applications/runix.desktop"
+
+          # 1. Build Debian/Ubuntu package (.deb)
+          fpm -s dir -t deb \
+            -n runix \
+            -v "${VERSION}" \
+            --architecture amd64 \
+            --license "MIT" \
+            --vendor "José Carlos Schröder Júnior" \
+            --maintainer "José Carlos Schröder Júnior <juniorschroder@gmail.com>" \
+            --url "https://github.com/juniorschroder/Runix" \
+            --description "RUNIX Database Studio - Modern, Cross-Platform Relational Database Studio" \
+            --depends libx11-6 \
+            --depends libice6 \
+            --depends libsm6 \
+            --depends libfontconfig1 \
+            -C "${STAGE_DIR}" \
+            -p "./artifacts/runix_${VERSION}_amd64.deb" \
+            opt/runix usr/bin/runix usr/share/applications/runix.desktop
+
+          # 2. Build Fedora/RHEL/openSUSE package (.rpm)
+          fpm -s dir -t rpm \
+            -n runix \
+            -v "${VERSION}" \
+            --iteration 1 \
+            --architecture x86_64 \
+            --rpm-os linux \
+            --license "MIT" \
+            --vendor "José Carlos Schröder Júnior" \
+            --maintainer "José Carlos Schröder Júnior <juniorschroder@gmail.com>" \
+            --url "https://github.com/juniorschroder/Runix" \
+            --description "RUNIX Database Studio - Modern, Cross-Platform Relational Database Studio" \
+            -C "${STAGE_DIR}" \
+            -p "./artifacts/runix-${VERSION}-1.x86_64.rpm" \
+            opt/runix usr/bin/runix usr/share/applications/runix.desktop
+
+      - name: Upload Linux .deb & .rpm Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-linux-x64
+          path: |
+            ./artifacts/*.deb
+            ./artifacts/*.rpm
+
+  # ============================================================================
+  # 5. Publish GitHub Release with All Installers & SHA-256 Checksums
+  # ============================================================================
+  release:
+    name: Publish GitHub Release
+    needs:
+      - package-macos
+      - package-windows
+      - package-linux
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all installer artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./release-assets
+          merge-multiple: true
+
+      - name: Generate SHA256SUMS.txt
+        working-directory: ./release-assets
+        run: |
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create GitHub Release & Upload Packages
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "⚡ RUNIX Database Studio ${{ github.ref_name }}"
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: |
+            ./release-assets/*.dmg
+            ./release-assets/*.exe
+            ./release-assets/*.deb
+            ./release-assets/*.rpm
+            ./release-assets/SHA256SUMS.txt

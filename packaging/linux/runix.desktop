@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=RUNIX Database Studio
+GenericName=Database Studio
+Comment=Modern, Cross-Platform, High-Performance Relational Database Studio
+Exec=/usr/bin/runix %F
+Terminal=false
+Categories=Development;Database;IDE;
+Keywords=sql;postgres;postgresql;sqlite;database;erd;runix;
+StartupWMClass=Runix.Desktop
+StartupNotify=true

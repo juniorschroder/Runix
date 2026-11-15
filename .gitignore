@@ -20,6 +20,9 @@
 [Oo]bj/
 [Dd]ist/
 publish/
+build/
+artifacts/
+release-assets/
 out/
 TestResults/
 *.dll
