@@ -1,9 +1,11 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Renci.SshNet;
 using Runix.Core.Interfaces;
 using Runix.Core.Models;
 
@@ -11,6 +13,8 @@ namespace Runix.Infrastructure.Security;
 
 public class SshTunnelService : ISshTunnelService
 {
+    private SshClient? _sshClient;
+    private ForwardedPortLocal? _forwardedPort;
     private Process? _sshProcess;
     private TcpListener? _loopbackStubListener;
     private readonly bool _useLoopbackSimulation;
@@ -32,6 +36,17 @@ public class SshTunnelService : ISshTunnelService
         return port;
     }
 
+    public static string ExpandTildePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return path;
+        if (path.StartsWith("~"))
+        {
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            return Path.Combine(home, path.TrimStart('~', '/', '\\'));
+        }
+        return Path.GetFullPath(path);
+    }
+
     public async Task<int> EstablishTunnelAsync(ConnectionConfig config, CancellationToken cancellationToken = default)
     {
         if (config == null) throw new ArgumentNullException(nameof(config));
@@ -45,7 +60,7 @@ public class SshTunnelService : ISshTunnelService
         }
 
         if (string.IsNullOrWhiteSpace(config.SshHost))
-            throw new InvalidOperationException("O host do servidor SSH é obrigatório quando o Túnel SSH está habilitado.");
+            throw new InvalidOperationException("O host do servidor SSH (Bastion / Jump Server) é obrigatório quando o Túnel SSH está habilitado.");
 
         if (_useLoopbackSimulation)
         {
@@ -56,11 +71,95 @@ public class SshTunnelService : ISshTunnelService
             return LocalBoundPort;
         }
 
-        LocalBoundPort = AllocateEphemeralLoopbackPort();
         var remoteHost = string.IsNullOrWhiteSpace(config.Host) ? "127.0.0.1" : config.Host;
         var remotePort = config.Port > 0 ? config.Port : 5432;
         var sshPort = config.SshPort > 0 ? config.SshPort : 22;
         var sshUser = string.IsNullOrWhiteSpace(config.SshUsername) ? Environment.UserName : config.SshUsername;
+
+        string? expandedKeyPath = null;
+        if (config.SshAuthMethod == SshAuthMethod.PrivateKey)
+        {
+            if (string.IsNullOrWhiteSpace(config.SshPrivateKeyPath))
+            {
+                throw new InvalidOperationException("O caminho da chave privada SSH (.pem / id_ed25519) deve ser informado para autenticação por chave.");
+            }
+
+            expandedKeyPath = ExpandTildePath(config.SshPrivateKeyPath);
+            if (!File.Exists(expandedKeyPath))
+            {
+                throw new FileNotFoundException($"O arquivo de chave privada SSH não foi encontrado em: '{expandedKeyPath}'", expandedKeyPath);
+            }
+        }
+
+        // 1. Try native managed SSH.NET client first (pure C#, cross-platform, no external process)
+        try
+        {
+            AuthenticationMethod authMethod;
+            if (config.SshAuthMethod == SshAuthMethod.PrivateKey && !string.IsNullOrWhiteSpace(expandedKeyPath))
+            {
+                PrivateKeyFile keyFile;
+                if (!string.IsNullOrWhiteSpace(config.SshPrivateKeyPassphrase))
+                {
+                    keyFile = new PrivateKeyFile(expandedKeyPath, config.SshPrivateKeyPassphrase);
+                }
+                else
+                {
+                    keyFile = new PrivateKeyFile(expandedKeyPath);
+                }
+                authMethod = new PrivateKeyAuthenticationMethod(sshUser, keyFile);
+            }
+            else
+            {
+                authMethod = new PasswordAuthenticationMethod(sshUser, config.SshPassword ?? string.Empty);
+            }
+
+            var connectionInfo = new ConnectionInfo(config.SshHost, sshPort, sshUser, authMethod)
+            {
+                Timeout = TimeSpan.FromSeconds(10)
+            };
+
+            var client = new SshClient(connectionInfo);
+            await Task.Run(() => client.Connect(), cancellationToken);
+
+            var forwardedPort = new ForwardedPortLocal("127.0.0.1", 0, remoteHost, (uint)remotePort);
+            client.AddForwardedPort(forwardedPort);
+            forwardedPort.Start();
+
+            _sshClient = client;
+            _forwardedPort = forwardedPort;
+            LocalBoundPort = (int)forwardedPort.BoundPort;
+            IsActive = true;
+            return LocalBoundPort;
+        }
+        catch (Exception sshNetEx)
+        {
+            // Clean up any partially initialized managed client
+            await CloseTunnelAsync();
+
+            // 2. Fall back to system OpenSSH binary if available
+            try
+            {
+                return await EstablishOpenSshProcessTunnelAsync(config, expandedKeyPath, remoteHost, remotePort, sshPort, sshUser, cancellationToken);
+            }
+            catch (Exception procEx)
+            {
+                throw new InvalidOperationException(
+                    $"Falha ao estabelecer Túnel SSH com '{config.SshHost}:{sshPort}': {sshNetEx.Message}. (Fallback OpenSSH: {procEx.Message})",
+                    sshNetEx);
+            }
+        }
+    }
+
+    private async Task<int> EstablishOpenSshProcessTunnelAsync(
+        ConnectionConfig config,
+        string? expandedKeyPath,
+        string remoteHost,
+        int remotePort,
+        int sshPort,
+        string sshUser,
+        CancellationToken cancellationToken)
+    {
+        LocalBoundPort = AllocateEphemeralLoopbackPort();
 
         var psi = new ProcessStartInfo
         {
@@ -83,10 +182,10 @@ public class SshTunnelService : ISshTunnelService
         psi.ArgumentList.Add("-p");
         psi.ArgumentList.Add(sshPort.ToString());
 
-        if (config.SshAuthMethod == SshAuthMethod.PrivateKey && !string.IsNullOrWhiteSpace(config.SshPrivateKeyPath))
+        if (config.SshAuthMethod == SshAuthMethod.PrivateKey && !string.IsNullOrWhiteSpace(expandedKeyPath))
         {
             psi.ArgumentList.Add("-i");
-            psi.ArgumentList.Add(config.SshPrivateKeyPath);
+            psi.ArgumentList.Add(expandedKeyPath);
         }
 
         psi.ArgumentList.Add("-L");
@@ -96,15 +195,14 @@ public class SshTunnelService : ISshTunnelService
         _sshProcess = Process.Start(psi)
             ?? throw new InvalidOperationException("Não foi possível iniciar o cliente OpenSSH do sistema.");
 
-        // Wait briefly to confirm process did not exit with immediate auth/network error
-        await Task.Delay(250, cancellationToken);
+        await Task.Delay(350, cancellationToken);
         if (_sshProcess.HasExited)
         {
             var err = await _sshProcess.StandardError.ReadToEndAsync(cancellationToken);
             _sshProcess.Dispose();
             _sshProcess = null;
             IsActive = false;
-            throw new InvalidOperationException($"Falha ao estabelecer Túnel SSH ({config.SshHost}:{sshPort}): {err.Trim()}");
+            throw new InvalidOperationException($"Falha OpenSSH ({config.SshHost}:{sshPort}): {err.Trim()}");
         }
 
         IsActive = true;
@@ -115,6 +213,23 @@ public class SshTunnelService : ISshTunnelService
     {
         IsActive = false;
         LocalBoundPort = 0;
+
+        if (_forwardedPort != null)
+        {
+            try { _forwardedPort.Stop(); } catch { }
+            _forwardedPort = null;
+        }
+
+        if (_sshClient != null)
+        {
+            try
+            {
+                if (_sshClient.IsConnected) _sshClient.Disconnect();
+                _sshClient.Dispose();
+            }
+            catch { }
+            _sshClient = null;
+        }
 
         if (_loopbackStubListener != null)
         {
@@ -131,10 +246,7 @@ public class SshTunnelService : ISshTunnelService
                     _sshProcess.Kill(entireProcessTree: true);
                 }
             }
-            catch
-            {
-                // Ignore kill errors on already exited process
-            }
+            catch { }
             finally
             {
                 _sshProcess.Dispose();

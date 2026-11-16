@@ -14,7 +14,8 @@
                     <TextBlock Text="💾" FontSize="18"/>
                     <TextBlock Name="TxtDialogTitle" Text="Salvar Consulta na Biblioteca" FontSize="16" FontWeight="Bold" Foreground="#f0f6fc"/>
                 </StackPanel>
-                <Button Name="BtnClose" Grid.Column="1" Content="✕" Classes="btn-icon" FontSize="12"/>
+                <Button Name="BtnClose" Grid.Column="1" Content="✕" Classes="btn-icon" FontSize="12"
+                        AutomationProperties.Name="{DynamicResource A11y.CloseModal}"/>
             </Grid>
 
             <!-- Form Body -->
@@ -25,7 +26,8 @@
                         <TextBlock Text="Título da Consulta" FontSize="11" FontWeight="SemiBold" Foreground="#8b9cb3"/>
                         <TextBox Name="TxtTitle" Background="#0e141f" Foreground="#f0f6fc" 
                                  BorderBrush="#1e2d42" CornerRadius="5" Padding="8,6"
-                                 Watermark="Ex: Relatório de Clientes Mensal"/>
+                                 Watermark="Ex: Relatório de Clientes Mensal"
+                                 AutomationProperties.Name="Título da Consulta"/>
                     </StackPanel>
 
                     <!-- Description -->
@@ -33,7 +35,8 @@
                         <TextBlock Text="Descrição (Opcional)" FontSize="11" FontWeight="SemiBold" Foreground="#8b9cb3"/>
                         <TextBox Name="TxtDescription" Background="#0e141f" Foreground="#f0f6fc" 
                                  BorderBrush="#1e2d42" CornerRadius="5" Padding="8,6"
-                                 Watermark="Ex: Filtra clientes que compraram no último mês"/>
+                                 Watermark="Ex: Filtra clientes que compraram no último mês"
+                                 AutomationProperties.Name="Descrição da Consulta"/>
                     </StackPanel>
 
                     <!-- Tags -->
@@ -41,16 +44,20 @@
                         <TextBlock Text="Tags (separadas por vírgula)" FontSize="11" FontWeight="SemiBold" Foreground="#8b9cb3"/>
                         <TextBox Name="TxtTags" Background="#0e141f" Foreground="#f0f6fc" 
                                  BorderBrush="#1e2d42" CornerRadius="5" Padding="8,6"
-                                 Watermark="Ex: clientes, mensal, financeiro"/>
+                                 Watermark="Ex: clientes, mensal, financeiro"
+                                 AutomationProperties.Name="Tags da Consulta"/>
                     </StackPanel>
 
                     <!-- Favorite & Scope Options -->
                     <Grid ColumnDefinitions="*,*">
                         <CheckBox Name="ChkFavorite" Grid.Column="0" Content="Marcar como Favorita ⭐" 
-                                  Foreground="#f0f6fc" FontSize="12" Margin="0,4"/>
+                                  Foreground="#f0f6fc" FontSize="12" Margin="0,4"
+                                  AutomationProperties.Name="Marcar consulta como Favorita"/>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                            <RadioButton Name="RbScopeCurrent" Content="Desta Conexão" GroupName="QueryScope" IsChecked="True" Foreground="#8b9cb3" FontSize="11"/>
-                            <RadioButton Name="RbScopeGlobal" Content="Global" GroupName="QueryScope" Foreground="#8b9cb3" FontSize="11"/>
+                            <RadioButton Name="RbScopeCurrent" Content="Desta Conexão" GroupName="QueryScope" IsChecked="True" Foreground="#8b9cb3" FontSize="11"
+                                         AutomationProperties.Name="Escopo Desta Conexão"/>
+                            <RadioButton Name="RbScopeGlobal" Content="Global" GroupName="QueryScope" Foreground="#8b9cb3" FontSize="11"
+                                         AutomationProperties.Name="Escopo Global"/>
                         </StackPanel>
                     </Grid>
 
@@ -59,7 +66,8 @@
                         <TextBlock Text="Comando SQL" FontSize="11" FontWeight="SemiBold" Foreground="#8b9cb3"/>
                         <TextBox Name="TxtSqlPreview" IsReadOnly="True" MaxHeight="100" AcceptsReturn="True" 
                                  FontFamily="Consolas,Menlo,Monaco,monospace" FontSize="11" 
-                                 Background="#0e141f" Foreground="#38bdf8" BorderBrush="#1e2d42" CornerRadius="5" Padding="8,6"/>
+                                 Background="#0e141f" Foreground="#38bdf8" BorderBrush="#1e2d42" CornerRadius="5" Padding="8,6"
+                                 AutomationProperties.Name="Visualização do Comando SQL"/>
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>
@@ -67,13 +75,16 @@
             <!-- Error Banner -->
             <Border Name="PanelValidation" Grid.Row="2" Background="#2c1517" BorderBrush="#f87171" BorderThickness="1" 
                     CornerRadius="5" Padding="10,6" Margin="0,0,0,12" IsVisible="False">
-                <TextBlock Name="TxtValidationMessage" Foreground="#fca5a5" FontSize="11" TextWrapping="Wrap"/>
+                <TextBlock Name="TxtValidationMessage" Foreground="#fca5a5" FontSize="11" TextWrapping="Wrap"
+                           AutomationProperties.LiveSetting="Assertive"/>
             </Border>
 
             <!-- Footer Buttons -->
             <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto">
-                <Button Name="BtnCancel" Grid.Column="0" Content="Cancelar" Classes="btn-outline" Padding="14,8"/>
-                <Button Name="BtnSave" Grid.Column="2" Content="Salvar Consulta" Classes="btn-primary" Padding="18,8"/>
+                <Button Name="BtnCancel" Grid.Column="0" Content="Cancelar" Classes="btn-outline" Padding="14,8"
+                        AutomationProperties.Name="{DynamicResource Common.Cancel}"/>
+                <Button Name="BtnSave" Grid.Column="2" Content="Salvar Consulta" Classes="btn-primary" Padding="18,8"
+                        AutomationProperties.Name="Salvar Consulta"/>
             </Grid>
         </Grid>
     </Border>

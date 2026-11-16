@@ -179,4 +179,68 @@ public class ResilientDatabaseServiceTests
         fake.ExecutionCount.Should().Be(1, "Mutation query should only execute once and not retry");
         retryEvents.Should().BeEmpty("Mutation query should never trigger retry attempts");
     }
+
+    [Fact]
+    public async Task ExecuteQueryAsync_ReadOnlyConnection_RejectsMutationBeforeHittingDatabase()
+    {
+        var fake = new FakeDatabaseService
+        {
+            Config = new ConnectionConfig
+            {
+                Name = "ReadOnly Database",
+                IsReadOnly = true
+            }
+        };
+
+        var resilient = new ResilientDatabaseService(fake);
+        var result = await resilient.ExecuteQueryAsync("INSERT INTO users (name) VALUES ('Test');");
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Modo Somente-Leitura");
+        fake.ExecutionCount.Should().Be(0, "Underlying database should not be touched when blocked by safety guard");
+    }
+
+    [Fact]
+    public async Task ExecuteQueryAsync_ProductionConnection_RejectsDangerousCommands()
+    {
+        var fake = new FakeDatabaseService
+        {
+            Config = new ConnectionConfig
+            {
+                Name = "Production Main Cluster",
+                IsProduction = true
+            }
+        };
+
+        var resilient = new ResilientDatabaseService(fake);
+        var result = await resilient.ExecuteQueryAsync("DROP TABLE core_customers;");
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Alerta de Produção");
+        fake.ExecutionCount.Should().Be(0, "Drop table in production should be blocked before execution");
+    }
+
+    [Fact]
+    public async Task ExecuteBatchTransactionalAsync_ReadOnlyConnection_RejectsBatchWithoutExecuting()
+    {
+        var fake = new FakeDatabaseService
+        {
+            Config = new ConnectionConfig
+            {
+                Name = "ReadOnly Cluster",
+                IsReadOnly = true
+            }
+        };
+
+        var resilient = new ResilientDatabaseService(fake);
+        var commands = new List<ParameterizedCommand>
+        {
+            new("INSERT INTO users (name) VALUES (@name);", new Dictionary<string, object?> { ["@name"] = "Alice" })
+        };
+
+        var result = await resilient.ExecuteBatchTransactionalAsync(commands);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Modo Somente-Leitura");
+    }
 }

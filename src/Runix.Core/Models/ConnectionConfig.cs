@@ -39,6 +39,21 @@ public class ConnectionConfig
     public string SshPrivateKeyPath { get; set; } = string.Empty;
     public string SshPrivateKeyPassphrase { get; set; } = string.Empty;
 
+    // Safety, Read-Only & Production Safeguards (v1.2.0)
+    public bool IsReadOnly { get; set; }
+    public bool IsProduction { get; set; }
+    public bool SafeExecutionMode { get; set; } = true;
+
+    public bool IsProductionEnvironment =>
+        IsProduction ||
+        (!string.IsNullOrWhiteSpace(Category) && IsProductionKeyword(Category)) ||
+        (!string.IsNullOrWhiteSpace(Name) && IsProductionKeyword(Name));
+
+    private static bool IsProductionKeyword(string text) =>
+        text.Contains("prod", StringComparison.OrdinalIgnoreCase) ||
+        text.Contains("produção", StringComparison.OrdinalIgnoreCase) ||
+        text.Contains("production", StringComparison.OrdinalIgnoreCase);
+
     public string DisplaySubtitle => Type switch
     {
         DatabaseType.SQLite => string.IsNullOrWhiteSpace(FilePath) ? "No file selected" : FilePath,
@@ -56,6 +71,27 @@ public class ConnectionConfig
     };
 
     public bool HasCategory => !string.IsNullOrWhiteSpace(Category);
+
+    public string GetSessionKey()
+    {
+        if (Type == DatabaseType.SQLite)
+        {
+            var path = !string.IsNullOrWhiteSpace(FilePath) ? FilePath.Trim().ToLowerInvariant() : Id;
+            return $"sqlite:{path}";
+        }
+
+        var host = !string.IsNullOrWhiteSpace(Host) ? Host.Trim().ToLowerInvariant() : "localhost";
+        var db = !string.IsNullOrWhiteSpace(Database) ? Database.Trim().ToLowerInvariant() : "postgres";
+        var user = !string.IsNullOrWhiteSpace(Username) ? Username.Trim().ToLowerInvariant() : "postgres";
+
+        if (UseSshTunnel)
+        {
+            var sshHost = !string.IsNullOrWhiteSpace(SshHost) ? SshHost.Trim().ToLowerInvariant() : "bastion";
+            return $"postgres:ssh:{sshHost}:{host}:{Port}:{db}:{user}";
+        }
+
+        return $"postgres:{host}:{Port}:{db}:{user}";
+    }
 
     public ConnectionConfig Clone()
     {
@@ -79,7 +115,10 @@ public class ConnectionConfig
             SshAuthMethod = SshAuthMethod,
             SshPassword = SshPassword,
             SshPrivateKeyPath = SshPrivateKeyPath,
-            SshPrivateKeyPassphrase = SshPrivateKeyPassphrase
+            SshPrivateKeyPassphrase = SshPrivateKeyPassphrase,
+            IsReadOnly = IsReadOnly,
+            IsProduction = IsProduction,
+            SafeExecutionMode = SafeExecutionMode
         };
     }
 

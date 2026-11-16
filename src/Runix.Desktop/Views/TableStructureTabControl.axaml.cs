@@ -14,6 +14,8 @@ public partial class TableStructureTabControl : UserControl
     private readonly IDatabaseService _databaseService;
     private readonly string _tableName;
 
+    public string TableName => _tableName;
+
     public TableStructureTabControl() : this(new SqliteDatabaseService(new ConnectionConfig()), "")
     {
     }

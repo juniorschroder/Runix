@@ -21,9 +21,11 @@
                         <TextBox Name="TxtSearch" Grid.Column="1"
                                  Watermark="Digite um comando, tabela (#), objeto DDL (@), query (?) ou ação (>)..."
                                  Background="Transparent" Foreground="#f0f6fc" BorderThickness="0"
-                                 FontSize="13" VerticalContentAlignment="Center"/>
+                                 FontSize="13" VerticalContentAlignment="Center"
+                                 AutomationProperties.Name="{DynamicResource A11y.CommandPaletteSearch}"/>
                         <Button Name="BtnClose" Grid.Column="2" Content="ESC" Classes="btn-outline"
-                                Padding="6,2" FontSize="10" VerticalAlignment="Center"/>
+                                Padding="6,2" FontSize="10" VerticalAlignment="Center"
+                                AutomationProperties.Name="{DynamicResource A11y.CloseModal}"/>
                     </Grid>
                 </Border>
 
@@ -31,17 +33,23 @@
                 <Border Grid.Row="1" Background="#0b111a" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="12,6">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <TextBlock Text="Filtros rápidos:" FontSize="10" Foreground="#64748b" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                        <Button Name="BtnScopeAll" Content="Todos" Classes="btn-secondary" Padding="7,2" FontSize="10"/>
-                        <Button Name="BtnScopeActions" Content="&gt; Ações" Classes="btn-outline" Padding="7,2" FontSize="10"/>
-                        <Button Name="BtnScopeTables" Content="# Tabelas &amp; Views" Classes="btn-outline" Padding="7,2" FontSize="10"/>
-                        <Button Name="BtnScopeDdl" Content="@ Objetos DDL" Classes="btn-outline" Padding="7,2" FontSize="10"/>
-                        <Button Name="BtnScopeQueries" Content="? Queries &amp; Snippets" Classes="btn-outline" Padding="7,2" FontSize="10"/>
+                        <Button Name="BtnScopeAll" Content="Todos" Classes="btn-secondary" Padding="7,2" FontSize="10"
+                                AutomationProperties.Name="Filtrar escopo: Todos"/>
+                        <Button Name="BtnScopeActions" Content="&gt; Ações" Classes="btn-outline" Padding="7,2" FontSize="10"
+                                AutomationProperties.Name="Filtrar escopo: Ações"/>
+                        <Button Name="BtnScopeTables" Content="# Tabelas &amp; Views" Classes="btn-outline" Padding="7,2" FontSize="10"
+                                AutomationProperties.Name="Filtrar escopo: Tabelas e Views"/>
+                        <Button Name="BtnScopeDdl" Content="@ Objetos DDL" Classes="btn-outline" Padding="7,2" FontSize="10"
+                                AutomationProperties.Name="Filtrar escopo: Objetos DDL"/>
+                        <Button Name="BtnScopeQueries" Content="? Queries &amp; Snippets" Classes="btn-outline" Padding="7,2" FontSize="10"
+                                AutomationProperties.Name="Filtrar escopo: Consultas e Snippets"/>
                     </StackPanel>
                 </Border>
 
                 <!-- Results List -->
                 <ListBox Name="ListResults" Grid.Row="2" Background="Transparent" BorderThickness="0"
-                         Margin="6,6" MaxHeight="330">
+                         Margin="6,6" MaxHeight="330"
+                         AutomationProperties.Name="Resultados da busca da paleta de comandos">
                     <ListBox.ItemTemplate>
                         <DataTemplate DataType="models:CommandPaletteItem">
                             <Border Padding="10,7" CornerRadius="6" Margin="0,1" Background="Transparent">
@@ -84,7 +92,8 @@
                 <Border Grid.Row="3" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="0,1,0,0"
                         CornerRadius="0,0,10,10" Padding="14,7">
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Name="TxtResultCount" Grid.Column="0" Text="0 resultados" FontSize="10" Foreground="#64748b" VerticalAlignment="Center"/>
+                        <TextBlock Name="TxtResultCount" Grid.Column="0" Text="0 resultados" FontSize="10" Foreground="#64748b" VerticalAlignment="Center"
+                                   AutomationProperties.LiveSetting="Polite"/>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
                             <TextBlock Text="↑↓ Navegar" FontSize="10" Foreground="#8b9cb3"/>
                             <TextBlock Text="↵ Abrir / Executar" FontSize="10" Foreground="#38bdf8" FontWeight="SemiBold"/>

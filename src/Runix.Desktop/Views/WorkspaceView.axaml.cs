@@ -36,6 +36,8 @@ public partial class WorkspaceView : UserControl
     private SidebarMode _currentMode = SidebarMode.Tables;
     private bool _filterOnlyFavorites = false;
     private int _queryCounter = 1;
+    private readonly System.Timers.Timer _sessionAutoSaveTimer = new(1000) { AutoReset = false };
+    private bool _isRestoringSession = false;
 
     public event Action? DisconnectRequested;
     public event Action? AboutRequested;
@@ -52,6 +54,14 @@ public partial class WorkspaceView : UserControl
         _programmabilityService = new ProgrammabilityService(databaseService);
         _appStorage = appStorage ?? AppStorageService.Instance;
 
+        _sessionAutoSaveTimer.Elapsed += (s, e) =>
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+            {
+                await SaveCurrentSessionAsync();
+            });
+        };
+
         SetupHeader();
         SetupEvents();
         LoadSchema();
@@ -60,8 +70,8 @@ public partial class WorkspaceView : UserControl
 
         _databaseService.ResilienceEventOccurred += OnResilienceEvent;
 
-        // Open initial Query Tab
-        OpenNewQueryTab();
+        // Restore saved workspace session (tabs, SQL drafts, scroll offsets) or open initial Query Tab
+        _ = RestoreWorkspaceSessionOrOpenDefaultAsync();
     }
 
     private void SetupHeader()
@@ -70,6 +80,9 @@ public partial class WorkspaceView : UserControl
         TxtConnectionTarget.Text = _databaseService.Config.Type == DatabaseType.SQLite
             ? System.IO.Path.GetFileName(_databaseService.Config.FilePath)
             : $"{_databaseService.Config.Database} ({_databaseService.Config.Host})";
+
+        BadgeWorkspaceProduction.IsVisible = _databaseService.Config.IsProductionEnvironment;
+        BadgeWorkspaceReadOnly.IsVisible = _databaseService.Config.IsReadOnly;
 
         if (_databaseService.Config.Type != DatabaseType.PostgreSQL)
         {
@@ -169,8 +182,17 @@ public partial class WorkspaceView : UserControl
         BtnAbout.Click += (s, e) => AboutRequested?.Invoke();
         BtnDisconnect.Click += async (s, e) =>
         {
+            await SaveCurrentSessionAsync();
             await _databaseService.DisconnectAsync();
             DisconnectRequested?.Invoke();
+        };
+
+        WorkspaceTabs.SelectionChanged += (s, e) =>
+        {
+            if (!_isRestoringSession && ReferenceEquals(e.Source, WorkspaceTabs))
+            {
+                ScheduleSessionSave();
+            }
         };
 
         // Overflow Menu Actions (accessible even when screen is narrow)
@@ -1169,7 +1191,7 @@ public partial class WorkspaceView : UserControl
         }
     }
 
-    public void OpenNewQueryTab(string? initialSql = null, string? title = null)
+    public void OpenNewQueryTab(string? initialSql = null, string? title = null, int caretOffset = -1, double verticalScroll = 0, double horizontalScroll = 0)
     {
         var queryControl = new QueryTabControl(_databaseService, initialSql, _appStorage);
         queryControl.QueryExecuted += async item =>
@@ -1185,10 +1207,20 @@ public partial class WorkspaceView : UserControl
             await LoadSavedQueriesAsync();
         };
 
+        queryControl.SqlTextChanged += ScheduleSessionSave;
+
+        if (caretOffset >= 0 || verticalScroll > 0 || horizontalScroll > 0)
+        {
+            queryControl.RestoreEditorPosition(caretOffset, verticalScroll, horizontalScroll);
+        }
+
         var tabTitle = title ?? $"Query {_queryCounter++}";
         var tabItem = CreateTabItem(tabTitle, "⚡", queryControl);
+        tabItem.Tag = "query";
         WorkspaceTabs.Items.Add(tabItem);
         WorkspaceTabs.SelectedItem = tabItem;
+
+        ScheduleSessionSave();
     }
 
     public QueryTabControl? GetActiveQueryTabControl()
@@ -1238,6 +1270,8 @@ public partial class WorkspaceView : UserControl
         tabItem.Tag = $"data:{tableName}";
         WorkspaceTabs.Items.Add(tabItem);
         WorkspaceTabs.SelectedItem = tabItem;
+
+        ScheduleSessionSave();
     }
 
     public TableDataTabControl? FindTableDataTabControl(string tableName)
@@ -1282,6 +1316,8 @@ public partial class WorkspaceView : UserControl
         tabItem.Tag = $"struct:{tableName}";
         WorkspaceTabs.Items.Add(tabItem);
         WorkspaceTabs.SelectedItem = tabItem;
+
+        ScheduleSessionSave();
     }
 
     private TabItem CreateTabItem(string headerText, string icon, Control content)
@@ -1331,6 +1367,7 @@ public partial class WorkspaceView : UserControl
             {
                 OpenNewQueryTab();
             }
+            ScheduleSessionSave();
         };
 
         headerPanel.Children.Add(iconBlock);
@@ -1340,5 +1377,251 @@ public partial class WorkspaceView : UserControl
         tab.Header = headerPanel;
         tab.Content = content;
         return tab;
+    }
+
+    // ==========================================
+    // PERSISTÊNCIA DE SESSÃO DO WORKSPACE (v1.2.0)
+    // ==========================================
+
+    public void ScheduleSessionSave()
+    {
+        if (_isRestoringSession) return;
+        _sessionAutoSaveTimer.Stop();
+        _sessionAutoSaveTimer.Start();
+    }
+
+    public async Task SaveCurrentSessionAsync()
+    {
+        if (_isRestoringSession) return;
+        try
+        {
+            var session = CaptureSessionState();
+            await _appStorage.SaveWorkspaceSessionAsync(session);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[WorkspaceSession] Auto-save error: {ex.Message}");
+        }
+    }
+
+    public void SaveCurrentSessionSync()
+    {
+        try
+        {
+            var session = CaptureSessionState();
+            _appStorage.SaveWorkspaceSessionAsync(session).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[WorkspaceSession] Sync save error: {ex.Message}");
+        }
+    }
+
+    public WorkspaceSessionState CaptureSessionState()
+    {
+        var session = new WorkspaceSessionState
+        {
+            ConnectionKey = _databaseService.Config.GetSessionKey(),
+            ActiveTabIndex = WorkspaceTabs.SelectedIndex >= 0 ? WorkspaceTabs.SelectedIndex : 0,
+            LastSavedAt = DateTime.UtcNow
+        };
+
+        for (int i = 0; i < WorkspaceTabs.Items.Count; i++)
+        {
+            if (WorkspaceTabs.Items[i] is not TabItem tab) continue;
+
+            string title = "Tab";
+            if (tab.Header is StackPanel sp && sp.Children.Count >= 2 && sp.Children[1] is TextBlock tb)
+            {
+                title = tb.Text ?? "Tab";
+            }
+
+            var tabSession = new WorkspaceTabSession
+            {
+                Title = title,
+                Tag = tab.Tag?.ToString()
+            };
+
+            if (tab.Content is QueryTabControl query)
+            {
+                tabSession.TabType = WorkspaceTabType.Query;
+                tabSession.SqlText = query.GetSqlText();
+                tabSession.CaretOffset = query.CaretIndex;
+                tabSession.VerticalScrollOffset = query.VerticalScrollOffset;
+                tabSession.HorizontalScrollOffset = query.HorizontalScrollOffset;
+                session.Tabs.Add(tabSession);
+            }
+            else if (tab.Content is TableDataTabControl data)
+            {
+                tabSession.TabType = WorkspaceTabType.TableData;
+                tabSession.TableName = data.TableName;
+                tabSession.FilterText = data.GetFilter();
+                session.Tabs.Add(tabSession);
+            }
+            else if (tab.Content is TableStructureTabControl structure)
+            {
+                tabSession.TabType = WorkspaceTabType.TableStructure;
+                tabSession.TableName = structure.TableName;
+                session.Tabs.Add(tabSession);
+            }
+            else if (tab.Content is ErdTabControl)
+            {
+                tabSession.TabType = WorkspaceTabType.Erd;
+                session.Tabs.Add(tabSession);
+            }
+            else if (tab.Content is VisualQueryBuilderTabControl)
+            {
+                tabSession.TabType = WorkspaceTabType.QueryBuilder;
+                session.Tabs.Add(tabSession);
+            }
+            else if (tab.Content is GlobalSearchTabControl)
+            {
+                tabSession.TabType = WorkspaceTabType.GlobalSearch;
+                session.Tabs.Add(tabSession);
+            }
+            else if (tab.Content is DatabaseHealthTabControl)
+            {
+                tabSession.TabType = WorkspaceTabType.Health;
+                session.Tabs.Add(tabSession);
+            }
+            else if (tab.Content is Runix.Desktop.Views.Dialogs.BackupRestoreDialog)
+            {
+                tabSession.TabType = WorkspaceTabType.Backup;
+                session.Tabs.Add(tabSession);
+            }
+            else if (tab.Content is Runix.Desktop.Views.Dba.PostgresAdminTabControl)
+            {
+                tabSession.TabType = WorkspaceTabType.Dba;
+                session.Tabs.Add(tabSession);
+            }
+            else if (tab.Content is Runix.Desktop.Views.Diff.SchemaCompareTabControl)
+            {
+                tabSession.TabType = WorkspaceTabType.Diff;
+                session.Tabs.Add(tabSession);
+            }
+        }
+
+        return session;
+    }
+
+    private async Task RestoreWorkspaceSessionOrOpenDefaultAsync()
+    {
+        _isRestoringSession = true;
+        try
+        {
+            var key = _databaseService.Config.GetSessionKey();
+            var session = await _appStorage.GetWorkspaceSessionAsync(key);
+            if (session != null && session.Tabs.Count > 0)
+            {
+                RestoreSession(session);
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[WorkspaceSession] Restore error: {ex.Message}");
+        }
+        finally
+        {
+            _isRestoringSession = false;
+        }
+
+        // Fallback default
+        if (WorkspaceTabs.Items.Count == 0)
+        {
+            OpenNewQueryTab();
+        }
+    }
+
+    public void RestoreSession(WorkspaceSessionState session)
+    {
+        _isRestoringSession = true;
+        try
+        {
+            WorkspaceTabs.Items.Clear();
+
+            foreach (var tabState in session.Tabs)
+            {
+                if (tabState.Title.StartsWith("Query ", StringComparison.OrdinalIgnoreCase) &&
+                    int.TryParse(tabState.Title.AsSpan(6).Trim(), out int qNum) &&
+                    qNum >= _queryCounter)
+                {
+                    _queryCounter = qNum + 1;
+                }
+
+                switch (tabState.TabType)
+                {
+                    case WorkspaceTabType.Query:
+                        OpenNewQueryTab(
+                            initialSql: tabState.SqlText,
+                            title: tabState.Title,
+                            caretOffset: tabState.CaretOffset,
+                            verticalScroll: tabState.VerticalScrollOffset,
+                            horizontalScroll: tabState.HorizontalScrollOffset);
+                        break;
+
+                    case WorkspaceTabType.TableData:
+                        if (!string.IsNullOrWhiteSpace(tabState.TableName))
+                        {
+                            OpenTableDataTab(tabState.TableName);
+                            var control = FindTableDataTabControl(tabState.TableName);
+                            if (control != null && !string.IsNullOrWhiteSpace(tabState.FilterText))
+                            {
+                                control.SetFilter(tabState.FilterText);
+                            }
+                        }
+                        break;
+
+                    case WorkspaceTabType.TableStructure:
+                        if (!string.IsNullOrWhiteSpace(tabState.TableName))
+                        {
+                            OpenTableStructureTab(tabState.TableName);
+                        }
+                        break;
+
+                    case WorkspaceTabType.Erd:
+                        OpenErdTab();
+                        break;
+
+                    case WorkspaceTabType.QueryBuilder:
+                        OpenVisualQueryBuilderTab();
+                        break;
+
+                    case WorkspaceTabType.GlobalSearch:
+                        OpenGlobalSearchTab();
+                        break;
+
+                    case WorkspaceTabType.Health:
+                        OpenDatabaseHealthTab();
+                        break;
+
+                    case WorkspaceTabType.Backup:
+                        OpenBackupRestoreTab();
+                        break;
+
+                    case WorkspaceTabType.Dba:
+                        OpenDbaTab();
+                        break;
+
+                    case WorkspaceTabType.Diff:
+                        OpenCompareTab();
+                        break;
+                }
+            }
+
+            if (WorkspaceTabs.Items.Count == 0)
+            {
+                OpenNewQueryTab();
+            }
+            else
+            {
+                var targetIdx = Math.Clamp(session.ActiveTabIndex, 0, WorkspaceTabs.Items.Count - 1);
+                WorkspaceTabs.SelectedIndex = targetIdx;
+            }
+        }
+        finally
+        {
+            _isRestoringSession = false;
+        }
     }
 }

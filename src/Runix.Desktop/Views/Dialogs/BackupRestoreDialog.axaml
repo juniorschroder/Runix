@@ -22,8 +22,10 @@
 
                 <!-- Mode Switcher (Backup vs Restore) -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                    <Button Name="BtnModeBackup" Content="📤 Criar Backup" Classes="btn-primary" Padding="14,7" FontSize="12"/>
-                    <Button Name="BtnModeRestore" Content="📥 Restaurar Backup" Classes="btn-secondary" Padding="14,7" FontSize="12"/>
+                    <Button Name="BtnModeBackup" Content="📤 Criar Backup" Classes="btn-primary" Padding="14,7" FontSize="12"
+                            AutomationProperties.Name="Modo Criar Backup"/>
+                    <Button Name="BtnModeRestore" Content="📥 Restaurar Backup" Classes="btn-secondary" Padding="14,7" FontSize="12"
+                            AutomationProperties.Name="Modo Restaurar Backup"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -38,18 +40,24 @@
                         <StackPanel Spacing="6">
                             <TextBlock Text="1. Formato do Backup" FontSize="12" FontWeight="Bold" Foreground="#38bdf8"/>
                             <StackPanel Spacing="6">
-                                <RadioButton Name="RbFormatSql" Content="📄 Script SQL Transacional (.sql)" GroupName="BkupFormat" IsChecked="True" Foreground="#f0f6fc" FontSize="12"/>
-                                <RadioButton Name="RbFormatGzip" Content="🗜 Script SQL Compactado GZip (.sql.gz)" GroupName="BkupFormat" Foreground="#f0f6fc" FontSize="12"/>
-                                <RadioButton Name="RbFormatSqliteBin" Content="🗄 Cópia Binária Online SQLite (.db)" GroupName="BkupFormat" Foreground="#f0f6fc" FontSize="12"/>
+                                <RadioButton Name="RbFormatSql" Content="📄 Script SQL Transacional (.sql)" GroupName="BkupFormat" IsChecked="True" Foreground="#f0f6fc" FontSize="12"
+                                             AutomationProperties.Name="Formato Script SQL Transacional"/>
+                                <RadioButton Name="RbFormatGzip" Content="🗜 Script SQL Compactado GZip (.sql.gz)" GroupName="BkupFormat" Foreground="#f0f6fc" FontSize="12"
+                                             AutomationProperties.Name="Formato Script SQL Compactado GZip"/>
+                                <RadioButton Name="RbFormatSqliteBin" Content="🗄 Cópia Binária Online SQLite (.db)" GroupName="BkupFormat" Foreground="#f0f6fc" FontSize="12"
+                                             AutomationProperties.Name="Formato Cópia Binária Online SQLite"/>
                             </StackPanel>
                         </StackPanel>
 
                         <StackPanel Name="PanelScopeOptions" Spacing="6">
                             <TextBlock Text="2. Escopo do Conteúdo" FontSize="12" FontWeight="Bold" Foreground="#38bdf8"/>
                             <StackPanel Orientation="Horizontal" Spacing="16">
-                                <RadioButton Name="RbScopeFull" Content="Completo (DDL + Dados)" GroupName="BkupScope" IsChecked="True" Foreground="#f0f6fc" FontSize="12"/>
-                                <RadioButton Name="RbScopeSchema" Content="Apenas Schema" GroupName="BkupScope" Foreground="#f0f6fc" FontSize="12"/>
-                                <RadioButton Name="RbScopeData" Content="Apenas Dados" GroupName="BkupScope" Foreground="#f0f6fc" FontSize="12"/>
+                                <RadioButton Name="RbScopeFull" Content="Completo (DDL + Dados)" GroupName="BkupScope" IsChecked="True" Foreground="#f0f6fc" FontSize="12"
+                                             AutomationProperties.Name="Escopo Completo DDL e Dados"/>
+                                <RadioButton Name="RbScopeSchema" Content="Apenas Schema" GroupName="BkupScope" Foreground="#f0f6fc" FontSize="12"
+                                             AutomationProperties.Name="Escopo Apenas Schema"/>
+                                <RadioButton Name="RbScopeData" Content="Apenas Dados" GroupName="BkupScope" Foreground="#f0f6fc" FontSize="12"
+                                             AutomationProperties.Name="Escopo Apenas Dados"/>
                             </StackPanel>
 
                             <CheckBox Name="ChkIncludeDrop" Content="Incluir instruções DROP TABLE IF EXISTS (ordem reversa de FK)" IsChecked="True" Foreground="#cbd5e1" FontSize="11" Margin="0,6,0,0"/>
@@ -59,24 +67,30 @@
                         <StackPanel Spacing="6">
                             <TextBlock Text="3. Arquivo de Destino" FontSize="12" FontWeight="Bold" Foreground="#38bdf8"/>
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBox Name="TxtBackupOutputPath" Grid.Column="0" Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42" CornerRadius="6,0,0,6" Padding="10,7" FontSize="11"/>
-                                <Button Name="BtnBrowseBackupOutput" Grid.Column="1" Content="Escolher..." Classes="btn-secondary" Padding="12,7" CornerRadius="0,6,6,0" FontSize="11"/>
+                                <TextBox Name="TxtBackupOutputPath" Grid.Column="0" Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42" CornerRadius="6,0,0,6" Padding="10,7" FontSize="11"
+                                         AutomationProperties.Name="Caminho do arquivo de saída do backup"/>
+                                <Button Name="BtnBrowseBackupOutput" Grid.Column="1" Content="Escolher..." Classes="btn-secondary" Padding="12,7" CornerRadius="0,6,6,0" FontSize="11"
+                                        AutomationProperties.Name="Escolher arquivo de saída do backup"/>
                             </Grid>
                         </StackPanel>
 
-                        <Button Name="BtnStartBackup" Content="📤 Iniciar Backup Agora" Classes="btn-primary" Padding="18,10" FontSize="13" HorizontalAlignment="Left"/>
+                        <Button Name="BtnStartBackup" Content="📤 Iniciar Backup Agora" Classes="btn-primary" Padding="18,10" FontSize="13" HorizontalAlignment="Left"
+                                AutomationProperties.Name="Iniciar criação do backup"/>
                     </StackPanel>
 
                     <!-- Right: Table Checklist -->
                     <Grid Grid.Column="2" RowDefinitions="Auto,*">
                         <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,6">
                             <TextBlock Grid.Column="0" Text="Tabelas Incluídas (Ordem Topológica FK)" FontSize="12" FontWeight="Bold" Foreground="#38bdf8" VerticalAlignment="Center"/>
-                            <Button Grid.Column="1" Name="BtnCheckAllTables" Content="Todas" Classes="btn-outline" Padding="6,2" FontSize="10" Margin="0,0,4,0"/>
-                            <Button Grid.Column="2" Name="BtnUncheckAllTables" Content="Nenhuma" Classes="btn-outline" Padding="6,2" FontSize="10"/>
+                            <Button Grid.Column="1" Name="BtnCheckAllTables" Content="Todas" Classes="btn-outline" Padding="6,2" FontSize="10" Margin="0,0,4,0"
+                                    AutomationProperties.Name="Selecionar todas as tabelas"/>
+                            <Button Grid.Column="2" Name="BtnUncheckAllTables" Content="Nenhuma" Classes="btn-outline" Padding="6,2" FontSize="10"
+                                    AutomationProperties.Name="Desmarcar todas as tabelas"/>
                         </Grid>
 
                         <Border Grid.Row="1" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="6" Padding="8">
-                            <ListBox Name="ListBackupTables" SelectionMode="Multiple" Background="Transparent" BorderThickness="0"/>
+                            <ListBox Name="ListBackupTables" SelectionMode="Multiple" Background="Transparent" BorderThickness="0"
+                                     AutomationProperties.Name="Lista de tabelas incluídas no backup"/>
                         </Border>
                     </Grid>
                 </Grid>
@@ -94,8 +108,10 @@
                     <StackPanel Spacing="6">
                         <TextBlock Text="Arquivo de Backup de Origem (.sql, .sql.gz, .db)" FontSize="12" FontWeight="Bold" Foreground="#38bdf8"/>
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBox Name="TxtRestoreInputPath" Grid.Column="0" Watermark="/caminho/para/backup.sql.gz" Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42" CornerRadius="6,0,0,6" Padding="10,8" FontSize="12"/>
-                            <Button Name="BtnBrowseRestoreInput" Grid.Column="1" Content="Procurar Arquivo..." Classes="btn-secondary" Padding="14,8" CornerRadius="0,6,6,0" FontSize="12"/>
+                            <TextBox Name="TxtRestoreInputPath" Grid.Column="0" Watermark="/caminho/para/backup.sql.gz" Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42" CornerRadius="6,0,0,6" Padding="10,8" FontSize="12"
+                                     AutomationProperties.Name="Caminho do arquivo de backup de origem"/>
+                            <Button Name="BtnBrowseRestoreInput" Grid.Column="1" Content="Procurar Arquivo..." Classes="btn-secondary" Padding="14,8" CornerRadius="0,6,6,0" FontSize="12"
+                                    AutomationProperties.Name="Procurar arquivo de backup de origem"/>
                         </Grid>
                     </StackPanel>
 
@@ -104,7 +120,8 @@
                                    FontSize="11" Foreground="#34d399" TextWrapping="Wrap"/>
                     </Border>
 
-                    <Button Name="BtnStartRestore" Content="📥 Executar Restore Transacional" Classes="btn-primary" Padding="20,10" FontSize="13" HorizontalAlignment="Left"/>
+                    <Button Name="BtnStartRestore" Content="📥 Executar Restore Transacional" Classes="btn-primary" Padding="20,10" FontSize="13" HorizontalAlignment="Left"
+                            AutomationProperties.Name="Executar restauração do backup"/>
                 </StackPanel>
             </Border>
         </Grid>
@@ -113,8 +130,10 @@
         <Border Grid.Row="2" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8" Padding="16,12" Margin="0,16,0,0">
             <StackPanel Spacing="8">
                 <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Name="TxtProgressStatus" Grid.Column="0" Text="Pronto para iniciar backup ou restore." FontSize="12" FontWeight="SemiBold" Foreground="#cbd5e1"/>
-                    <TextBlock Name="TxtMetricsBadge" Grid.Column="1" Text="" FontSize="11" Foreground="#38bdf8" FontWeight="Bold"/>
+                    <TextBlock Name="TxtProgressStatus" Grid.Column="0" Text="Pronto para iniciar backup ou restore." FontSize="12" FontWeight="SemiBold" Foreground="#cbd5e1"
+                               AutomationProperties.LiveSetting="Polite"/>
+                    <TextBlock Name="TxtMetricsBadge" Grid.Column="1" Text="" FontSize="11" Foreground="#38bdf8" FontWeight="Bold"
+                               AutomationProperties.LiveSetting="Polite"/>
                 </Grid>
                 <ProgressBar Name="BarBackupProgress" Minimum="0" Maximum="100" Value="0" Height="6" Foreground="#008bb9" Background="#090d14" CornerRadius="3"/>
             </StackPanel>

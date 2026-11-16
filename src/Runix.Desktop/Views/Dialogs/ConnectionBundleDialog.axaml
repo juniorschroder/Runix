@@ -26,7 +26,8 @@
                         <TextBlock Text="🔒 AES-256-GCM (.rcf)" FontSize="10" FontWeight="Bold" Foreground="#34d399"/>
                     </Border>
 
-                    <Button Name="BtnClose" Grid.Column="2" Content="✕" Classes="btn-icon" Padding="7,3" FontSize="11" VerticalAlignment="Center"/>
+                    <Button Name="BtnClose" Grid.Column="2" Content="✕" Classes="btn-icon" Padding="7,3" FontSize="11" VerticalAlignment="Center"
+                            AutomationProperties.Name="{DynamicResource A11y.CloseModal}"/>
                 </Grid>
             </Border>
 
@@ -39,9 +40,11 @@
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBox Name="TxtImportFilePath" Grid.Column="0" Watermark="Selecione um arquivo .rcf..."
                                      Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42"
-                                     CornerRadius="5,0,0,5" Padding="9,6" FontSize="11.5"/>
+                                     CornerRadius="5,0,0,5" Padding="9,6" FontSize="11.5"
+                                     AutomationProperties.Name="Caminho do arquivo RCF para importação"/>
                             <Button Name="BtnBrowseRcf" Grid.Column="1" Content="Procurar..."
-                                    Classes="btn-secondary" Padding="12,6" CornerRadius="0,5,5,0" FontSize="11.5"/>
+                                    Classes="btn-secondary" Padding="12,6" CornerRadius="0,5,5,0" FontSize="11.5"
+                                    AutomationProperties.Name="Procurar arquivo RCF"/>
                         </Grid>
                     </StackPanel>
 
@@ -49,11 +52,13 @@
                         <TextBlock Text="Senha do Arquivo .rcf" FontSize="11" FontWeight="SemiBold" Foreground="#8b9cb3"/>
                         <TextBox Name="TxtImportPassword" PasswordChar="•" Watermark="Digite a senha..."
                                  Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42"
-                                 CornerRadius="5" Padding="9,6" FontSize="11.5"/>
+                                 CornerRadius="5" Padding="9,6" FontSize="11.5"
+                                 AutomationProperties.Name="Senha do arquivo RCF para importação"/>
                     </StackPanel>
 
                     <Button Name="BtnUnlockRcf" Grid.Column="2" Content="🔓 Desbloquear .rcf"
-                            Classes="btn-primary" Padding="14,7" FontSize="11.5" VerticalAlignment="Bottom"/>
+                            Classes="btn-primary" Padding="14,7" FontSize="11.5" VerticalAlignment="Bottom"
+                            AutomationProperties.Name="Desbloquear pacote RCF"/>
                 </Grid>
             </Border>
 
@@ -65,12 +70,15 @@
                         <Border Grid.Row="0" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="10,7" CornerRadius="8,8,0,0">
                             <Grid ColumnDefinitions="*,Auto,Auto">
                                 <TextBlock Name="TxtHeaderConnections" Grid.Column="0" Text="🔌 Conexões (0)" FontSize="11.5" FontWeight="Bold" Foreground="#38bdf8" VerticalAlignment="Center"/>
-                                <Button Name="BtnConnAll" Grid.Column="1" Content="Todos" Classes="btn-outline" Padding="5,1" FontSize="9.5" Margin="0,0,4,0"/>
-                                <Button Name="BtnConnNone" Grid.Column="2" Content="Nenhum" Classes="btn-outline" Padding="5,1" FontSize="9.5"/>
+                                <Button Name="BtnConnAll" Grid.Column="1" Content="Todos" Classes="btn-outline" Padding="5,1" FontSize="9.5" Margin="0,0,4,0"
+                                        AutomationProperties.Name="Selecionar todas as conexões"/>
+                                <Button Name="BtnConnNone" Grid.Column="2" Content="Nenhum" Classes="btn-outline" Padding="5,1" FontSize="9.5"
+                                        AutomationProperties.Name="Desmarcar todas as conexões"/>
                             </Grid>
                         </Border>
 
-                        <ListBox Name="ListConnections" Grid.Row="1" Background="Transparent" BorderThickness="0" Margin="4" Height="260">
+                        <ListBox Name="ListConnections" Grid.Row="1" Background="Transparent" BorderThickness="0" Margin="4" Height="260"
+                                 AutomationProperties.Name="Lista de conexões para pacote">
                             <ListBox.ItemTemplate>
                                 <DataTemplate DataType="models:BundleCheckItem">
                                     <Border Padding="7,5" CornerRadius="5" Margin="0,1" Background="#0e141f" BorderBrush="#151f2e" BorderThickness="1">
@@ -97,12 +105,15 @@
                         <Border Grid.Row="0" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="10,7" CornerRadius="8,8,0,0">
                             <Grid ColumnDefinitions="*,Auto,Auto">
                                 <TextBlock Name="TxtHeaderQueries" Grid.Column="0" Text="⭐ Queries Salvas (0)" FontSize="11.5" FontWeight="Bold" Foreground="#fbbf24" VerticalAlignment="Center"/>
-                                <Button Name="BtnQueriesAll" Grid.Column="1" Content="Todos" Classes="btn-outline" Padding="5,1" FontSize="9.5" Margin="0,0,4,0"/>
-                                <Button Name="BtnQueriesNone" Grid.Column="2" Content="Nenhum" Classes="btn-outline" Padding="5,1" FontSize="9.5"/>
+                                <Button Name="BtnQueriesAll" Grid.Column="1" Content="Todos" Classes="btn-outline" Padding="5,1" FontSize="9.5" Margin="0,0,4,0"
+                                        AutomationProperties.Name="Selecionar todas as consultas"/>
+                                <Button Name="BtnQueriesNone" Grid.Column="2" Content="Nenhum" Classes="btn-outline" Padding="5,1" FontSize="9.5"
+                                        AutomationProperties.Name="Desmarcar todas as consultas"/>
                             </Grid>
                         </Border>
 
-                        <ListBox Name="ListQueries" Grid.Row="1" Background="Transparent" BorderThickness="0" Margin="4" Height="260">
+                        <ListBox Name="ListQueries" Grid.Row="1" Background="Transparent" BorderThickness="0" Margin="4" Height="260"
+                                 AutomationProperties.Name="Lista de consultas para pacote">
                             <ListBox.ItemTemplate>
                                 <DataTemplate DataType="models:BundleCheckItem">
                                     <Border Padding="7,5" CornerRadius="5" Margin="0,1" Background="#0e141f" BorderBrush="#151f2e" BorderThickness="1">
@@ -126,12 +137,15 @@
                         <Border Grid.Row="0" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="10,7" CornerRadius="8,8,0,0">
                             <Grid ColumnDefinitions="*,Auto,Auto">
                                 <TextBlock Name="TxtHeaderSnippets" Grid.Column="0" Text="✂ Snippets SQL (0)" FontSize="11.5" FontWeight="Bold" Foreground="#34d399" VerticalAlignment="Center"/>
-                                <Button Name="BtnSnippetsAll" Grid.Column="1" Content="Todos" Classes="btn-outline" Padding="5,1" FontSize="9.5" Margin="0,0,4,0"/>
-                                <Button Name="BtnSnippetsNone" Grid.Column="2" Content="Nenhum" Classes="btn-outline" Padding="5,1" FontSize="9.5"/>
+                                <Button Name="BtnSnippetsAll" Grid.Column="1" Content="Todos" Classes="btn-outline" Padding="5,1" FontSize="9.5" Margin="0,0,4,0"
+                                        AutomationProperties.Name="Selecionar todos os snippets"/>
+                                <Button Name="BtnSnippetsNone" Grid.Column="2" Content="Nenhum" Classes="btn-outline" Padding="5,1" FontSize="9.5"
+                                        AutomationProperties.Name="Desmarcar todos os snippets"/>
                             </Grid>
                         </Border>
 
-                        <ListBox Name="ListSnippets" Grid.Row="1" Background="Transparent" BorderThickness="0" Margin="4" Height="260">
+                        <ListBox Name="ListSnippets" Grid.Row="1" Background="Transparent" BorderThickness="0" Margin="4" Height="260"
+                                 AutomationProperties.Name="Lista de snippets para pacote">
                             <ListBox.ItemTemplate>
                                 <DataTemplate DataType="models:BundleCheckItem">
                                     <Border Padding="7,5" CornerRadius="5" Margin="0,1" Background="#0e141f" BorderBrush="#151f2e" BorderThickness="1">
@@ -162,7 +176,8 @@
                         <TextBox Name="TxtExportPassword" PasswordChar="•"
                                  Watermark="Crie uma senha para proteger o arquivo .rcf..."
                                  Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42"
-                                 CornerRadius="5" Padding="9,6" FontSize="11.5"/>
+                                 CornerRadius="5" Padding="9,6" FontSize="11.5"
+                                 AutomationProperties.Name="Senha de criptografia do pacote RCF"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Spacing="4" Margin="10,0,0,0">
@@ -170,7 +185,8 @@
                         <TextBox Name="TxtExportConfirmPassword" PasswordChar="•"
                                  Watermark="Repita a senha..."
                                  Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42"
-                                 CornerRadius="5" Padding="9,6" FontSize="11.5"/>
+                                 CornerRadius="5" Padding="9,6" FontSize="11.5"
+                                 AutomationProperties.Name="Confirmação da senha de criptografia do pacote RCF"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -181,13 +197,16 @@
                 <Grid ColumnDefinitions="*,Auto,Auto">
                     <TextBlock Name="TxtStatus" Grid.Column="0"
                                Text="Pronto. O arquivo .rcf inclui senhas de banco e chaves SSH protegidas com sua senha."
-                               FontSize="11.5" Foreground="#8b9cb3" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
+                               FontSize="11.5" Foreground="#8b9cb3" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,12,0"
+                               AutomationProperties.LiveSetting="Polite"/>
 
                     <Button Name="BtnCancel" Grid.Column="1" Content="Cancelar"
-                            Classes="btn-outline" Padding="14,7" FontSize="11.5" Margin="0,0,8,0"/>
+                            Classes="btn-outline" Padding="14,7" FontSize="11.5" Margin="0,0,8,0"
+                            AutomationProperties.Name="{DynamicResource Common.Cancel}"/>
 
                     <Button Name="BtnPrimaryAction" Grid.Column="2" Content="📤 Exportar Arquivo .rcf..."
-                            Classes="btn-primary" Padding="18,7" FontSize="11.5"/>
+                            Classes="btn-primary" Padding="18,7" FontSize="11.5"
+                            AutomationProperties.Name="Ação primária de exportação ou importação RCF"/>
                 </Grid>
             </Border>
         </Grid>

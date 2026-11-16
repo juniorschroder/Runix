@@ -75,9 +75,9 @@ public class PostgresDatabaseService : IDatabaseService
             await cmd.ExecuteScalarAsync();
             return true;
         }
-        catch
+        catch (Exception)
         {
-            return false;
+            throw;
         }
         finally
         {

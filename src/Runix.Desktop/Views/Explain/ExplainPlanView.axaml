@@ -22,15 +22,19 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="14,0,0,0">
-                    <Button Name="BtnCopyIndexSql" Content="📋 Copiar SQL" Classes="btn-secondary" Padding="12,6" FontSize="11"/>
-                    <Button Name="BtnApplyIndex" Content="Criar Índice Agora ⚡" Classes="btn-primary" Padding="14,6" FontSize="11"/>
+                    <Button Name="BtnCopyIndexSql" Content="📋 Copiar SQL" Classes="btn-secondary" Padding="12,6" FontSize="11"
+                            AutomationProperties.Name="Copiar instrução SQL de criação de índice"/>
+                    <Button Name="BtnApplyIndex" Content="Criar Índice Agora ⚡" Classes="btn-primary" Padding="14,6" FontSize="11"
+                            AutomationProperties.Name="Criar índice recomendado"/>
                 </StackPanel>
             </Grid>
         </Border>
 
         <!-- CENTER CANVAS: TOP-DOWN EXECUTION TREE -->
         <ScrollViewer Grid.Row="1" Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="20">
-            <StackPanel Name="PanelTreeGraph" HorizontalAlignment="Center" VerticalAlignment="Top" Spacing="16"/>
+            <StackPanel Name="PanelTreeGraph" HorizontalAlignment="Center" VerticalAlignment="Top" Spacing="16"
+                        AutomationProperties.Name="{DynamicResource A11y.ExplainCanvas}"
+                        AutomationProperties.HelpText="Árvore interativa de operadores do plano de execução da consulta SQL"/>
         </ScrollViewer>
 
         <!-- EMPTY STATE MESSAGE (if no plan loaded) -->
@@ -50,7 +54,8 @@
                         <TextBlock Text="🔍" FontSize="13" Foreground="#38bdf8"/>
                         <TextBlock Text="Inspetor do Nó" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
                     </StackPanel>
-                    <Button Name="BtnCloseInspector" Grid.Column="1" Content="✕" Classes="btn-icon" FontSize="11"/>
+                    <Button Name="BtnCloseInspector" Grid.Column="1" Content="✕" Classes="btn-icon" FontSize="11"
+                            AutomationProperties.Name="Fechar painel inspetor do nó"/>
                 </Grid>
 
                 <!-- Inspector Attribute Fields -->

@@ -320,6 +320,11 @@ public partial class MainWindow : Window
 
     public async System.Threading.Tasks.Task ConnectConfigAsync(ConnectionConfig config)
     {
+        if (_workspaceView != null)
+        {
+            await _workspaceView.SaveCurrentSessionAsync();
+        }
+
         _currentService?.Dispose();
 
         IDatabaseService baseService = config.Type == DatabaseType.SQLite
@@ -350,11 +355,14 @@ public partial class MainWindow : Window
             BadgeActiveDb.IsVisible = true;
             TxtActiveDbIcon.Text = config.EngineIcon;
             TxtActiveDbName.Text = $"{config.Name} ({config.Type})";
+
+            UpdateSafetyAlerts(config);
         }
         catch (Exception ex)
         {
             service.Dispose();
             BadgeActiveDb.IsVisible = false;
+            UpdateSafetyAlerts(null);
 
             var dialog = new Window
             {
@@ -385,14 +393,48 @@ public partial class MainWindow : Window
 
     private void OnDisconnectRequested()
     {
+        _workspaceView?.SaveCurrentSessionSync();
         _currentService?.Dispose();
         _currentService = null;
         _workspaceView = null;
 
         BadgeActiveDb.IsVisible = false;
+        UpdateSafetyAlerts(null);
 
         MainRoot.Children.Clear();
         MainRoot.Children.Add(_connectionView);
+    }
+
+    private void UpdateSafetyAlerts(ConnectionConfig? config)
+    {
+        if (config == null)
+        {
+            BorderTopSafetyLine.IsVisible = false;
+            BadgeProductionAlert.IsVisible = false;
+            BadgeReadOnlyAlert.IsVisible = false;
+            return;
+        }
+
+        bool isProd = config.IsProductionEnvironment;
+        bool isReadOnly = config.IsReadOnly;
+
+        BadgeProductionAlert.IsVisible = isProd;
+        BadgeReadOnlyAlert.IsVisible = isReadOnly;
+
+        if (isProd)
+        {
+            BorderTopSafetyLine.Background = Avalonia.Media.Brush.Parse("#ef4444"); // Red for production
+            BorderTopSafetyLine.IsVisible = true;
+        }
+        else if (isReadOnly)
+        {
+            BorderTopSafetyLine.Background = Avalonia.Media.Brush.Parse("#f59e0b"); // Amber for read-only
+            BorderTopSafetyLine.IsVisible = true;
+        }
+        else
+        {
+            BorderTopSafetyLine.IsVisible = false;
+        }
     }
 
     public RenderTargetBitmap? CaptureRenderedFrame()

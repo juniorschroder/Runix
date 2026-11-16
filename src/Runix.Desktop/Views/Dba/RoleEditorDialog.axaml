@@ -14,14 +14,16 @@
                     <TextBlock Text="🛡" FontSize="18" VerticalAlignment="Center"/>
                     <TextBlock Name="TxtDialogTitle" Text="Criar Nova Role / Usuário" FontSize="16" FontWeight="Bold" Foreground="#f0f6fc" VerticalAlignment="Center"/>
                 </StackPanel>
-                <Button Name="BtnCloseTop" Grid.Column="1" Content="✕" Classes="btn-outline" Padding="8,4" FontSize="11"/>
+                <Button Name="BtnCloseTop" Grid.Column="1" Content="✕" Classes="btn-outline" Padding="8,4" FontSize="11"
+                        AutomationProperties.Name="{DynamicResource A11y.CloseModal}"/>
             </Grid>
 
             <!-- ROLE NAME -->
             <StackPanel Spacing="6">
                 <TextBlock Text="Nome da Role / Usuário" FontSize="12" FontWeight="SemiBold" Foreground="#8b9cb3"/>
                 <TextBox Name="TxtRoleName" Watermark="ex: app_developer" 
-                         Background="#141d2b" Foreground="#f0f6fc" BorderBrush="#1e2d42" Padding="10,8" CornerRadius="4"/>
+                         Background="#141d2b" Foreground="#f0f6fc" BorderBrush="#1e2d42" Padding="10,8" CornerRadius="4"
+                         AutomationProperties.Name="Nome da Role ou Usuário"/>
             </StackPanel>
 
             <!-- PASSWORD WITH TOGGLE SHOW/HIDE -->
@@ -29,9 +31,11 @@
                 <TextBlock Text="Senha (deixe em branco para manter a atual)" FontSize="12" FontWeight="SemiBold" Foreground="#8b9cb3"/>
                 <Grid ColumnDefinitions="*,Auto">
                     <TextBox Name="TxtPassword" PasswordChar="●" Watermark="Senha segura..." 
-                             Background="#141d2b" Foreground="#f0f6fc" BorderBrush="#1e2d42" Padding="10,8" CornerRadius="4,0,0,4"/>
+                             Background="#141d2b" Foreground="#f0f6fc" BorderBrush="#1e2d42" Padding="10,8" CornerRadius="4,0,0,4"
+                             AutomationProperties.Name="Senha do Usuário"/>
                     <Button Name="BtnTogglePassword" Grid.Column="1" Content="👁" Classes="btn-secondary" 
-                            Padding="10,8" CornerRadius="0,4,4,0"/>
+                            Padding="10,8" CornerRadius="0,4,4,0"
+                            AutomationProperties.Name="Alternar visualização da senha"/>
                 </Grid>
             </StackPanel>
 
@@ -67,12 +71,15 @@
             </StackPanel>
 
             <!-- ERROR MESSAGE -->
-            <TextBlock Name="TxtError" Text="" Foreground="#f87171" FontSize="12" TextWrapping="Wrap" IsVisible="False"/>
+            <TextBlock Name="TxtError" Text="" Foreground="#f87171" FontSize="12" TextWrapping="Wrap" IsVisible="False"
+                       AutomationProperties.LiveSetting="Assertive"/>
 
             <!-- ACTIONS -->
             <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,8,0,0">
-                <Button Name="BtnCancel" Grid.Column="1" Content="Cancelar" Classes="btn-outline" Padding="16,8" Margin="0,0,8,0"/>
-                <Button Name="BtnSave" Grid.Column="2" Content="Salvar Role" Classes="btn-primary" Padding="18,8"/>
+                <Button Name="BtnCancel" Grid.Column="1" Content="Cancelar" Classes="btn-outline" Padding="16,8" Margin="0,0,8,0"
+                        AutomationProperties.Name="{DynamicResource Common.Cancel}"/>
+                <Button Name="BtnSave" Grid.Column="2" Content="Salvar Role" Classes="btn-primary" Padding="18,8"
+                        AutomationProperties.Name="Salvar Role"/>
             </Grid>
         </StackPanel>
     </Border>

@@ -33,4 +33,9 @@ public interface IAppStorageService
     Task LogQueryExecutionAsync(QueryHistoryEntry entry, CancellationToken ct = default);
     Task<IReadOnlyList<QueryHistoryEntry>> GetQueryHistoryAsync(string? connectionId = null, int limit = 50, CancellationToken ct = default);
     Task ClearQueryHistoryAsync(string? connectionId = null, CancellationToken ct = default);
+
+    // Persistência de Sessão de Trabalho (Workspace Restore - v1.2.0)
+    Task<WorkspaceSessionState?> GetWorkspaceSessionAsync(string connectionKey, CancellationToken ct = default);
+    Task SaveWorkspaceSessionAsync(WorkspaceSessionState session, CancellationToken ct = default);
+    Task ClearWorkspaceSessionAsync(string connectionKey, CancellationToken ct = default);
 }

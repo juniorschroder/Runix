@@ -39,10 +39,51 @@ public partial class QueryTabControl : UserControl
 
     private AvaloniaEdit.CodeCompletion.CompletionWindow? _completionWindow;
 
+    public event Action? SqlTextChanged;
+
     public int CaretIndex
     {
         get => TxtSqlEditor.CaretOffset;
         set => TxtSqlEditor.CaretOffset = Math.Max(0, Math.Min(value, TxtSqlEditor.Text?.Length ?? 0));
+    }
+
+    public double VerticalScrollOffset
+    {
+        get => TxtSqlEditor.VerticalOffset;
+        set => TxtSqlEditor.ScrollToVerticalOffset(value);
+    }
+
+    public double HorizontalScrollOffset
+    {
+        get => TxtSqlEditor.HorizontalOffset;
+        set => TxtSqlEditor.ScrollToHorizontalOffset(value);
+    }
+
+    public void RestoreEditorPosition(int caretOffset, double verticalOffset, double horizontalOffset)
+    {
+        if (caretOffset >= 0 && TxtSqlEditor.Text != null)
+        {
+            CaretIndex = caretOffset;
+        }
+
+        if (verticalOffset > 0)
+        {
+            TxtSqlEditor.ScrollToVerticalOffset(verticalOffset);
+        }
+        if (horizontalOffset > 0)
+        {
+            TxtSqlEditor.ScrollToHorizontalOffset(horizontalOffset);
+        }
+
+        if (caretOffset > 0 || verticalOffset > 0 || horizontalOffset > 0)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                if (caretOffset >= 0 && TxtSqlEditor.Text != null) CaretIndex = caretOffset;
+                if (verticalOffset > 0) TxtSqlEditor.ScrollToVerticalOffset(verticalOffset);
+                if (horizontalOffset > 0) TxtSqlEditor.ScrollToHorizontalOffset(horizontalOffset);
+            }, Avalonia.Threading.DispatcherPriority.Loaded);
+        }
     }
 
     public QueryTabControl() : this(new SqliteDatabaseService(new ConnectionConfig()))
@@ -120,6 +161,7 @@ public partial class QueryTabControl : UserControl
         // Code completion & shortcut events on editor TextArea
         TxtSqlEditor.TextArea.TextEntered += OnTextEntered;
         TxtSqlEditor.TextArea.KeyDown += OnTextAreaKeyDown;
+        TxtSqlEditor.TextChanged += (s, e) => SqlTextChanged?.Invoke();
 
         // Initialize schema cache & custom snippets asynchronously
         _ = InitializeAsync();

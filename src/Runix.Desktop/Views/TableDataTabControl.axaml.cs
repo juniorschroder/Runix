@@ -34,6 +34,15 @@ public partial class TableDataTabControl : UserControl
     private StagedChangeset _changeset;
     private readonly IDmlGeneratorService _dmlGenerator;
 
+    public string TableName => _tableName;
+    public string? GetFilter() => TxtFilter.Text;
+    public void SetFilter(string filter)
+    {
+        TxtFilter.Text = filter;
+        _currentPage = 1;
+        LoadData();
+    }
+
     public event Action<string>? ViewStructureRequested;
 
     public TableDataTabControl() : this(new SqliteDatabaseService(new ConnectionConfig()), "")
@@ -96,14 +105,35 @@ public partial class TableDataTabControl : UserControl
         // Grid Edit Events
         GridTableRows.CellEditEnded += OnCellEditEnded;
         GridTableRows.LoadingRow += OnLoadingRow;
-        GridTableRows.DoubleTapped += (s, e) => GridTableRows.BeginEdit();
-        GridTableRows.KeyDown += (s, e) =>
+        GridTableRows.DoubleTapped += (s, e) =>
         {
-            if (e.Key is Avalonia.Input.Key.F2 or Avalonia.Input.Key.Enter)
+            if (!_databaseService.Config.IsReadOnly)
             {
                 GridTableRows.BeginEdit();
             }
         };
+        GridTableRows.KeyDown += (s, e) =>
+        {
+            if (e.Key is Avalonia.Input.Key.F2 or Avalonia.Input.Key.Enter)
+            {
+                if (!_databaseService.Config.IsReadOnly)
+                {
+                    GridTableRows.BeginEdit();
+                }
+            }
+        };
+
+        if (_databaseService.Config.IsReadOnly)
+        {
+            GridTableRows.IsReadOnly = true;
+            BtnAddRow.IsEnabled = false;
+            BtnDeleteRow.IsEnabled = false;
+            BtnImportData.IsEnabled = false;
+            ToolTip.SetTip(BtnAddRow, "Bloqueado no Modo Somente-Leitura (Read-Only Connection Lock)");
+            ToolTip.SetTip(BtnDeleteRow, "Bloqueado no Modo Somente-Leitura (Read-Only Connection Lock)");
+            ToolTip.SetTip(BtnImportData, "Bloqueado no Modo Somente-Leitura (Read-Only Connection Lock)");
+            DrawerInspector.SetEditable(false);
+        }
 
         TxtFilter.KeyDown += (s, e) =>
         {
@@ -216,6 +246,7 @@ public partial class TableDataTabControl : UserControl
 
     private void OnCellEditEnded(object? sender, DataGridCellEditEndedEventArgs e)
     {
+        if (_databaseService.Config.IsReadOnly) return;
         if (e.EditAction != DataGridEditAction.Commit) return;
         if (e.Row.DataContext is not ObservableTableRow row) return;
 
@@ -236,6 +267,7 @@ public partial class TableDataTabControl : UserControl
 
     private void OnAddRow(object? sender, RoutedEventArgs e)
     {
+        if (_databaseService.Config.IsReadOnly) return;
         var newValues = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
         foreach (var col in _columns)
         {
@@ -254,6 +286,7 @@ public partial class TableDataTabControl : UserControl
 
     private void OnDeleteRow(object? sender, RoutedEventArgs e)
     {
+        if (_databaseService.Config.IsReadOnly) return;
         if (GridTableRows.SelectedItem is not ObservableTableRow selectedRow) return;
 
         if (selectedRow.State == RowEditState.Added)
@@ -317,6 +350,13 @@ public partial class TableDataTabControl : UserControl
 
     private async void OnCommitChanges(object? sender, RoutedEventArgs e)
     {
+        if (_databaseService.Config.IsReadOnly)
+        {
+            TxtStatusBanner.Foreground = new SolidColorBrush(Color.Parse("#f87171"));
+            TxtStatusBanner.Text = "Bloqueado: A conexão está configurada como Somente Leitura.";
+            return;
+        }
+
         if (!_changeset.HasChanges) return;
 
         ProgressLoading.IsVisible = true;

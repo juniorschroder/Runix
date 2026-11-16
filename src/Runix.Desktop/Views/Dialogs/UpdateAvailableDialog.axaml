@@ -30,7 +30,8 @@
                         <TextBlock Text="{DynamicResource Update.DialogSubtitle}" FontSize="11.5" Foreground="#8b9cb3" TextWrapping="Wrap"/>
                     </StackPanel>
 
-                    <Button Name="BtnClose" Grid.Column="2" Content="✕" Classes="btn-icon" Padding="8,4" FontSize="12" VerticalAlignment="Top"/>
+                    <Button Name="BtnClose" Grid.Column="2" Content="✕" Classes="btn-icon" Padding="8,4" FontSize="12" VerticalAlignment="Top"
+                            AutomationProperties.Name="{DynamicResource A11y.CloseModal}"/>
                 </Grid>
             </Border>
 
@@ -61,7 +62,8 @@
                     <Border Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8" Padding="12,10" Height="135">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <TextBlock Name="TxtReleaseNotes" Text="" FontSize="12" Foreground="#cbd5e1"
-                                       TextWrapping="Wrap" LineHeight="18" FontFamily="Consolas,Menlo,monospace"/>
+                                       TextWrapping="Wrap" LineHeight="18" FontFamily="Consolas,Menlo,monospace"
+                                       AutomationProperties.Name="Notas de lançamento da nova versão"/>
                         </ScrollViewer>
                     </Border>
                 </StackPanel>
@@ -76,9 +78,11 @@
 
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                             <Button Name="BtnViewOnGitHub" Content="{DynamicResource Update.ViewOnGitHub}"
-                                    Classes="btn-secondary" Padding="10,6" FontSize="11.5"/>
+                                    Classes="btn-secondary" Padding="10,6" FontSize="11.5"
+                                    AutomationProperties.Name="Ver release no GitHub"/>
                             <Button Name="BtnDownloadInstaller" Content="{DynamicResource Update.DownloadInstaller}"
-                                    Classes="btn-primary" Padding="14,6" FontSize="11.5"/>
+                                    Classes="btn-primary" Padding="14,6" FontSize="11.5"
+                                    AutomationProperties.Name="Baixar instalador recomendado"/>
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -89,10 +93,12 @@
                     CornerRadius="0,0,12,12" Padding="22,12">
                 <Grid ColumnDefinitions="*,Auto">
                     <Button Name="BtnSkipVersion" Grid.Column="0" Content="{DynamicResource Update.SkipVersion}"
-                            Classes="btn-secondary" HorizontalAlignment="Left" Padding="12,6" FontSize="11.5"/>
+                            Classes="btn-secondary" HorizontalAlignment="Left" Padding="12,6" FontSize="11.5"
+                            AutomationProperties.Name="Ignorar esta versão"/>
 
                     <Button Name="BtnRemindLater" Grid.Column="1" Content="{DynamicResource Update.RemindLater}"
-                            Classes="btn-secondary" Padding="16,6" FontSize="11.5"/>
+                            Classes="btn-secondary" Padding="16,6" FontSize="11.5"
+                            AutomationProperties.Name="Lembrar mais tarde"/>
                 </Grid>
             </Border>
         </Grid>

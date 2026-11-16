@@ -184,4 +184,71 @@ public class AppStorageServiceTests : IDisposable
         conn2Queries.Should().HaveCount(1);
         conn2Queries[0].Title.Should().Be("Global Fav");
     }
+
+    [Fact]
+    public async Task WorkspaceSession_Save_Get_Update_Clear_WorksAsExpected()
+    {
+        await _storage.InitializeAsync();
+
+        var connectionKey = "sqlite:/var/data/app.db";
+
+        // 1. Initial get should return null
+        var empty = await _storage.GetWorkspaceSessionAsync(connectionKey);
+        empty.Should().BeNull();
+
+        // 2. Save session with SQL drafts, carets and scroll offsets
+        var session = new WorkspaceSessionState
+        {
+            ConnectionKey = connectionKey,
+            ActiveTabIndex = 1,
+            Tabs = new List<WorkspaceTabSession>
+            {
+                new()
+                {
+                    Title = "Query 1",
+                    TabType = WorkspaceTabType.Query,
+                    SqlText = "SELECT id, name FROM customers;\n-- Unsaved draft\nSELECT * FROM orders;",
+                    CaretOffset = 45,
+                    VerticalScrollOffset = 80.0,
+                    HorizontalScrollOffset = 0.0
+                },
+                new()
+                {
+                    Title = "customers",
+                    TabType = WorkspaceTabType.TableData,
+                    TableName = "customers",
+                    FilterText = "active = 1"
+                }
+            }
+        };
+
+        await _storage.SaveWorkspaceSessionAsync(session);
+
+        // 3. Fetch session
+        var fetched = await _storage.GetWorkspaceSessionAsync(connectionKey);
+        fetched.Should().NotBeNull();
+        fetched!.ConnectionKey.Should().Be(connectionKey);
+        fetched.ActiveTabIndex.Should().Be(1);
+        fetched.Tabs.Should().HaveCount(2);
+        fetched.Tabs[0].SqlText.Should().Contain("Unsaved draft");
+        fetched.Tabs[0].CaretOffset.Should().Be(45);
+        fetched.Tabs[0].VerticalScrollOffset.Should().Be(80.0);
+        fetched.Tabs[1].TableName.Should().Be("customers");
+        fetched.Tabs[1].FilterText.Should().Be("active = 1");
+
+        // 4. Update session (upsert on conflict)
+        session.ActiveTabIndex = 0;
+        session.Tabs[0].SqlText = "SELECT count(*) FROM customers;";
+        await _storage.SaveWorkspaceSessionAsync(session);
+
+        var updated = await _storage.GetWorkspaceSessionAsync(connectionKey);
+        updated.Should().NotBeNull();
+        updated!.ActiveTabIndex.Should().Be(0);
+        updated.Tabs[0].SqlText.Should().Be("SELECT count(*) FROM customers;");
+
+        // 5. Clear session
+        await _storage.ClearWorkspaceSessionAsync(connectionKey);
+        var cleared = await _storage.GetWorkspaceSessionAsync(connectionKey);
+        cleared.Should().BeNull();
+    }
 }

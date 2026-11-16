@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
@@ -95,6 +96,14 @@ CREATE TABLE IF NOT EXISTS query_history (
     executed_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_query_history_date ON query_history (executed_at DESC);
+
+CREATE TABLE IF NOT EXISTS workspace_sessions (
+    connection_key TEXT PRIMARY KEY,
+    active_tab_index INTEGER NOT NULL DEFAULT 0,
+    session_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_workspace_sessions_key ON workspace_sessions (connection_key);
 ";
             using var cmd = conn.CreateCommand();
             cmd.CommandText = ddl;
@@ -445,5 +454,96 @@ VALUES (@id, @connId, @sql, @elapsed, @rowCount, @success, @error, @executedAt);
         }
 
         await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    // ==========================================
+    // PERSISTÊNCIA DE SESSÃO DO WORKSPACE (v1.2.0)
+    // ==========================================
+
+    public async Task<WorkspaceSessionState?> GetWorkspaceSessionAsync(string connectionKey, CancellationToken ct = default)
+    {
+        await EnsureInitializedAsync(ct);
+        await _lock.WaitAsync(ct);
+        try
+        {
+            using var conn = new SqliteConnection(_connectionString);
+            await conn.OpenAsync(ct);
+
+            var sql = "SELECT session_json FROM workspace_sessions WHERE connection_key = @key;";
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
+            cmd.Parameters.AddWithValue("@key", connectionKey);
+
+            var json = (string?)await cmd.ExecuteScalarAsync(ct);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return null;
+            }
+
+            return JsonSerializer.Deserialize<WorkspaceSessionState>(json);
+        }
+        catch
+        {
+            return null;
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    public async Task SaveWorkspaceSessionAsync(WorkspaceSessionState session, CancellationToken ct = default)
+    {
+        await EnsureInitializedAsync(ct);
+        await _lock.WaitAsync(ct);
+        try
+        {
+            using var conn = new SqliteConnection(_connectionString);
+            await conn.OpenAsync(ct);
+
+            var json = JsonSerializer.Serialize(session);
+            var sql = @"
+INSERT INTO workspace_sessions (connection_key, active_tab_index, session_json, updated_at)
+VALUES (@key, @tab_idx, @json, @updated_at)
+ON CONFLICT(connection_key) DO UPDATE SET
+    active_tab_index = excluded.active_tab_index,
+    session_json = excluded.session_json,
+    updated_at = excluded.updated_at;
+";
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
+            cmd.Parameters.AddWithValue("@key", session.ConnectionKey);
+            cmd.Parameters.AddWithValue("@tab_idx", session.ActiveTabIndex);
+            cmd.Parameters.AddWithValue("@json", json);
+            cmd.Parameters.AddWithValue("@updated_at", DateTime.UtcNow.ToString("O"));
+
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    public async Task ClearWorkspaceSessionAsync(string connectionKey, CancellationToken ct = default)
+    {
+        await EnsureInitializedAsync(ct);
+        await _lock.WaitAsync(ct);
+        try
+        {
+            using var conn = new SqliteConnection(_connectionString);
+            await conn.OpenAsync(ct);
+
+            var sql = "DELETE FROM workspace_sessions WHERE connection_key = @key;";
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
+            cmd.Parameters.AddWithValue("@key", connectionKey);
+
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+        finally
+        {
+            _lock.Release();
+        }
     }
 }

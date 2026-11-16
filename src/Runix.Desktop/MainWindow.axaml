@@ -5,7 +5,7 @@
         mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="820"
         x:Class="Runix.Desktop.MainWindow"
         Icon="avares://Runix.Desktop/Assets/runix.ico"
-        Title="RUNIX v1.1.0 - Modern Cross-Platform Database Studio"
+        Title="RUNIX v1.2.0 - Modern Cross-Platform Database Studio"
         Width="1200" Height="800"
         MinWidth="800" MinHeight="600"
         WindowStartupLocation="CenterScreen"
@@ -15,6 +15,9 @@
 
     <Border Name="WindowOuterFrame" BorderBrush="#1e2d42" BorderThickness="0">
     <Grid RowDefinitions="Auto,*">
+        <!-- Safety Alert Top Border Line (Red for Prod, Amber for Read-Only) -->
+        <Border Name="BorderTopSafetyLine" Grid.Row="0" Height="3" Background="#ef4444" IsVisible="False" VerticalAlignment="Top" ZIndex="1000"/>
+
         <!-- CUSTOM TITLE BAR -->
         <Border Name="CustomTitleBar" Grid.Row="0" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Height="36">
             <Grid ColumnDefinitions="Auto,*,Auto">
@@ -26,9 +29,10 @@
 
                     <!-- Version & About Quick Trigger Badge -->
                     <Button Name="BtnTitleBarAbout" Classes="btn-accent-subtle" Padding="7,2" Margin="4,0,0,0"
-                            VerticalAlignment="Center" ToolTip.Tip="{DynamicResource About.Title}">
+                            VerticalAlignment="Center" ToolTip.Tip="{DynamicResource About.Title}"
+                            AutomationProperties.Name="{DynamicResource A11y.AboutApp}">
                         <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                            <TextBlock Text="v1.1.0" FontSize="10" FontWeight="Bold" Foreground="#38bdf8" VerticalAlignment="Center"/>
+                            <TextBlock Text="v1.2.0" FontSize="10" FontWeight="Bold" Foreground="#38bdf8" VerticalAlignment="Center"/>
                             <TextBlock Text="ℹ" FontSize="10" Foreground="#7dd3fc" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
@@ -36,7 +40,8 @@
                     <!-- Non-Intrusive Auto-Update Notification Badge -->
                     <Button Name="BtnTitleBarUpdate" Background="#064e3b" BorderBrush="#34d399" BorderThickness="1"
                             CornerRadius="4" Padding="8,2" Margin="4,0,0,0" VerticalAlignment="Center"
-                            IsVisible="False" ToolTip.Tip="{DynamicResource Update.BadgeTooltip}">
+                            IsVisible="False" ToolTip.Tip="{DynamicResource Update.BadgeTooltip}"
+                            AutomationProperties.Name="{DynamicResource A11y.UpdateBadge}">
                         <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                             <TextBlock Name="TxtUpdateBadgeText" Text="⬆ v1.1.0" FontSize="10" FontWeight="Bold"
                                        Foreground="#34d399" VerticalAlignment="Center"/>
@@ -51,6 +56,28 @@
                             <TextBlock Name="TxtActiveDbName" Text="demo.db" FontSize="11" FontWeight="SemiBold" Foreground="#38bdf8" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Border>
+
+                    <!-- Production Environment Alert Badge (v1.2.0) -->
+                    <Border Name="BadgeProductionAlert" Background="#450a0a" BorderBrush="#ef4444" BorderThickness="1.5"
+                            CornerRadius="4" Padding="7,2" Margin="4,0,0,0" VerticalAlignment="Center" IsVisible="False"
+                            ToolTip.Tip="ALERTA: Banco de dados em Produção. DROP, TRUNCATE e UPDATE/DELETE sem WHERE estão bloqueados."
+                            AutomationProperties.Name="Alerta de Ambiente de Produção">
+                        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                            <TextBlock Text="🚨" FontSize="10" VerticalAlignment="Center"/>
+                            <TextBlock Text="PRODUÇÃO" FontSize="9.5" FontWeight="Bold" Foreground="#fca5a5" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Read-Only Connection Lock Badge (v1.2.0) -->
+                    <Border Name="BadgeReadOnlyAlert" Background="#1e1b4b" BorderBrush="#818cf8" BorderThickness="1.5"
+                            CornerRadius="4" Padding="7,2" Margin="4,0,0,0" VerticalAlignment="Center" IsVisible="False"
+                            ToolTip.Tip="MODO SOMENTE-LEITURA: Qualquer comando de alteração ou exclusão de dados está bloqueado nesta conexão."
+                            AutomationProperties.Name="Modo Somente Leitura Ativo">
+                        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                            <TextBlock Text="🔒" FontSize="10" VerticalAlignment="Center"/>
+                            <TextBlock Text="SOMENTE LEITURA" FontSize="9.5" FontWeight="Bold" Foreground="#c7d2fe" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
                 <!-- Center Drag Region -->
@@ -58,9 +85,12 @@
 
                 <!-- Right Window Control Buttons (Windows & Linux) -->
                 <StackPanel Name="PanelWindowControls" Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Stretch">
-                    <Button Name="BtnMinimize" Content="🗕" Classes="titlebar-btn"/>
-                    <Button Name="BtnMaximize" Content="🗖" Classes="titlebar-btn"/>
-                    <Button Name="BtnCloseWindow" Content="✕" Classes="titlebar-btn titlebar-close"/>
+                    <Button Name="BtnMinimize" Content="🗕" Classes="titlebar-btn"
+                            AutomationProperties.Name="{DynamicResource A11y.MinimizeWindow}"/>
+                    <Button Name="BtnMaximize" Content="🗖" Classes="titlebar-btn"
+                            AutomationProperties.Name="{DynamicResource A11y.MaximizeWindow}"/>
+                    <Button Name="BtnCloseWindow" Content="✕" Classes="titlebar-btn titlebar-close"
+                            AutomationProperties.Name="{DynamicResource A11y.CloseWindow}"/>
                 </StackPanel>
             </Grid>
         </Border>

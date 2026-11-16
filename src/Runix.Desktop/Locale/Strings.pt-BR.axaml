@@ -247,4 +247,67 @@
     <sys:String x:Key="Update.SkipVersion">Ignorar esta versão</sys:String>
     <sys:String x:Key="Update.RemindLater">Lembrar Depois</sys:String>
 
+    <!-- Accessibility & Screen Reader (A11y) -->
+    <sys:String x:Key="A11y.MinimizeWindow">Minimizar janela</sys:String>
+    <sys:String x:Key="A11y.MaximizeWindow">Maximizar ou restaurar janela</sys:String>
+    <sys:String x:Key="A11y.CloseWindow">Fechar janela</sys:String>
+    <sys:String x:Key="A11y.UpdateBadge">Notificação de atualização disponível</sys:String>
+    <sys:String x:Key="A11y.AboutApp">Sobre o aplicativo RUNIX</sys:String>
+    <sys:String x:Key="A11y.LanguageSwitch">Alternar idioma da interface</sys:String>
+    <sys:String x:Key="A11y.SearchConnections">Filtrar lista de conexões</sys:String>
+    <sys:String x:Key="A11y.SavedConnectionsList">Lista de conexões salvas</sys:String>
+    <sys:String x:Key="A11y.NewConnection">Criar nova conexão</sys:String>
+    <sys:String x:Key="A11y.NewCategory">Criar nova pasta de conexões</sys:String>
+    <sys:String x:Key="A11y.ConnectionName">Nome da conexão</sys:String>
+    <sys:String x:Key="A11y.ConnectionCategory">Categoria da conexão</sys:String>
+    <sys:String x:Key="A11y.DatabaseType">Seletor de tipo de banco de dados</sys:String>
+    <sys:String x:Key="A11y.SqliteFilePath">Caminho do arquivo de banco SQLite</sys:String>
+    <sys:String x:Key="A11y.BrowseSqliteFile">Procurar arquivo de banco SQLite no computador</sys:String>
+    <sys:String x:Key="A11y.Host">Servidor ou endereço de host</sys:String>
+    <sys:String x:Key="A11y.Port">Número da porta de conexão</sys:String>
+    <sys:String x:Key="A11y.DatabaseName">Nome do banco de dados</sys:String>
+    <sys:String x:Key="A11y.Username">Nome de usuário de autenticação</sys:String>
+    <sys:String x:Key="A11y.Password">Senha de autenticação</sys:String>
+    <sys:String x:Key="A11y.SslMode">Modo de criptografia SSL</sys:String>
+    <sys:String x:Key="A11y.TestConnection">Testar conectividade com o banco de dados</sys:String>
+    <sys:String x:Key="A11y.Connect">Conectar e abrir workspace</sys:String>
+    <sys:String x:Key="A11y.SaveConnection">Salvar perfil de conexão</sys:String>
+    <sys:String x:Key="A11y.DeleteConnection">Excluir perfil de conexão selecionado</sys:String>
+    <sys:String x:Key="A11y.SshTunnelToggle">Habilitar túnel SSH seguro</sys:String>
+    <sys:String x:Key="A11y.SshHost">Endereço do servidor SSH</sys:String>
+    <sys:String x:Key="A11y.SshPort">Porta do servidor SSH</sys:String>
+    <sys:String x:Key="A11y.SshUsername">Usuário SSH</sys:String>
+    <sys:String x:Key="A11y.SshPassword">Senha do SSH</sys:String>
+    <sys:String x:Key="A11y.SshKeyFile">Caminho da chave privada SSH</sys:String>
+    <sys:String x:Key="A11y.BrowseSshKey">Procurar arquivo de chave SSH</sys:String>
+    <sys:String x:Key="A11y.Disconnect">Desconectar da sessão atual</sys:String>
+    <sys:String x:Key="A11y.NewQueryTab">Abrir nova aba de consulta SQL</sys:String>
+    <sys:String x:Key="A11y.FilterTables">Filtrar tabelas e exibições na árvore de objetos</sys:String>
+    <sys:String x:Key="A11y.ObjectTree">Árvore de objetos e tabelas do banco de dados</sys:String>
+    <sys:String x:Key="A11y.WorkspaceTabs">Abas abertas de consultas e tabelas</sys:String>
+    <sys:String x:Key="A11y.SqlEditor">Editor de código SQL</sys:String>
+    <sys:String x:Key="A11y.ExecuteSql">Executar consulta SQL</sys:String>
+    <sys:String x:Key="A11y.CancelSql">Cancelar execução da consulta atual</sys:String>
+    <sys:String x:Key="A11y.FormatSql">Formatar e indentar código SQL</sys:String>
+    <sys:String x:Key="A11y.ExplainSql">Exibir plano de execução da consulta</sys:String>
+    <sys:String x:Key="A11y.SaveFavoriteSql">Salvar consulta atual nos favoritos</sys:String>
+    <sys:String x:Key="A11y.ExportResults">Exportar resultados da consulta</sys:String>
+    <sys:String x:Key="A11y.QueryResultsGrid">Tabela de resultados da consulta SQL</sys:String>
+    <sys:String x:Key="A11y.FilterTableData">Filtrar dados da tabela</sys:String>
+    <sys:String x:Key="A11y.PrevPage">Ir para a página anterior</sys:String>
+    <sys:String x:Key="A11y.NextPage">Ir para a próxima página</sys:String>
+    <sys:String x:Key="A11y.PageSize">Quantidade de registros por página</sys:String>
+    <sys:String x:Key="A11y.AddRow">Adicionar nova linha à tabela</sys:String>
+    <sys:String x:Key="A11y.DeleteRow">Excluir linha selecionada da tabela</sys:String>
+    <sys:String x:Key="A11y.SaveStagedChanges">Salvar alterações pendentes no banco</sys:String>
+    <sys:String x:Key="A11y.DiscardStagedChanges">Descartar alterações pendentes</sys:String>
+    <sys:String x:Key="A11y.RefreshData">Atualizar dados da tabela</sys:String>
+    <sys:String x:Key="A11y.CloseTab">Fechar esta aba</sys:String>
+    <sys:String x:Key="A11y.CloseModal">Fechar esta janela modal</sys:String>
+    <sys:String x:Key="A11y.CommandPaletteSearch">Campo de busca da paleta de comandos</sys:String>
+    <sys:String x:Key="A11y.ErdCanvas">Diagrama Entidade-Relacionamento visual de tabelas</sys:String>
+    <sys:String x:Key="A11y.ChartCanvas">Gráfico visual estatístico dos dados da consulta</sys:String>
+    <sys:String x:Key="A11y.ExplainCanvas">Visualização em árvore do plano de execução da query</sys:String>
+
+
 </ResourceDictionary>

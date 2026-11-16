@@ -438,6 +438,9 @@ public partial class ConnectionView : UserControl
         TxtSshKeyPath.Text = cfg.SshPrivateKeyPath;
         TxtSshKeyPassphrase.Text = cfg.SshPrivateKeyPassphrase;
 
+        ChkReadOnly.IsChecked = cfg.IsReadOnly;
+        ChkProduction.IsChecked = cfg.IsProduction;
+
         BtnDeleteConnection.IsVisible = true;
         HideStatus();
     }
@@ -471,6 +474,12 @@ public partial class ConnectionView : UserControl
         TxtSshPassword.Text = "";
         TxtSshKeyPath.Text = "";
         TxtSshKeyPassphrase.Text = "";
+
+        ChkReadOnly.IsChecked = false;
+        ChkProduction.IsChecked = !string.IsNullOrWhiteSpace(initialCategory) && (
+            initialCategory.Contains("prod", StringComparison.OrdinalIgnoreCase) ||
+            initialCategory.Contains("produção", StringComparison.OrdinalIgnoreCase) ||
+            initialCategory.Contains("production", StringComparison.OrdinalIgnoreCase));
 
         SwitchEngine(DatabaseType.SQLite);
         BtnDeleteConnection.IsVisible = false;
@@ -509,6 +518,9 @@ public partial class ConnectionView : UserControl
             _currentConfig.SshPrivateKeyPath = TxtSshKeyPath.Text?.Trim() ?? "";
             _currentConfig.SshPrivateKeyPassphrase = TxtSshKeyPassphrase.Text ?? "";
         }
+
+        _currentConfig.IsReadOnly = ChkReadOnly.IsChecked == true;
+        _currentConfig.IsProduction = ChkProduction.IsChecked == true;
     }
 
     private async void OnBrowseSshKey(object? sender, RoutedEventArgs e)

@@ -31,7 +31,8 @@
                     </StackPanel>
 
                     <!-- Close Button -->
-                    <Button Name="BtnClose" Grid.Column="2" Content="✕" Classes="btn-icon" Padding="8,4" FontSize="12" VerticalAlignment="Top"/>
+                    <Button Name="BtnClose" Grid.Column="2" Content="✕" Classes="btn-icon" Padding="8,4" FontSize="12" VerticalAlignment="Top"
+                            AutomationProperties.Name="{DynamicResource A11y.CloseModal}"/>
                 </Grid>
             </Border>
 
@@ -44,6 +45,7 @@
                 <!-- Creator Card (Clickable -> LinkedIn) -->
                 <Button Name="BtnCreatorLinkedIn" Classes="btn-secondary" HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Stretch" Padding="14,11" CornerRadius="8"
+                        AutomationProperties.Name="Abrir perfil do criador no LinkedIn"
                         ToolTip.Tip="https://www.linkedin.com/in/juniorschroder/">
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <Border Grid.Column="0" Width="38" Height="38" CornerRadius="19" Background="#0c2338"
@@ -67,6 +69,7 @@
                 <!-- Official GitHub Repository Card (Clickable -> GitHub) -->
                 <Button Name="BtnGitHubRepo" Classes="btn-secondary" HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Stretch" Padding="14,11" CornerRadius="8"
+                        AutomationProperties.Name="Abrir repositório oficial do RUNIX no GitHub"
                         ToolTip.Tip="https://github.com/juniorschroder/Runix">
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <Border Grid.Column="0" Width="38" Height="38" CornerRadius="19" Background="#090d14"
@@ -114,16 +117,20 @@
                     CornerRadius="0,0,12,12" Padding="22,12">
                 <Grid ColumnDefinitions="*,Auto,Auto,Auto">
                     <TextBlock Name="TxtCopyFeedback" Grid.Column="0" Text="© 2026 José Carlos Schröder Júnior"
-                               FontSize="11.5" Foreground="#8b9cb3" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/>
+                               FontSize="11.5" Foreground="#8b9cb3" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"
+                               AutomationProperties.LiveSetting="Polite"/>
 
                     <Button Name="BtnCheckUpdates" Grid.Column="1" Content="{DynamicResource Update.CheckButton}"
-                            Classes="btn-secondary" Padding="10,6" FontSize="11.5" Margin="0,0,8,0"/>
+                            Classes="btn-secondary" Padding="10,6" FontSize="11.5" Margin="0,0,8,0"
+                            AutomationProperties.Name="Verificar atualizações do RUNIX"/>
 
                     <Button Name="BtnCopySystemInfo" Grid.Column="2" Content="{DynamicResource About.CopyInfo}"
-                            Classes="btn-secondary" Padding="10,6" FontSize="11.5" Margin="0,0,8,0"/>
+                            Classes="btn-secondary" Padding="10,6" FontSize="11.5" Margin="0,0,8,0"
+                            AutomationProperties.Name="Copiar informações do sistema para a área de transferência"/>
 
                     <Button Name="BtnOk" Grid.Column="3" Content="{DynamicResource Common.Close}"
-                            Classes="btn-primary" Padding="18,6" FontSize="11.5"/>
+                            Classes="btn-primary" Padding="18,6" FontSize="11.5"
+                            AutomationProperties.Name="{DynamicResource Common.Close}"/>
                 </Grid>
             </Border>
         </Grid>

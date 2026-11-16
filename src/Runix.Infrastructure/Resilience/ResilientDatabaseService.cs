@@ -17,6 +17,7 @@ public class ResilientDatabaseService : IDatabaseService
     private readonly RetryPolicy _retryPolicy;
     private readonly CircuitBreakerPolicy _circuitBreakerPolicy;
     private readonly PolicyWrap _idempotentPipeline;
+    private readonly ISqlSafetyService _safetyService = new Runix.Core.Services.SqlSafetyService();
 
     public ConnectionConfig Config => _inner.Config;
     public bool IsConnected => _inner.IsConnected;
@@ -156,6 +157,18 @@ public class ResilientDatabaseService : IDatabaseService
 
     public async Task<QueryResult> ExecuteQueryAsync(string sql, int limit = 50000)
     {
+        // Safety & Read-Only / Production Validation Safeguard
+        var safety = _safetyService.ValidateQuery(sql, Config);
+        if (!safety.IsAllowed)
+        {
+            var errMessage = $"{safety.Reason}";
+            if (!string.IsNullOrWhiteSpace(safety.OffendingStatement))
+            {
+                errMessage += $"\n[Comando]: {safety.OffendingStatement}";
+            }
+            return QueryResult.CreateError(errMessage);
+        }
+
         try
         {
             if (IsIdempotentQuery(sql))
@@ -184,6 +197,12 @@ public class ResilientDatabaseService : IDatabaseService
         IReadOnlyList<ParameterizedCommand> commands,
         CancellationToken cancellationToken = default)
     {
+        if (Config.IsReadOnly)
+        {
+            return QueryResult.CreateError(
+                "🔒 Conexão bloqueada em Modo Somente-Leitura (Read-Only Connection Lock). Modificações de dados em lote estão desabilitadas.");
+        }
+
         try
         {
             return await _circuitBreakerPolicy.ExecuteAsync(

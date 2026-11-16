@@ -247,4 +247,67 @@
     <sys:String x:Key="Update.SkipVersion">Skip this version</sys:String>
     <sys:String x:Key="Update.RemindLater">Remind Me Later</sys:String>
 
+    <!-- Accessibility & Screen Reader (A11y) -->
+    <sys:String x:Key="A11y.MinimizeWindow">Minimize window</sys:String>
+    <sys:String x:Key="A11y.MaximizeWindow">Maximize or restore window</sys:String>
+    <sys:String x:Key="A11y.CloseWindow">Close window</sys:String>
+    <sys:String x:Key="A11y.UpdateBadge">Update notification available</sys:String>
+    <sys:String x:Key="A11y.AboutApp">About RUNIX application</sys:String>
+    <sys:String x:Key="A11y.LanguageSwitch">Toggle interface language</sys:String>
+    <sys:String x:Key="A11y.SearchConnections">Filter connections list</sys:String>
+    <sys:String x:Key="A11y.SavedConnectionsList">Saved connections list</sys:String>
+    <sys:String x:Key="A11y.NewConnection">Create new connection</sys:String>
+    <sys:String x:Key="A11y.NewCategory">Create new connection category</sys:String>
+    <sys:String x:Key="A11y.ConnectionName">Connection name</sys:String>
+    <sys:String x:Key="A11y.ConnectionCategory">Connection category</sys:String>
+    <sys:String x:Key="A11y.DatabaseType">Database type selector</sys:String>
+    <sys:String x:Key="A11y.SqliteFilePath">SQLite database file path</sys:String>
+    <sys:String x:Key="A11y.BrowseSqliteFile">Browse SQLite database file on computer</sys:String>
+    <sys:String x:Key="A11y.Host">Server host address</sys:String>
+    <sys:String x:Key="A11y.Port">Connection port number</sys:String>
+    <sys:String x:Key="A11y.DatabaseName">Database name</sys:String>
+    <sys:String x:Key="A11y.Username">Authentication username</sys:String>
+    <sys:String x:Key="A11y.Password">Authentication password</sys:String>
+    <sys:String x:Key="A11y.SslMode">SSL encryption mode</sys:String>
+    <sys:String x:Key="A11y.TestConnection">Test database connectivity</sys:String>
+    <sys:String x:Key="A11y.Connect">Connect and open workspace</sys:String>
+    <sys:String x:Key="A11y.SaveConnection">Save connection profile</sys:String>
+    <sys:String x:Key="A11y.DeleteConnection">Delete selected connection profile</sys:String>
+    <sys:String x:Key="A11y.SshTunnelToggle">Enable secure SSH tunnel</sys:String>
+    <sys:String x:Key="A11y.SshHost">SSH server host</sys:String>
+    <sys:String x:Key="A11y.SshPort">SSH server port</sys:String>
+    <sys:String x:Key="A11y.SshUsername">SSH username</sys:String>
+    <sys:String x:Key="A11y.SshPassword">SSH password</sys:String>
+    <sys:String x:Key="A11y.SshKeyFile">SSH private key path</sys:String>
+    <sys:String x:Key="A11y.BrowseSshKey">Browse SSH key file</sys:String>
+    <sys:String x:Key="A11y.Disconnect">Disconnect current session</sys:String>
+    <sys:String x:Key="A11y.NewQueryTab">Open new SQL query tab</sys:String>
+    <sys:String x:Key="A11y.FilterTables">Filter tables and views in object tree</sys:String>
+    <sys:String x:Key="A11y.ObjectTree">Database objects and tables tree</sys:String>
+    <sys:String x:Key="A11y.WorkspaceTabs">Open query and table tabs</sys:String>
+    <sys:String x:Key="A11y.SqlEditor">SQL code editor</sys:String>
+    <sys:String x:Key="A11y.ExecuteSql">Execute SQL query</sys:String>
+    <sys:String x:Key="A11y.CancelSql">Cancel current SQL query execution</sys:String>
+    <sys:String x:Key="A11y.FormatSql">Format and indent SQL code</sys:String>
+    <sys:String x:Key="A11y.ExplainSql">Show query execution plan</sys:String>
+    <sys:String x:Key="A11y.SaveFavoriteSql">Save current query to favorites</sys:String>
+    <sys:String x:Key="A11y.ExportResults">Export query results</sys:String>
+    <sys:String x:Key="A11y.QueryResultsGrid">SQL query results table</sys:String>
+    <sys:String x:Key="A11y.FilterTableData">Filter table data</sys:String>
+    <sys:String x:Key="A11y.PrevPage">Go to previous page</sys:String>
+    <sys:String x:Key="A11y.NextPage">Go to next page</sys:String>
+    <sys:String x:Key="A11y.PageSize">Records per page</sys:String>
+    <sys:String x:Key="A11y.AddRow">Add new row to table</sys:String>
+    <sys:String x:Key="A11y.DeleteRow">Delete selected row from table</sys:String>
+    <sys:String x:Key="A11y.SaveStagedChanges">Save pending changes to database</sys:String>
+    <sys:String x:Key="A11y.DiscardStagedChanges">Discard pending changes</sys:String>
+    <sys:String x:Key="A11y.RefreshData">Refresh table data</sys:String>
+    <sys:String x:Key="A11y.CloseTab">Close this tab</sys:String>
+    <sys:String x:Key="A11y.CloseModal">Close this modal window</sys:String>
+    <sys:String x:Key="A11y.CommandPaletteSearch">Command palette search field</sys:String>
+    <sys:String x:Key="A11y.ErdCanvas">Visual Entity-Relationship Diagram of tables</sys:String>
+    <sys:String x:Key="A11y.ChartCanvas">Visual statistical chart of query data</sys:String>
+    <sys:String x:Key="A11y.ExplainCanvas">Tree visualization of query execution plan</sys:String>
+
+
 </ResourceDictionary>

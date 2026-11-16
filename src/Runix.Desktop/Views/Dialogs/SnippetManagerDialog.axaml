@@ -20,7 +20,8 @@
                     <TextBlock Text="Crie e gerencie atalhos personalizados que expandem no autocompletar do editor." 
                                FontSize="11" Foreground="#8b9cb3"/>
                 </StackPanel>
-                <Button Name="BtnClose" Grid.Column="1" Content="✕" Classes="btn-icon" FontSize="12" VerticalAlignment="Top"/>
+                <Button Name="BtnClose" Grid.Column="1" Content="✕" Classes="btn-icon" FontSize="12" VerticalAlignment="Top"
+                        AutomationProperties.Name="{DynamicResource A11y.CloseModal}"/>
             </Grid>
 
             <!-- Main Content: Left (Snippets List) | Right (Snippet Editor) -->
@@ -29,14 +30,17 @@
                 <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*">
                     <TextBox Name="TxtFilter" Grid.Row="0" Margin="0,0,0,8" 
                              Background="#0e141f" Foreground="#f0f6fc" BorderBrush="#1e2d42" CornerRadius="5"
-                             Watermark="🔍 Buscar snippets..." Padding="8,6" FontSize="11"/>
+                             Watermark="🔍 Buscar snippets..." Padding="8,6" FontSize="11"
+                             AutomationProperties.Name="Buscar snippets"/>
 
                     <Button Name="BtnNewSnippet" Grid.Row="1" Content="+ Novo Snippet" 
-                            Classes="btn-accent-subtle" HorizontalAlignment="Stretch" 
-                            HorizontalContentAlignment="Center" Margin="0,0,0,8" Padding="6,7"/>
+                             Classes="btn-accent-subtle" HorizontalAlignment="Stretch" 
+                             HorizontalContentAlignment="Center" Margin="0,0,0,8" Padding="6,7"
+                             AutomationProperties.Name="Criar novo snippet"/>
 
                     <Border Grid.Row="2" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="6">
-                        <ListBox Name="ListSnippets" Background="Transparent" BorderThickness="0" Padding="4">
+                        <ListBox Name="ListSnippets" Background="Transparent" BorderThickness="0" Padding="4"
+                                 AutomationProperties.Name="Lista de snippets personalizados">
                             <ListBox.ItemTemplate>
                                 <DataTemplate DataType="models:CustomSnippet">
                                     <Border Padding="8,6" CornerRadius="4" Margin="0,2">
@@ -68,12 +72,14 @@
                         <StackPanel Grid.Column="0" Spacing="4">
                             <TextBlock Text="Prefixo de Atalho" FontSize="11" FontWeight="SemiBold" Foreground="#8b9cb3"/>
                             <TextBox Name="TxtPrefix" Background="#0e141f" Foreground="#38bdf8" FontWeight="Bold"
-                                     BorderBrush="#1e2d42" CornerRadius="5" Padding="8,6" Watermark="Ex: myjoin"/>
+                                     BorderBrush="#1e2d42" CornerRadius="5" Padding="8,6" Watermark="Ex: myjoin"
+                                     AutomationProperties.Name="Prefixo de atalho do snippet"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2" Spacing="4">
                             <TextBlock Text="Título do Snippet" FontSize="11" FontWeight="SemiBold" Foreground="#8b9cb3"/>
                             <TextBox Name="TxtTitle" Background="#0e141f" Foreground="#f0f6fc" 
-                                     BorderBrush="#1e2d42" CornerRadius="5" Padding="8,6" Watermark="Ex: Inner Join com Filtro"/>
+                                     BorderBrush="#1e2d42" CornerRadius="5" Padding="8,6" Watermark="Ex: Inner Join com Filtro"
+                                     AutomationProperties.Name="Título do snippet"/>
                         </StackPanel>
                     </Grid>
 
@@ -81,7 +87,8 @@
                     <StackPanel Grid.Row="1" Spacing="4" Margin="0,0,0,10">
                         <TextBlock Text="Descrição" FontSize="11" FontWeight="SemiBold" Foreground="#8b9cb3"/>
                         <TextBox Name="TxtDescription" Background="#0e141f" Foreground="#f0f6fc" 
-                                 BorderBrush="#1e2d42" CornerRadius="5" Padding="8,6" Watermark="Ex: Insere cláusula JOIN com alias e condição"/>
+                                 BorderBrush="#1e2d42" CornerRadius="5" Padding="8,6" Watermark="Ex: Insere cláusula JOIN com alias e condição"
+                                 AutomationProperties.Name="Descrição do snippet"/>
                     </StackPanel>
 
                     <!-- Code Body Label -->
@@ -98,19 +105,23 @@
                                                  WordWrap="False"
                                                  HorizontalScrollBarVisibility="Auto"
                                                  VerticalScrollBarVisibility="Auto"
+                                                 AutomationProperties.Name="Corpo do snippet com código SQL"
                                                  Padding="8"/>
                     </Border>
 
                     <!-- Validation Message -->
                     <Border Name="PanelValidation" Grid.Row="4" Background="#2c1517" BorderBrush="#f87171" BorderThickness="1" 
                             CornerRadius="5" Padding="10,6" Margin="0,0,0,10" IsVisible="False">
-                        <TextBlock Name="TxtValidationMessage" Foreground="#fca5a5" FontSize="11" TextWrapping="Wrap"/>
+                        <TextBlock Name="TxtValidationMessage" Foreground="#fca5a5" FontSize="11" TextWrapping="Wrap"
+                                   AutomationProperties.LiveSetting="Assertive"/>
                     </Border>
 
                     <!-- Form Buttons -->
                     <Grid Grid.Row="5" ColumnDefinitions="Auto,*,Auto">
-                        <Button Name="BtnDeleteSnippet" Grid.Column="0" Content="🗑 Excluir" Classes="btn-danger" Padding="12,6" IsVisible="False"/>
-                        <Button Name="BtnSaveSnippet" Grid.Column="2" Content="💾 Salvar Snippet" Classes="btn-primary" Padding="16,6"/>
+                        <Button Name="BtnDeleteSnippet" Grid.Column="0" Content="🗑 Excluir" Classes="btn-danger" Padding="12,6" IsVisible="False"
+                                AutomationProperties.Name="Excluir snippet"/>
+                        <Button Name="BtnSaveSnippet" Grid.Column="2" Content="💾 Salvar Snippet" Classes="btn-primary" Padding="16,6"
+                                AutomationProperties.Name="Salvar snippet"/>
                     </Grid>
                 </Grid>
             </Grid>
@@ -119,7 +130,8 @@
             <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
                 <TextBlock Text="Dica: Digite o prefixo no editor SQL e selecione o snippet com Tab ou Enter." 
                            FontSize="11" Foreground="#64748b" VerticalAlignment="Center"/>
-                <Button Name="BtnDone" Grid.Column="1" Content="Fechar" Classes="btn-secondary" Padding="18,7"/>
+                <Button Name="BtnDone" Grid.Column="1" Content="Fechar" Classes="btn-secondary" Padding="18,7"
+                        AutomationProperties.Name="{DynamicResource Common.Close}"/>
             </Grid>
         </Grid>
     </Border>
