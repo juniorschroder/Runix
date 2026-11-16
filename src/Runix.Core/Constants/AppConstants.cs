@@ -3,7 +3,7 @@ namespace Runix.Core.Constants;
 public static class AppConstants
 {
     public const string AppName = "RUNIX Database Studio";
-    public const string AppVersion = "1.0.0";
+    public const string AppVersion = "1.1.0";
     public const string AppAuthor = "José Carlos Schröder Júnior";
     public const string AppCopyright = "© 2026 José Carlos Schröder Júnior";
     public const string AppLicense = "GPL-3.0 License";

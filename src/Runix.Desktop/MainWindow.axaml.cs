@@ -5,11 +5,13 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Threading;
 using Runix.Core.Constants;
 using Runix.Core.Interfaces;
 using Runix.Core.Models;
 using Runix.Infrastructure.Data;
 using Runix.Infrastructure.Resilience;
+using Runix.Infrastructure.Services;
 using Runix.Desktop.Views;
 using Runix.Desktop.Views.Dialogs;
 
@@ -21,6 +23,7 @@ public partial class MainWindow : Window
     private WorkspaceView? _workspaceView;
     private IDatabaseService? _currentService;
     private WindowEdge? _activeResizeEdge;
+    private UpdateCheckResult? _latestUpdateResult;
 
     public WorkspaceView? CurrentWorkspaceView => _workspaceView;
 
@@ -47,14 +50,63 @@ public partial class MainWindow : Window
                 CloseAboutDialog();
             }
         });
+
+        _ = CheckForUpdatesInBackgroundAsync();
     }
 
     public void OpenAboutDialog()
     {
         var about = new AboutDialog();
         about.CloseRequested += CloseAboutDialog;
+        about.UpdateAvailableRequested += OpenUpdateDialog;
         GlobalModalContainer.Content = about;
         OverlayGlobalModal.IsVisible = true;
+    }
+
+    public void OpenUpdateDialog(UpdateCheckResult updateResult)
+    {
+        _latestUpdateResult = updateResult;
+        var updateDialog = new UpdateAvailableDialog(updateResult);
+        updateDialog.CloseRequested += CloseAboutDialog;
+        updateDialog.VersionSkipped += _ => BtnTitleBarUpdate.IsVisible = false;
+        GlobalModalContainer.Content = updateDialog;
+        OverlayGlobalModal.IsVisible = true;
+    }
+
+    public async System.Threading.Tasks.Task CheckForUpdatesManualAsync()
+    {
+        var result = await GitHubUpdateCheckerService.Instance.CheckForUpdatesAsync(ignoreSkippedVersion: true);
+        if (result.CheckSucceeded && result.IsUpdateAvailable)
+        {
+            _latestUpdateResult = result;
+            TxtUpdateBadgeText.Text = $"⬆ {result.TagName}";
+            BtnTitleBarUpdate.IsVisible = true;
+            OpenUpdateDialog(result);
+            return;
+        }
+
+        OpenAboutDialog();
+    }
+
+    private async System.Threading.Tasks.Task CheckForUpdatesInBackgroundAsync()
+    {
+        try
+        {
+            var result = await GitHubUpdateCheckerService.Instance.CheckForUpdatesAsync(ignoreSkippedVersion: false);
+            if (result.CheckSucceeded && result.IsUpdateAvailable)
+            {
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    _latestUpdateResult = result;
+                    TxtUpdateBadgeText.Text = $"⬆ {result.TagName}";
+                    BtnTitleBarUpdate.IsVisible = true;
+                });
+            }
+        }
+        catch
+        {
+            // Silent failure on startup check
+        }
     }
 
     public void CloseAboutDialog()
@@ -66,6 +118,13 @@ public partial class MainWindow : Window
     private void SetupCustomTitleBar()
     {
         BtnTitleBarAbout.Click += (s, e) => OpenAboutDialog();
+        BtnTitleBarUpdate.Click += (s, e) =>
+        {
+            if (_latestUpdateResult != null)
+            {
+                OpenUpdateDialog(_latestUpdateResult);
+            }
+        };
 
         OverlayGlobalModal.PointerPressed += (s, e) =>
         {
@@ -282,6 +341,7 @@ public partial class MainWindow : Window
             _workspaceView = new WorkspaceView(service);
             _workspaceView.DisconnectRequested += OnDisconnectRequested;
             _workspaceView.AboutRequested += OpenAboutDialog;
+            _workspaceView.CheckUpdatesRequested += () => _ = CheckForUpdatesManualAsync();
 
             MainRoot.Children.Clear();
             MainRoot.Children.Add(_workspaceView);

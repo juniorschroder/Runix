@@ -1,0 +1,100 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="560" d:DesignHeight="460"
+             x:Class="Runix.Desktop.Views.Dialogs.UpdateAvailableDialog">
+
+    <Border Width="540" Background="#0e141f" BorderBrush="#10b981" BorderThickness="1.5"
+            CornerRadius="12" BoxShadow="0 20 50 8 #D9000000" Padding="0">
+        <Grid RowDefinitions="Auto,*,Auto">
+            <!-- 1. Header -->
+            <Border Grid.Row="0" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="0,0,0,1"
+                    CornerRadius="12,12,0,0" Padding="22,16">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Border Grid.Column="0" Width="44" Height="44" CornerRadius="10" Background="#064e3b"
+                            BorderBrush="#34d399" BorderThickness="1.5" Margin="0,0,14,0" VerticalAlignment="Center">
+                        <TextBlock Text="⬆" FontSize="22" FontWeight="Bold" Foreground="#34d399"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="{DynamicResource Update.DialogTitle}" FontSize="17" FontWeight="Bold"
+                                       Foreground="#f0f6fc" VerticalAlignment="Center"/>
+                            <Border Background="#064e3b" BorderBrush="#34d399" BorderThickness="1"
+                                    CornerRadius="5" Padding="7,2" VerticalAlignment="Center">
+                                <TextBlock Name="TxtNewTagBadge" Text="v1.1.0" FontSize="11" FontWeight="Bold" Foreground="#34d399"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{DynamicResource Update.DialogSubtitle}" FontSize="11.5" Foreground="#8b9cb3" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <Button Name="BtnClose" Grid.Column="2" Content="✕" Classes="btn-icon" Padding="8,4" FontSize="12" VerticalAlignment="Top"/>
+                </Grid>
+            </Border>
+
+            <!-- 2. Body -->
+            <StackPanel Grid.Row="1" Margin="22,16" Spacing="12">
+                <!-- Version Comparison Strip -->
+                <Border Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8" Padding="14,10">
+                    <Grid ColumnDefinitions="*,Auto,*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{DynamicResource Update.CurrentVersionLabel}" FontSize="9.5" FontWeight="Bold" Foreground="#64748b"/>
+                            <TextBlock Name="TxtCurrentVersion" Text="v1.0.0" FontSize="14" FontWeight="Bold" Foreground="#94a3b8" FontFamily="Consolas,Menlo,monospace"/>
+                        </StackPanel>
+
+                        <TextBlock Grid.Column="1" Text="➔" FontSize="16" Foreground="#38bdf8" VerticalAlignment="Center" Margin="16,0"/>
+
+                        <StackPanel Grid.Column="2" Spacing="2">
+                            <TextBlock Text="{DynamicResource Update.NewVersionLabel}" FontSize="9.5" FontWeight="Bold" Foreground="#34d399"/>
+                            <TextBlock Name="TxtLatestVersion" Text="v1.1.0" FontSize="14" FontWeight="Bold" Foreground="#34d399" FontFamily="Consolas,Menlo,monospace"/>
+                        </StackPanel>
+
+                        <TextBlock Name="TxtPublishedDate" Grid.Column="3" Text="" FontSize="11" Foreground="#64748b" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+
+                <!-- Changelog Box -->
+                <StackPanel Spacing="6">
+                    <TextBlock Text="{DynamicResource Update.ChangelogLabel}" FontSize="10" FontWeight="Bold" Foreground="#38bdf8" LetterSpacing="0.8"/>
+                    <Border Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8" Padding="12,10" Height="135">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <TextBlock Name="TxtReleaseNotes" Text="" FontSize="12" Foreground="#cbd5e1"
+                                       TextWrapping="Wrap" LineHeight="18" FontFamily="Consolas,Menlo,monospace"/>
+                        </ScrollViewer>
+                    </Border>
+                </StackPanel>
+
+                <!-- Recommended Platform Installer Card -->
+                <Border Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8" Padding="14,10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="{DynamicResource Update.RecommendedPackageLabel}" FontSize="9.5" FontWeight="Bold" Foreground="#38bdf8"/>
+                            <TextBlock Name="TxtRecommendedAsset" Text="Runix-1.1.0-osx-arm64.dmg" FontSize="12.5" FontWeight="SemiBold" Foreground="#f0f6fc" FontFamily="Consolas,Menlo,monospace"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Button Name="BtnViewOnGitHub" Content="{DynamicResource Update.ViewOnGitHub}"
+                                    Classes="btn-secondary" Padding="10,6" FontSize="11.5"/>
+                            <Button Name="BtnDownloadInstaller" Content="{DynamicResource Update.DownloadInstaller}"
+                                    Classes="btn-primary" Padding="14,6" FontSize="11.5"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <!-- 3. Footer -->
+            <Border Grid.Row="2" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="0,1,0,0"
+                    CornerRadius="0,0,12,12" Padding="22,12">
+                <Grid ColumnDefinitions="*,Auto">
+                    <Button Name="BtnSkipVersion" Grid.Column="0" Content="{DynamicResource Update.SkipVersion}"
+                            Classes="btn-secondary" HorizontalAlignment="Left" Padding="12,6" FontSize="11.5"/>
+
+                    <Button Name="BtnRemindLater" Grid.Column="1" Content="{DynamicResource Update.RemindLater}"
+                            Classes="btn-secondary" Padding="16,6" FontSize="11.5"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

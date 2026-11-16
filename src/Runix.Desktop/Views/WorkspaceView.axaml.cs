@@ -39,6 +39,7 @@ public partial class WorkspaceView : UserControl
 
     public event Action? DisconnectRequested;
     public event Action? AboutRequested;
+    public event Action? CheckUpdatesRequested;
 
     public WorkspaceView() : this(new SqliteDatabaseService(new ConnectionConfig()))
     {
@@ -949,7 +950,8 @@ public partial class WorkspaceView : UserControl
             new() { Id = "action:new-ddl", Title = "Novo Objeto Programável (View, Trigger, Function, Index)", Subtitle = "Criar objeto a partir de template DDL com transação segura", Category = CommandPaletteCategory.Action, Icon = "➕", ShortcutHint = "DDL", Payload = "new-ddl" },
             new() { Id = "action:refresh", Title = "Atualizar Catálogo de Schema", Subtitle = "Recarregar tabelas, views e objetos programáveis", Category = CommandPaletteCategory.Action, Icon = "🔄", ShortcutHint = "Refresh", Payload = "refresh" },
             new() { Id = "action:language", Title = "Alternar Idioma da Interface (PT-BR / EN-US)", Subtitle = "Mudar idioma dinamicamente", Category = CommandPaletteCategory.Action, Icon = "🌐", ShortcutHint = "i18n", Payload = "language" },
-            new() { Id = "action:about", Title = "Sobre o RUNIX Database Studio (v1.0.0)", Subtitle = "Ver informações da versão 1.0.0, arquitetura e criador José Carlos Schröder Júnior", Category = CommandPaletteCategory.Action, Icon = "ℹ️", ShortcutHint = "About", Payload = "about" },
+            new() { Id = "action:check-updates", Title = "Verificar Atualizações do RUNIX (Check for Updates)", Subtitle = "Consultar a última release oficial e instaladores no GitHub", Category = CommandPaletteCategory.Action, Icon = "⬆️", ShortcutHint = "Update", Payload = "check-updates" },
+            new() { Id = "action:about", Title = "Sobre o RUNIX Database Studio (v1.1.0)", Subtitle = "Ver informações da versão 1.1.0, arquitetura e criador José Carlos Schröder Júnior", Category = CommandPaletteCategory.Action, Icon = "ℹ️", ShortcutHint = "About", Payload = "about" },
             new() { Id = "action:disconnect", Title = "Desconectar da Sessão Atual", Subtitle = "Fechar conexão e voltar para a tela inicial", Category = CommandPaletteCategory.Action, Icon = "🔌", ShortcutHint = "Disconnect", Payload = "disconnect" }
         };
 
@@ -1000,6 +1002,9 @@ public partial class WorkspaceView : UserControl
                         break;
                     case "about":
                         AboutRequested?.Invoke();
+                        break;
+                    case "check-updates":
+                        CheckUpdatesRequested?.Invoke();
                         break;
                     case "disconnect":
                         await _databaseService.DisconnectAsync();

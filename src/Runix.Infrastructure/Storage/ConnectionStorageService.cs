@@ -18,6 +18,55 @@ public class ConnectionStorageService
     private static readonly string ConfigFilePath = Path.Combine(ConfigDir, "connections.json");
     private static readonly string CategoriesFilePath = Path.Combine(ConfigDir, "connection_categories.json");
     private static readonly string LastUsedFilePath = Path.Combine(ConfigDir, "last_used_connection.txt");
+    private static readonly string SkippedVersionFilePath = Path.Combine(ConfigDir, "skipped_update_version.txt");
+
+    public static string? GetSkippedUpdateVersion(string? filePath = null)
+    {
+        var targetFile = filePath ?? SkippedVersionFilePath;
+        try
+        {
+            if (File.Exists(targetFile))
+            {
+                var ver = File.ReadAllText(targetFile).Trim();
+                if (!string.IsNullOrWhiteSpace(ver))
+                {
+                    return SemVerComparer.NormalizeVersionString(ver);
+                }
+            }
+        }
+        catch
+        {
+            // Ignore error
+        }
+        return null;
+    }
+
+    public static void SetSkippedUpdateVersion(string? version, string? filePath = null)
+    {
+        var targetFile = filePath ?? SkippedVersionFilePath;
+        try
+        {
+            if (string.IsNullOrWhiteSpace(version))
+            {
+                if (File.Exists(targetFile))
+                {
+                    File.Delete(targetFile);
+                }
+                return;
+            }
+
+            var targetDir = Path.GetDirectoryName(targetFile);
+            if (!string.IsNullOrEmpty(targetDir))
+            {
+                Directory.CreateDirectory(targetDir);
+            }
+            File.WriteAllText(targetFile, SemVerComparer.NormalizeVersionString(version));
+        }
+        catch
+        {
+            // Ignore error
+        }
+    }
 
     public static List<string> LoadCustomCategories(string? filePath = null)
     {

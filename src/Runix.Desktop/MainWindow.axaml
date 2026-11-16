@@ -5,7 +5,7 @@
         mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="820"
         x:Class="Runix.Desktop.MainWindow"
         Icon="avares://Runix.Desktop/Assets/runix.ico"
-        Title="RUNIX v1.0.0 - Modern Cross-Platform Database Studio"
+        Title="RUNIX v1.1.0 - Modern Cross-Platform Database Studio"
         Width="1200" Height="800"
         MinWidth="800" MinHeight="600"
         WindowStartupLocation="CenterScreen"
@@ -28,8 +28,18 @@
                     <Button Name="BtnTitleBarAbout" Classes="btn-accent-subtle" Padding="7,2" Margin="4,0,0,0"
                             VerticalAlignment="Center" ToolTip.Tip="{DynamicResource About.Title}">
                         <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                            <TextBlock Text="v1.0.0" FontSize="10" FontWeight="Bold" Foreground="#38bdf8" VerticalAlignment="Center"/>
+                            <TextBlock Text="v1.1.0" FontSize="10" FontWeight="Bold" Foreground="#38bdf8" VerticalAlignment="Center"/>
                             <TextBlock Text="ℹ" FontSize="10" Foreground="#7dd3fc" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Non-Intrusive Auto-Update Notification Badge -->
+                    <Button Name="BtnTitleBarUpdate" Background="#064e3b" BorderBrush="#34d399" BorderThickness="1"
+                            CornerRadius="4" Padding="8,2" Margin="4,0,0,0" VerticalAlignment="Center"
+                            IsVisible="False" ToolTip.Tip="{DynamicResource Update.BadgeTooltip}">
+                        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                            <TextBlock Name="TxtUpdateBadgeText" Text="⬆ v1.1.0" FontSize="10" FontWeight="Bold"
+                                       Foreground="#34d399" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 

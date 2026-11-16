@@ -5,13 +5,16 @@ using System.Text;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Runix.Core.Constants;
+using Runix.Core.Models;
 using Runix.Desktop.Services;
+using Runix.Infrastructure.Services;
 
 namespace Runix.Desktop.Views.Dialogs;
 
 public partial class AboutDialog : UserControl
 {
     public event Action? CloseRequested;
+    public event Action<UpdateCheckResult>? UpdateAvailableRequested;
 
     public AboutDialog()
     {
@@ -46,6 +49,32 @@ public partial class AboutDialog : UserControl
 
         BtnCreatorLinkedIn.Click += (s, e) => OpenExternalUrl(AppConstants.AppAuthorLinkedInUrl);
         BtnGitHubRepo.Click += (s, e) => OpenExternalUrl(AppConstants.AppRepositoryUrl);
+
+        BtnCheckUpdates.Click += async (s, e) =>
+        {
+            BtnCheckUpdates.IsEnabled = false;
+            TxtCopyFeedback.Text = LocalizationManager.GetString("Update.Checking", "⏳ Verificando atualizações...");
+            TxtCopyFeedback.Foreground = Brush.Parse("#38bdf8");
+
+            var result = await GitHubUpdateCheckerService.Instance.CheckForUpdatesAsync(ignoreSkippedVersion: true);
+            BtnCheckUpdates.IsEnabled = true;
+
+            if (!result.CheckSucceeded)
+            {
+                TxtCopyFeedback.Text = LocalizationManager.GetString("Update.CheckFailed", "⚠ Não foi possível verificar atualizações (offline).");
+                TxtCopyFeedback.Foreground = Brush.Parse("#fbbf24");
+                return;
+            }
+
+            if (result.IsUpdateAvailable)
+            {
+                UpdateAvailableRequested?.Invoke(result);
+                return;
+            }
+
+            TxtCopyFeedback.Text = LocalizationManager.GetString("Update.UpToDate", "✓ Você já está na versão mais recente!");
+            TxtCopyFeedback.Foreground = Brush.Parse("#34d399");
+        };
 
         BtnCopySystemInfo.Click += async (s, e) =>
         {
