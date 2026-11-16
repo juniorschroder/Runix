@@ -234,4 +234,4 @@ Criado e arquitetado por **José Carlos Schröder Júnior**.
 
 ## 📄 Licença
 
-Distribuído sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+Distribuído sob a licença GNU General Public License v3.0 (GPL-3.0). Veja o arquivo [LICENSE](LICENSE) para mais detalhes.

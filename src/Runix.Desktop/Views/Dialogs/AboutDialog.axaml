@@ -99,7 +99,7 @@
                                 <TextBlock Text="Avalonia UI 11.1" FontSize="10" FontWeight="SemiBold" Foreground="#c084fc" FontFamily="Consolas,Menlo,monospace"/>
                             </Border>
                             <Border Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="4" Padding="6,2">
-                                <TextBlock Name="TxtLicenseDetail" Text="MIT License" FontSize="10" FontWeight="SemiBold" Foreground="#34d399" FontFamily="Consolas,Menlo,monospace"/>
+                                <TextBlock Name="TxtLicenseDetail" Text="GPL-3.0 License" FontSize="10" FontWeight="SemiBold" Foreground="#34d399" FontFamily="Consolas,Menlo,monospace"/>
                             </Border>
                         </StackPanel>
 

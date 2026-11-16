@@ -255,7 +255,7 @@ jobs:
             -n runix \
             -v "${VERSION}" \
             --architecture amd64 \
-            --license "MIT" \
+            --license "GPL-3.0" \
             --vendor "José Carlos Schröder Júnior" \
             --maintainer "José Carlos Schröder Júnior <juniorschroder@gmail.com>" \
             --url "https://github.com/juniorschroder/Runix" \
@@ -275,7 +275,7 @@ jobs:
             --iteration 1 \
             --architecture x86_64 \
             --rpm-os linux \
-            --license "MIT" \
+            --license "GPL-3.0" \
             --vendor "José Carlos Schröder Júnior" \
             --maintainer "José Carlos Schröder Júnior <juniorschroder@gmail.com>" \
             --url "https://github.com/juniorschroder/Runix" \

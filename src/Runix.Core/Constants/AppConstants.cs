@@ -6,7 +6,7 @@ public static class AppConstants
     public const string AppVersion = "1.0.0";
     public const string AppAuthor = "José Carlos Schröder Júnior";
     public const string AppCopyright = "© 2026 José Carlos Schröder Júnior";
-    public const string AppLicense = "MIT License";
+    public const string AppLicense = "GPL-3.0 License";
     public const string AppRepositoryUrl = "https://github.com/juniorschroder/Runix";
     public const string AppAuthorLinkedInUrl = "https://www.linkedin.com/in/juniorschroder/";
 
