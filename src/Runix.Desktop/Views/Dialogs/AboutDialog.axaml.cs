@@ -28,7 +28,8 @@ public partial class AboutDialog : UserControl
         TxtVersionBadge.Text = $"v{AppConstants.AppVersion}";
         TxtCreatorName.Text = AppConstants.AppAuthor;
         TxtLicenseDetail.Text = AppConstants.AppLicense;
-        TxtCopyFeedback.Text = AppConstants.AppCopyright;
+        TxtCopyrightNotice.Text = AppConstants.AppCopyright;
+        BorderStatusBanner.IsVisible = false;
 
         string osName = OperatingSystem.IsMacOS()
             ? "macOS"
@@ -53,7 +54,11 @@ public partial class AboutDialog : UserControl
         BtnCheckUpdates.Click += async (s, e) =>
         {
             BtnCheckUpdates.IsEnabled = false;
-            TxtCopyFeedback.Text = LocalizationManager.GetString("Update.Checking", "⏳ Verificando atualizações...");
+            BorderStatusBanner.IsVisible = true;
+            BorderStatusBanner.Background = Brush.Parse("#0b1d33");
+            BorderStatusBanner.BorderBrush = Brush.Parse("#0284c7");
+            TxtStatusIcon.Text = "⏳";
+            TxtCopyFeedback.Text = LocalizationManager.GetString("Update.Checking", "Verificando atualizações...");
             TxtCopyFeedback.Foreground = Brush.Parse("#38bdf8");
 
             var result = await GitHubUpdateCheckerService.Instance.CheckForUpdatesAsync(ignoreSkippedVersion: true);
@@ -61,18 +66,27 @@ public partial class AboutDialog : UserControl
 
             if (!result.CheckSucceeded)
             {
-                TxtCopyFeedback.Text = LocalizationManager.GetString("Update.CheckFailed", "⚠ Não foi possível verificar atualizações (offline).");
+                BorderStatusBanner.IsVisible = true;
+                BorderStatusBanner.Background = Brush.Parse("#261704");
+                BorderStatusBanner.BorderBrush = Brush.Parse("#d97706");
+                TxtStatusIcon.Text = "⚠";
+                TxtCopyFeedback.Text = LocalizationManager.GetString("Update.CheckFailed", "Não foi possível verificar atualizações (offline).");
                 TxtCopyFeedback.Foreground = Brush.Parse("#fbbf24");
                 return;
             }
 
             if (result.IsUpdateAvailable)
             {
+                BorderStatusBanner.IsVisible = false;
                 UpdateAvailableRequested?.Invoke(result);
                 return;
             }
 
-            TxtCopyFeedback.Text = LocalizationManager.GetString("Update.UpToDate", "✓ Você já está na versão mais recente!");
+            BorderStatusBanner.IsVisible = true;
+            BorderStatusBanner.Background = Brush.Parse("#06281e");
+            BorderStatusBanner.BorderBrush = Brush.Parse("#059669");
+            TxtStatusIcon.Text = "✓";
+            TxtCopyFeedback.Text = LocalizationManager.GetString("Update.UpToDate", "Você já está na versão mais recente!");
             TxtCopyFeedback.Foreground = Brush.Parse("#34d399");
         };
 
@@ -91,9 +105,13 @@ public partial class AboutDialog : UserControl
 
                 await topLevel.Clipboard.SetTextAsync(sb.ToString());
 
+                BorderStatusBanner.IsVisible = true;
+                BorderStatusBanner.Background = Brush.Parse("#06281e");
+                BorderStatusBanner.BorderBrush = Brush.Parse("#059669");
+                TxtStatusIcon.Text = "📋";
                 TxtCopyFeedback.Text = LocalizationManager.GetString(
                     "About.CopiedStatus",
-                    "✓ Informações copiadas para a área de transferência!");
+                    "Informações copiadas para a área de transferência!");
                 TxtCopyFeedback.Foreground = Brush.Parse("#34d399");
             }
         };

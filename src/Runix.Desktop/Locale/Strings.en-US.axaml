@@ -46,6 +46,10 @@
     <sys:String x:Key="Connection.Username">Username</sys:String>
     <sys:String x:Key="Connection.Password">Password</sys:String>
     <sys:String x:Key="Connection.SslMode">SSL Mode</sys:String>
+    <sys:String x:Key="Connection.TabDirect">Direct Connection</sys:String>
+    <sys:String x:Key="Connection.TabDirectDesc">For databases on local machine (localhost), local network or directly accessible public IP</sys:String>
+    <sys:String x:Key="Connection.TabSsh">SSH Tunnel / Bastion</sys:String>
+    <sys:String x:Key="Connection.TabSshDesc">Securely connect to private databases in AWS RDS, Kubernetes or VPS via Jump Host</sys:String>
     <sys:String x:Key="Connection.Test">Test Connection</sys:String>
     <sys:String x:Key="Connection.Testing">Testing...</sys:String>
     <sys:String x:Key="Connection.Connect">Connect ➔</sys:String>
@@ -228,21 +232,27 @@
     <sys:String x:Key="About.VersionLabel">VERSION</sys:String>
     <sys:String x:Key="About.LicenseLabel">LICENSE</sys:String>
     <sys:String x:Key="About.CopyInfo">📋 Copy Info</sys:String>
-    <sys:String x:Key="About.CopiedStatus">✓ System information copied to clipboard!</sys:String>
+    <sys:String x:Key="About.CopiedStatus">System information copied to clipboard!</sys:String>
 
     <!-- Auto-Update Notification & Release Inspector -->
     <sys:String x:Key="Update.BadgeTooltip">New RUNIX version available! Click to view details and download.</sys:String>
     <sys:String x:Key="Update.CheckButton">🔄 Check for Updates</sys:String>
-    <sys:String x:Key="Update.Checking">⏳ Checking for updates...</sys:String>
-    <sys:String x:Key="Update.UpToDate">✓ You are already on the latest version!</sys:String>
-    <sys:String x:Key="Update.CheckFailed">⚠ Could not check for updates (offline).</sys:String>
+    <sys:String x:Key="Update.Checking">Checking for updates...</sys:String>
+    <sys:String x:Key="Update.UpToDate">You are already on the latest version!</sys:String>
+    <sys:String x:Key="Update.CheckFailed">Could not check for updates (offline).</sys:String>
     <sys:String x:Key="Update.DialogTitle">New Update Available</sys:String>
     <sys:String x:Key="Update.DialogSubtitle">A new official release of RUNIX Database Studio is ready for download.</sys:String>
     <sys:String x:Key="Update.CurrentVersionLabel">CURRENT VERSION</sys:String>
     <sys:String x:Key="Update.NewVersionLabel">NEW VERSION</sys:String>
     <sys:String x:Key="Update.ChangelogLabel">RELEASE NOTES (CHANGELOG)</sys:String>
     <sys:String x:Key="Update.RecommendedPackageLabel">RECOMMENDED INSTALLER FOR YOUR OS</sys:String>
-    <sys:String x:Key="Update.DownloadInstaller">⬇ Download Installer</sys:String>
+    <sys:String x:Key="Update.DownloadInstaller">⬇ Update and Install</sys:String>
+    <sys:String x:Key="Update.Downloading">⬇ Downloading installer...</sys:String>
+    <sys:String x:Key="Update.DownloadComplete">✓ Download complete! Launching installer...</sys:String>
+    <sys:String x:Key="Update.DownloadError">⚠ Failed to download installer.</sys:String>
+    <sys:String x:Key="Update.CancelDownload">Cancel</sys:String>
+    <sys:String x:Key="Update.AutoCloseNotice">The installer will launch automatically when download finishes and RUNIX will close.</sys:String>
+    <sys:String x:Key="Update.RetryDownload">Retry</sys:String>
     <sys:String x:Key="Update.ViewOnGitHub">View on GitHub ↗</sys:String>
     <sys:String x:Key="Update.SkipVersion">Skip this version</sys:String>
     <sys:String x:Key="Update.RemindLater">Remind Me Later</sys:String>

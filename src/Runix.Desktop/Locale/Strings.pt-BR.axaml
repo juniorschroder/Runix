@@ -46,6 +46,10 @@
     <sys:String x:Key="Connection.Username">Usuário</sys:String>
     <sys:String x:Key="Connection.Password">Senha</sys:String>
     <sys:String x:Key="Connection.SslMode">Modo SSL</sys:String>
+    <sys:String x:Key="Connection.TabDirect">Conexão Direta</sys:String>
+    <sys:String x:Key="Connection.TabDirectDesc">Para bancos na máquina local (localhost), rede local ou IP público acessível</sys:String>
+    <sys:String x:Key="Connection.TabSsh">Túnel SSH / Bastion</sys:String>
+    <sys:String x:Key="Connection.TabSshDesc">Conectar com segurança a bancos privados em AWS RDS, Kubernetes ou VPS via Jump Host</sys:String>
     <sys:String x:Key="Connection.Test">Testar Conexão</sys:String>
     <sys:String x:Key="Connection.Testing">Testando...</sys:String>
     <sys:String x:Key="Connection.Connect">Conectar ➔</sys:String>
@@ -228,21 +232,27 @@
     <sys:String x:Key="About.VersionLabel">VERSÃO</sys:String>
     <sys:String x:Key="About.LicenseLabel">LICENÇA</sys:String>
     <sys:String x:Key="About.CopyInfo">📋 Copiar Info</sys:String>
-    <sys:String x:Key="About.CopiedStatus">✓ Informações copiadas para a área de transferência!</sys:String>
+    <sys:String x:Key="About.CopiedStatus">Informações copiadas para a área de transferência!</sys:String>
 
     <!-- Auto-Update Notification & Release Inspector -->
     <sys:String x:Key="Update.BadgeTooltip">Nova versão do RUNIX disponível! Clique para ver os detalhes e baixar.</sys:String>
     <sys:String x:Key="Update.CheckButton">🔄 Verificar Atualizações</sys:String>
-    <sys:String x:Key="Update.Checking">⏳ Verificando atualizações...</sys:String>
-    <sys:String x:Key="Update.UpToDate">✓ Você já está na versão mais recente!</sys:String>
-    <sys:String x:Key="Update.CheckFailed">⚠ Não foi possível verificar atualizações (offline).</sys:String>
+    <sys:String x:Key="Update.Checking">Verificando atualizações...</sys:String>
+    <sys:String x:Key="Update.UpToDate">Você já está na versão mais recente!</sys:String>
+    <sys:String x:Key="Update.CheckFailed">Não foi possível verificar atualizações (offline).</sys:String>
     <sys:String x:Key="Update.DialogTitle">Nova Atualização Disponível</sys:String>
     <sys:String x:Key="Update.DialogSubtitle">Uma nova release oficial do RUNIX Database Studio está pronta para download.</sys:String>
     <sys:String x:Key="Update.CurrentVersionLabel">VERSÃO ATUAL</sys:String>
     <sys:String x:Key="Update.NewVersionLabel">NOVA VERSÃO</sys:String>
     <sys:String x:Key="Update.ChangelogLabel">NOVIDADES DA RELEASE (CHANGELOG)</sys:String>
     <sys:String x:Key="Update.RecommendedPackageLabel">INSTALADOR RECOMENDADO PARA SEU SISTEMA</sys:String>
-    <sys:String x:Key="Update.DownloadInstaller">⬇ Baixar Instalador</sys:String>
+    <sys:String x:Key="Update.DownloadInstaller">⬇ Atualizar e Instalar</sys:String>
+    <sys:String x:Key="Update.Downloading">⬇ Baixando instalador...</sys:String>
+    <sys:String x:Key="Update.DownloadComplete">✓ Download concluído! Iniciando instalador...</sys:String>
+    <sys:String x:Key="Update.DownloadError">⚠ Falha no download do instalador.</sys:String>
+    <sys:String x:Key="Update.CancelDownload">Cancelar</sys:String>
+    <sys:String x:Key="Update.AutoCloseNotice">O instalador iniciará automaticamente ao finalizar o download e o RUNIX será fechado.</sys:String>
+    <sys:String x:Key="Update.RetryDownload">Tentar Novamente</sys:String>
     <sys:String x:Key="Update.ViewOnGitHub">Ver no GitHub ↗</sys:String>
     <sys:String x:Key="Update.SkipVersion">Ignorar esta versão</sys:String>
     <sys:String x:Key="Update.RemindLater">Lembrar Depois</sys:String>

@@ -25,6 +25,8 @@ public partial class MainWindow : Window
     private WindowEdge? _activeResizeEdge;
     private UpdateCheckResult? _latestUpdateResult;
 
+    public bool SuppressStartupUpdatePrompt { get; set; }
+
     public WorkspaceView? CurrentWorkspaceView => _workspaceView;
 
     public MainWindow()
@@ -100,12 +102,17 @@ public partial class MainWindow : Window
                     _latestUpdateResult = result;
                     TxtUpdateBadgeText.Text = $"⬆ {result.TagName}";
                     BtnTitleBarUpdate.IsVisible = true;
+
+                    if (!SuppressStartupUpdatePrompt)
+                    {
+                        OpenUpdateDialog(result);
+                    }
                 });
             }
         }
         catch
         {
-            // Silent failure on startup check
+            // Falha silenciosa na inicialização (sem conexão, offline ou erro de rede)
         }
     }
 

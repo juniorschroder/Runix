@@ -138,14 +138,15 @@ public class SqliteDatabaseService : IDatabaseService
         return tables;
     }
 
-    public async Task<QueryResult> ExecuteQueryAsync(string sql, int limit = 50000)
+    public async Task<List<QueryResult>> ExecuteMultipleQueriesAsync(string sql, int limit = 50000)
     {
-        var result = new QueryResult();
+        var resultSets = new List<QueryResult>();
         if (_connection == null)
         {
-            result.Success = false;
-            result.ErrorMessage = "Not connected to database.";
-            return result;
+            return new List<QueryResult>
+            {
+                new() { Success = false, ErrorMessage = "Not connected to database." }
+            };
         }
 
         var sw = Stopwatch.StartNew();
@@ -156,46 +157,98 @@ public class SqliteDatabaseService : IDatabaseService
 
             using var reader = await cmd.ExecuteReaderAsync();
 
-            if (reader.HasRows || reader.FieldCount > 0)
+            int setIndex = 1;
+            do
             {
-                for (int i = 0; i < reader.FieldCount; i++)
-                {
-                    result.Columns.Add(reader.GetName(i));
-                }
+                var result = new QueryResult();
+                result.Title = $"Resultado {setIndex}";
 
-                while (await reader.ReadAsync())
+                if (reader.HasRows || reader.FieldCount > 0)
                 {
-                    if (result.Rows.Count >= limit)
-                        break;
-
-                    var row = new List<object?>(reader.FieldCount);
                     for (int i = 0; i < reader.FieldCount; i++)
                     {
-                        var val = reader.GetValue(i);
-                        row.Add((val == DBNull.Value) ? "NULL" : val);
+                        result.Columns.Add(reader.GetName(i));
                     }
-                    result.Rows.Add(row);
-                }
-            }
-            else
-            {
-                result.AffectedRows = reader.RecordsAffected;
-            }
 
-            result.Success = true;
+                    while (await reader.ReadAsync())
+                    {
+                        if (result.Rows.Count >= limit)
+                            break;
+
+                        var row = new List<object?>(reader.FieldCount);
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            var val = reader.GetValue(i);
+                            row.Add((val == DBNull.Value) ? "NULL" : val);
+                        }
+                        result.Rows.Add(row);
+                    }
+                }
+                else
+                {
+                    result.AffectedRows = reader.RecordsAffected;
+                }
+
+                result.Success = true;
+                resultSets.Add(result);
+                setIndex++;
+            } while (await reader.NextResultAsync());
         }
         catch (Exception ex)
         {
-            result.Success = false;
-            result.ErrorMessage = ex.Message;
+            if (resultSets.Count == 0)
+            {
+                resultSets.Add(new QueryResult
+                {
+                    Success = false,
+                    ErrorMessage = ex.Message
+                });
+            }
+            else
+            {
+                resultSets.Add(new QueryResult
+                {
+                    Success = false,
+                    ErrorMessage = ex.Message,
+                    Title = "Erro"
+                });
+            }
         }
         finally
         {
             sw.Stop();
-            result.ElapsedMilliseconds = sw.Elapsed.TotalMilliseconds;
+            foreach (var set in resultSets)
+            {
+                if (set.ElapsedMilliseconds == 0)
+                    set.ElapsedMilliseconds = sw.Elapsed.TotalMilliseconds;
+            }
         }
 
-        return result;
+        // If multiple SELECT result sets with columns were returned, prioritize them
+        var selectSets = resultSets.Where(r => r.Columns.Count > 0).ToList();
+        if (selectSets.Count > 1)
+        {
+            for (int i = 0; i < selectSets.Count; i++)
+            {
+                selectSets[i].Title = $"Resultado {i + 1}";
+            }
+            return selectSets;
+        }
+
+        return resultSets.Count > 0 ? resultSets : new List<QueryResult> { new() { Success = true } };
+    }
+
+    public async Task<QueryResult> ExecuteQueryAsync(string sql, int limit = 50000)
+    {
+        var list = await ExecuteMultipleQueriesAsync(sql, limit);
+        if (list.Count > 0)
+        {
+            var primary = list[0];
+            primary.SubResults = list;
+            return primary;
+        }
+
+        return new QueryResult { Success = true };
     }
 
     public async Task<QueryResult> GetTableDataAsync(string tableName, int offset = 0, int limit = 100, string? filter = null, string? sortColumn = null, bool sortAsc = true)
@@ -210,8 +263,15 @@ public class SqliteDatabaseService : IDatabaseService
 
         if (!string.IsNullOrWhiteSpace(sortColumn))
         {
-            var safeCol = $"\"{sortColumn.Replace("\"", "\"\"")}\"";
-            sql += $" ORDER BY {safeCol} {(sortAsc ? "ASC" : "DESC")}";
+            if (sortColumn.Contains(',') || sortColumn.Contains("ASC", StringComparison.OrdinalIgnoreCase) || sortColumn.Contains("DESC", StringComparison.OrdinalIgnoreCase))
+            {
+                sql += $" ORDER BY {sortColumn}";
+            }
+            else
+            {
+                var safeCol = $"\"{sortColumn.Replace("\"", "\"\"")}\"";
+                sql += $" ORDER BY {safeCol} {(sortAsc ? "ASC" : "DESC")}";
+            }
         }
 
         sql += $" LIMIT {limit} OFFSET {offset};";
@@ -394,22 +454,26 @@ public class SqliteDatabaseService : IDatabaseService
             while (await reader.ReadAsync())
             {
                 // id, seq, table, from, to, on_update, on_delete, match
-                var targetTable = reader.GetString(2);
-                var fromCol = reader.GetString(3);
-                var toCol = reader.GetString(4);
+                var targetTable = reader.IsDBNull(2) ? "" : reader.GetString(2);
+                var fromCol = reader.IsDBNull(3) ? "" : reader.GetString(3);
+                var toCol = reader.IsDBNull(4) ? "id" : reader.GetString(4);
+                if (string.IsNullOrWhiteSpace(toCol)) toCol = "id";
                 var onUpdate = reader.IsDBNull(5) ? "NO ACTION" : reader.GetString(5);
                 var onDelete = reader.IsDBNull(6) ? "NO ACTION" : reader.GetString(6);
 
-                fks.Add(new ForeignKeyInfo
+                if (!string.IsNullOrWhiteSpace(fromCol) && !string.IsNullOrWhiteSpace(targetTable))
                 {
-                    ConstraintName = $"fk_{tbl}_{fromCol}",
-                    SourceTable = tbl,
-                    SourceColumn = fromCol,
-                    TargetTable = targetTable,
-                    TargetColumn = toCol,
-                    OnUpdate = onUpdate,
-                    OnDelete = onDelete
-                });
+                    fks.Add(new ForeignKeyInfo
+                    {
+                        ConstraintName = $"fk_{tbl}_{fromCol}",
+                        SourceTable = tbl,
+                        SourceColumn = fromCol,
+                        TargetTable = targetTable,
+                        TargetColumn = toCol,
+                        OnUpdate = onUpdate,
+                        OnDelete = onDelete
+                    });
+                }
             }
         }
 

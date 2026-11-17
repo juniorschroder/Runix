@@ -32,10 +32,17 @@ public partial class QueryTabControl : UserControl
     private readonly ISqlLexerService _lexerService = new SqlLexerService();
     private readonly ISqlCompletionService _completionService = new SqlCompletionService();
     private readonly ISqlFormatterService _formatterService = new SqlFormatterService();
+    private readonly IQueryParameterService _parameterService = QueryParameterService.Instance;
+    private readonly Dictionary<string, TextBox> _queryColumnFilterInputs = new(StringComparer.OrdinalIgnoreCase);
+    private readonly IColumnFilterService _columnFilterService = ColumnFilterService.Instance;
+    private QueryResult? _currentActiveResult;
 
     private List<TableInfo> _cachedTables = new();
     private Dictionary<string, IReadOnlyList<ColumnInfo>> _cachedColumns = new(StringComparer.OrdinalIgnoreCase);
     private List<CustomSnippet> _cachedSnippets = new();
+
+    private int _activeSubResultIndex = 0;
+    private bool _isSplitLayoutMode = false;
 
     private AvaloniaEdit.CodeCompletion.CompletionWindow? _completionWindow;
 
@@ -95,6 +102,7 @@ public partial class QueryTabControl : UserControl
         InitializeComponent();
         _databaseService = databaseService;
         _appStorage = appStorage ?? AppStorageService.Instance;
+        QueryParameterStorage.LoadIntoService(_parameterService);
 
         // Configure modern AvaloniaEdit SQL editor with syntax highlighting & dark theme
         SqlSyntaxHighlighting.ConfigureSqlEditor(TxtSqlEditor);
@@ -118,6 +126,13 @@ public partial class QueryTabControl : UserControl
         BtnTabChart.Click += (s, e) => SwitchBottomTab(1);
         BtnTabExplain.Click += (s, e) => SwitchBottomTab(2);
         BtnToggleInspector.Click += (s, e) => ToggleInspectorDrawer();
+        BtnToggleQueryFilters.Click += (s, e) => ToggleQueryFiltersBar();
+        BtnApplyQueryFilters.Click += (s, e) => ApplyQueryFilters();
+        BtnClearQueryFilters.Click += (s, e) => ClearQueryFilters();
+        MenuQueryFilterByCellValue.Click += (s, e) => OnFilterBySelectedQueryCellValue();
+        MenuQueryCopyCellValue.Click += async (s, e) => await CopySelectedQueryCellValueAsync();
+        BtnSubLayoutTabs.Click += (s, e) => SetSubResultLayoutMode(isSplit: false);
+        BtnSubLayoutSplit.Click += (s, e) => SetSubResultLayoutMode(isSplit: true);
 
         DrawerInspector.SetEditable(false);
         DrawerInspector.CloseRequested += () =>
@@ -399,9 +414,67 @@ public partial class QueryTabControl : UserControl
         // Handled natively by AvaloniaEdit CompletionWindow
     }
 
-    public async void ExecuteSql()
+    public void ExecuteSql()
     {
-        var sql = TxtSqlEditor.Text;
+        var sql = TxtSqlEditor.SelectedText;
+        if (string.IsNullOrWhiteSpace(sql))
+        {
+            sql = TxtSqlEditor.Text;
+        }
+        if (string.IsNullOrWhiteSpace(sql)) return;
+
+        if (_parameterService.HasParameters(sql))
+        {
+            PromptAndExecuteWithParameters(sql, isExplain: false);
+            return;
+        }
+
+        ExecuteSqlInternal(sql);
+    }
+
+    private void PromptAndExecuteWithParameters(string sql, bool isExplain, bool analyze = false)
+    {
+        var parameters = _parameterService.ExtractParameters(sql);
+        if (parameters.Count == 0)
+        {
+            if (isExplain)
+                _ = RunExplainInternalAsync(sql, analyze);
+            else
+                ExecuteSqlInternal(sql);
+            return;
+        }
+
+        var dialog = new QueryParametersDialog();
+        dialog.Setup(parameters, _parameterService);
+
+        dialog.CancelRequested += () =>
+        {
+            PanelModalOverlay.IsVisible = false;
+            ModalContainer.Content = null;
+        };
+
+        dialog.ExecuteRequested += (paramValues) =>
+        {
+            PanelModalOverlay.IsVisible = false;
+            ModalContainer.Content = null;
+
+            var finalSql = _parameterService.SubstituteParameters(sql, paramValues);
+            if (isExplain)
+            {
+                _ = RunExplainInternalAsync(finalSql, analyze);
+            }
+            else
+            {
+                ExecuteSqlInternal(finalSql, sql);
+            }
+        };
+
+        ModalContainer.Content = dialog;
+        PanelModalOverlay.IsVisible = true;
+    }
+
+    public async void ExecuteSqlInternal(string sql, string? originalTemplateSql = null)
+    {
         if (string.IsNullOrWhiteSpace(sql)) return;
 
         ProgressExecuting.IsVisible = true;
@@ -427,7 +500,7 @@ public partial class QueryTabControl : UserControl
 
         var historyItem = new QueryHistoryItem
         {
-            Sql = sql,
+            Sql = originalTemplateSql ?? sql,
             Success = result.Success,
             RowCount = result.Rows.Count,
             DurationMs = result.ElapsedMilliseconds
@@ -441,7 +514,7 @@ public partial class QueryTabControl : UserControl
             _ = _appStorage.LogQueryExecutionAsync(new QueryHistoryEntry
             {
                 ConnectionId = connId,
-                SqlText = sql,
+                SqlText = originalTemplateSql ?? sql,
                 ElapsedMilliseconds = (long)result.ElapsedMilliseconds,
                 RowCount = result.Rows.Count,
                 Success = result.Success,
@@ -453,8 +526,16 @@ public partial class QueryTabControl : UserControl
             System.Diagnostics.Debug.WriteLine($"[QueryTab] Error logging history to app storage: {ex.Message}");
         }
 
+        DisplayQueryResult(result);
+    }
+
+    private void DisplayQueryResult(QueryResult result)
+    {
         if (!result.Success)
         {
+            BarSubResults.IsVisible = false;
+            ContainerSplitGrids.IsVisible = false;
+            GridResults.IsVisible = true;
             TxtExecutionStatus.Text = $"✗ {result.ErrorMessage}";
             TxtExecutionStatus.Foreground = Avalonia.Media.Brush.Parse("#f87171");
             GridResults.Columns.Clear();
@@ -464,31 +545,216 @@ public partial class QueryTabControl : UserControl
             return;
         }
 
-        var successPattern = LocalizationManager.GetString("Query.RowsReturned", "{0} rows returned in {1}ms");
-        TxtExecutionStatus.Text = $"✓ {string.Format(successPattern, result.Rows.Count, result.ElapsedMilliseconds.ToString("F1"))}";
+        if (result.HasMultipleResults)
+        {
+            _activeSubResultIndex = 0;
+            BarSubResults.IsVisible = true;
+            BuildSubResultTabs(result.SubResults);
+            BuildSplitGrids(result.SubResults);
+
+            SetSubResultLayoutMode(_isSplitLayoutMode);
+            SelectSubResult(0);
+        }
+        else
+        {
+            BarSubResults.IsVisible = false;
+            ContainerSplitGrids.IsVisible = false;
+            GridResults.IsVisible = true;
+
+            PopulateDataGrid(GridResults, result);
+            ViewChart.SetData(result);
+
+            var successPattern = LocalizationManager.GetString("Query.RowsReturned", "{0} rows returned in {1}ms");
+            TxtExecutionStatus.Text = $"✓ {string.Format(successPattern, result.Rows.Count, result.ElapsedMilliseconds.ToString("F1"))}";
+            TxtExecutionStatus.Foreground = Avalonia.Media.Brush.Parse("#34d399");
+
+            TxtRowStats.Text = $"{result.Rows.Count:N0} rows";
+            TxtTimeStats.Text = $"{result.ElapsedMilliseconds:F1} ms";
+        }
+    }
+
+    private void BuildSubResultTabs(IReadOnlyList<QueryResult> subResults)
+    {
+        PanelSubResultButtons.Children.Clear();
+
+        for (int i = 0; i < subResults.Count; i++)
+        {
+            var idx = i;
+            var subRes = subResults[i];
+            var btn = new Button
+            {
+                Content = $"📊 #{idx + 1} ({subRes.Rows.Count:N0} lnh)",
+                Classes = { idx == _activeSubResultIndex ? "btn-secondary" : "btn-outline" },
+                Padding = new Avalonia.Thickness(10, 4),
+                FontSize = 11,
+                Cursor = new Cursor(StandardCursorType.Hand)
+            };
+
+            btn.Click += (s, e) => SelectSubResult(idx);
+            PanelSubResultButtons.Children.Add(btn);
+        }
+    }
+
+    private void BuildSplitGrids(IReadOnlyList<QueryResult> subResults)
+    {
+        PanelSplitGridsHost.Children.Clear();
+
+        for (int i = 0; i < subResults.Count; i++)
+        {
+            var idx = i;
+            var subRes = subResults[i];
+
+            var card = new Border
+            {
+                Background = Avalonia.Media.Brush.Parse("#0c111a"),
+                BorderBrush = Avalonia.Media.Brush.Parse("#1e2d42"),
+                BorderThickness = new Avalonia.Thickness(1),
+                CornerRadius = new Avalonia.CornerRadius(6),
+                Padding = new Avalonia.Thickness(8)
+            };
+
+            var stack = new StackPanel { Spacing = 6 };
+
+            // Card Header
+            var headerGrid = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitions("*,Auto")
+            };
+
+            var titleBlock = new TextBlock
+            {
+                Text = $"Resultado #{idx + 1} ({subRes.Rows.Count:N0} linhas em {subRes.ElapsedMilliseconds:F1}ms)",
+                FontSize = 11.5,
+                FontWeight = Avalonia.Media.FontWeight.Bold,
+                Foreground = Avalonia.Media.Brush.Parse("#38bdf8"),
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+            };
+            Grid.SetColumn(titleBlock, 0);
+            headerGrid.Children.Add(titleBlock);
+
+            stack.Children.Add(headerGrid);
+
+            // Grid for this result
+            var grid = new DataGrid
+            {
+                AutoGenerateColumns = false,
+                IsReadOnly = true,
+                GridLinesVisibility = DataGridGridLinesVisibility.All,
+                HeadersVisibility = DataGridHeadersVisibility.Column,
+                BorderThickness = new Avalonia.Thickness(0),
+                Background = Avalonia.Media.Brush.Parse("#090d14"),
+                Foreground = Avalonia.Media.Brush.Parse("#f0f6fc"),
+                RowBackground = Avalonia.Media.Brush.Parse("#0c111a"),
+                MinHeight = 120,
+                MaxHeight = 260
+            };
+
+            PopulateDataGrid(grid, subRes);
+
+            grid.SelectionChanged += (s, e) =>
+            {
+                if (DrawerInspector.IsVisible && grid.SelectedItem is List<object?> selectedRow)
+                {
+                    DrawerInspector.LoadRow(subRes.Columns, selectedRow);
+                }
+            };
+
+            stack.Children.Add(grid);
+            card.Child = stack;
+            PanelSplitGridsHost.Children.Add(card);
+        }
+    }
+
+    private void SelectSubResult(int index)
+    {
+        if (_lastResult?.SubResults == null || index < 0 || index >= _lastResult.SubResults.Count)
+            return;
+
+        _activeSubResultIndex = index;
+
+        // Update button visual states in tabs toolbar
+        for (int i = 0; i < PanelSubResultButtons.Children.Count; i++)
+        {
+            if (PanelSubResultButtons.Children[i] is Button b)
+            {
+                if (i == index)
+                {
+                    b.Classes.Set("btn-secondary", true);
+                    b.Classes.Set("btn-outline", false);
+                }
+                else
+                {
+                    b.Classes.Set("btn-secondary", false);
+                    b.Classes.Set("btn-outline", true);
+                }
+            }
+        }
+
+        var active = _lastResult.SubResults[index];
+        PopulateDataGrid(GridResults, active);
+        ViewChart.SetData(active);
+
+        TxtExecutionStatus.Text = $"✓ #{index + 1}: {active.Rows.Count:N0} linhas em {active.ElapsedMilliseconds:F1}ms (Total de {_lastResult.SubResults.Count} consultas)";
         TxtExecutionStatus.Foreground = Avalonia.Media.Brush.Parse("#34d399");
 
-        TxtRowStats.Text = $"{result.Rows.Count:N0} rows";
-        TxtTimeStats.Text = $"{result.ElapsedMilliseconds:F1} ms";
+        TxtRowStats.Text = $"{active.Rows.Count:N0} rows (Consulta #{index + 1})";
+        TxtTimeStats.Text = $"{active.ElapsedMilliseconds:F1} ms";
 
-        // Build dynamic columns
-        GridResults.Columns.Clear();
-        for (int i = 0; i < result.Columns.Count; i++)
+        if (DrawerInspector.IsVisible)
+        {
+            SyncSelectedRowToInspector();
+        }
+    }
+
+    private void SetSubResultLayoutMode(bool isSplit)
+    {
+        _isSplitLayoutMode = isSplit;
+
+        if (isSplit)
+        {
+            GridResults.IsVisible = false;
+            ContainerSplitGrids.IsVisible = true;
+            BtnSubLayoutTabs.Classes.Set("btn-secondary", false);
+            BtnSubLayoutTabs.Classes.Set("btn-outline", true);
+            BtnSubLayoutSplit.Classes.Set("btn-secondary", true);
+            BtnSubLayoutSplit.Classes.Set("btn-outline", false);
+        }
+        else
+        {
+            GridResults.IsVisible = true;
+            ContainerSplitGrids.IsVisible = false;
+            BtnSubLayoutTabs.Classes.Set("btn-secondary", true);
+            BtnSubLayoutTabs.Classes.Set("btn-outline", false);
+            BtnSubLayoutSplit.Classes.Set("btn-secondary", false);
+            BtnSubLayoutSplit.Classes.Set("btn-outline", true);
+        }
+    }
+
+    private void PopulateDataGrid(DataGrid grid, QueryResult res)
+    {
+        grid.Columns.Clear();
+        for (int i = 0; i < res.Columns.Count; i++)
         {
             var colIndex = i;
-            var colName = result.Columns[i];
+            var colName = res.Columns[i];
 
             var col = new DataGridTextColumn
             {
                 Header = colName,
                 Binding = new Binding($"[{colIndex}]"),
-                CanUserSort = true
+                CanUserSort = true,
+                CustomSortComparer = new Runix.Core.Models.SafeRowComparer(colIndex)
             };
-            GridResults.Columns.Add(col);
+            grid.Columns.Add(col);
         }
 
-        GridResults.ItemsSource = result.Rows;
-        ViewChart.SetData(result);
+        grid.ItemsSource = res.Rows;
+
+        if (ReferenceEquals(grid, GridResults))
+        {
+            _currentActiveResult = res;
+            BuildQueryColumnFilters(res.Columns);
+        }
     }
 
     public void OpenExportDialog()
@@ -581,6 +847,17 @@ public partial class QueryTabControl : UserControl
             return;
         }
 
+        if (_parameterService.HasParameters(sql))
+        {
+            PromptAndExecuteWithParameters(sql, isExplain: true, analyze: analyze);
+            return;
+        }
+
+        await RunExplainInternalAsync(sql, analyze);
+    }
+
+    private async Task RunExplainInternalAsync(string sql, bool analyze = false)
+    {
         TxtExecutionStatus.Text = analyze ? "Executando Explain & Analyze..." : "Obtendo Explain estimado...";
         TxtExecutionStatus.Foreground = Avalonia.Media.Brush.Parse("#38bdf8");
         ProgressExecuting.IsVisible = true;
@@ -604,6 +881,185 @@ public partial class QueryTabControl : UserControl
         finally
         {
             ProgressExecuting.IsVisible = false;
+        }
+    }
+
+    public void ToggleQueryFiltersBar()
+    {
+        BarQueryColumnFilters.IsVisible = !BarQueryColumnFilters.IsVisible;
+        BtnToggleQueryFilters.Classes.Clear();
+        BtnToggleQueryFilters.Classes.Add(BarQueryColumnFilters.IsVisible ? "btn-secondary" : "btn-outline");
+
+        if (BarQueryColumnFilters.IsVisible && _queryColumnFilterInputs.Count == 0 && _currentActiveResult != null && _currentActiveResult.Columns.Count > 0)
+        {
+            BuildQueryColumnFilters(_currentActiveResult.Columns);
+            BarQueryColumnFilters.IsVisible = true;
+            BtnToggleQueryFilters.Classes.Clear();
+            BtnToggleQueryFilters.Classes.Add("btn-secondary");
+        }
+    }
+
+    private void BuildQueryColumnFilters(List<string> columns)
+    {
+        if (columns.Count == 0)
+        {
+            BarQueryColumnFilters.IsVisible = false;
+            BtnToggleQueryFilters.Classes.Clear();
+            BtnToggleQueryFilters.Classes.Add("btn-outline");
+            return;
+        }
+
+        // Ao executar um select, a barra permanece oculta por default
+        BarQueryColumnFilters.IsVisible = false;
+        BtnToggleQueryFilters.Classes.Clear();
+        BtnToggleQueryFilters.Classes.Add("btn-outline");
+
+        var isMatch = _queryColumnFilterInputs.Count == columns.Count && columns.All(c => _queryColumnFilterInputs.ContainsKey(c));
+        if (isMatch) return;
+
+        PanelQueryFiltersHost.Children.Clear();
+        _queryColumnFilterInputs.Clear();
+
+        foreach (var col in columns)
+        {
+            var panel = new StackPanel
+            {
+                Width = 145,
+                Margin = new Avalonia.Thickness(0, 0, 8, 4)
+            };
+
+            var header = new TextBlock
+            {
+                Text = col,
+                FontSize = 10.5,
+                FontWeight = Avalonia.Media.FontWeight.Bold,
+                Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#38bdf8")),
+                TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis,
+                Margin = new Avalonia.Thickness(2, 0, 0, 4)
+            };
+            panel.Children.Add(header);
+
+            var tb = new TextBox
+            {
+                Watermark = "ex: >10, %abc%",
+                FontSize = 11,
+                Padding = new Avalonia.Thickness(6, 4),
+                Height = 28
+            };
+
+            tb.KeyDown += (s, ev) =>
+            {
+                if (ev.Key == Avalonia.Input.Key.Enter)
+                {
+                    ApplyQueryFilters();
+                }
+            };
+
+            _queryColumnFilterInputs[col] = tb;
+            panel.Children.Add(tb);
+            PanelQueryFiltersHost.Children.Add(panel);
+        }
+    }
+
+    private void ApplyQueryFilters()
+    {
+        if (_currentActiveResult == null) return;
+
+        var activeFilters = new Dictionary<int, string>();
+        for (int i = 0; i < _currentActiveResult.Columns.Count; i++)
+        {
+            var col = _currentActiveResult.Columns[i];
+            if (_queryColumnFilterInputs.TryGetValue(col, out var tb) && !string.IsNullOrWhiteSpace(tb.Text))
+            {
+                activeFilters[i] = tb.Text.Trim();
+            }
+        }
+
+        if (activeFilters.Count == 0)
+        {
+            ClearQueryFilters();
+            return;
+        }
+
+        var filteredRows = new List<List<object?>>();
+        foreach (var row in _currentActiveResult.Rows)
+        {
+            bool matchesAll = true;
+            foreach (var (colIdx, expr) in activeFilters)
+            {
+                var val = (colIdx < row.Count) ? row[colIdx] : null;
+                if (!_columnFilterService.MatchesValue(val, expr))
+                {
+                    matchesAll = false;
+                    break;
+                }
+            }
+
+            if (matchesAll)
+            {
+                filteredRows.Add(row);
+            }
+        }
+
+        GridResults.ItemsSource = filteredRows;
+        BadgeQueryActiveFilters.IsVisible = true;
+        TxtQueryActiveFiltersCount.Text = $"{activeFilters.Count} ativo{(activeFilters.Count > 1 ? "s" : "")}";
+        TxtRowStats.Text = $"{filteredRows.Count:N0} de {_currentActiveResult.Rows.Count:N0} linhas (filtrado)";
+    }
+
+    private void ClearQueryFilters()
+    {
+        foreach (var tb in _queryColumnFilterInputs.Values)
+        {
+            tb.Text = "";
+        }
+
+        BadgeQueryActiveFilters.IsVisible = false;
+        if (_currentActiveResult != null)
+        {
+            GridResults.ItemsSource = _currentActiveResult.Rows;
+            TxtRowStats.Text = $"{_currentActiveResult.Rows.Count:N0} rows";
+        }
+    }
+
+    private void OnFilterBySelectedQueryCellValue()
+    {
+        if (GridResults.SelectedItem is List<object?> row && GridResults.CurrentColumn is { } currentCol)
+        {
+            var colIndex = GridResults.Columns.IndexOf(currentCol);
+            if (colIndex >= 0 && _currentActiveResult != null && colIndex < _currentActiveResult.Columns.Count)
+            {
+                var colName = _currentActiveResult.Columns[colIndex];
+                var val = (colIndex < row.Count) ? row[colIndex] : null;
+                var strVal = val == null || val == DBNull.Value ? "IS NULL" : val.ToString() ?? "";
+
+                if (!_queryColumnFilterInputs.ContainsKey(colName) && _currentActiveResult.Columns.Count > 0)
+                {
+                    BuildQueryColumnFilters(_currentActiveResult.Columns);
+                }
+
+                if (_queryColumnFilterInputs.TryGetValue(colName, out var tb))
+                {
+                    tb.Text = val == null || val == DBNull.Value ? "IS NULL" : strVal;
+                    BarQueryColumnFilters.IsVisible = true;
+                    ApplyQueryFilters();
+                }
+            }
+        }
+    }
+
+    private async Task CopySelectedQueryCellValueAsync()
+    {
+        if (GridResults.SelectedItem is List<object?> row && GridResults.CurrentColumn is { } currentCol)
+        {
+            var colIndex = GridResults.Columns.IndexOf(currentCol);
+            var val = (colIndex >= 0 && colIndex < row.Count) ? row[colIndex] : null;
+            var text = val?.ToString() ?? "";
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel?.Clipboard != null)
+            {
+                await topLevel.Clipboard.SetTextAsync(text);
+            }
         }
     }
 }

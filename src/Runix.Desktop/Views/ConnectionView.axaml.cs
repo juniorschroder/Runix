@@ -103,9 +103,10 @@ public partial class ConnectionView : UserControl
         BtnExportRcf.Click += async (s, e) => await OpenExportBundleDialogAsync();
         BtnImportRcf.Click += async (s, e) => await OpenImportBundleDialogAsync();
 
-        ChkUseSshTunnel.IsCheckedChanged += (s, e) =>
+        TabsPostgresConnection.SelectionChanged += (s, e) =>
         {
-            PanelSshConfigFields.IsVisible = ChkUseSshTunnel.IsChecked == true;
+            bool isSsh = TabsPostgresConnection.SelectedIndex == 1;
+            BadgeSshTabActive.IsVisible = isSsh;
         };
 
         ComboSshAuthMethod.SelectionChanged += (s, e) =>
@@ -426,8 +427,9 @@ public partial class ConnectionView : UserControl
             }
         }
 
-        ChkUseSshTunnel.IsChecked = cfg.UseSshTunnel;
-        PanelSshConfigFields.IsVisible = cfg.UseSshTunnel;
+        TabsPostgresConnection.SelectedIndex = cfg.UseSshTunnel ? 1 : 0;
+        BadgeSshTabActive.IsVisible = cfg.UseSshTunnel;
+        PanelSshConfigFields.IsVisible = true;
         TxtSshHost.Text = cfg.SshHost;
         TxtSshPort.Text = (cfg.SshPort > 0 ? cfg.SshPort : 22).ToString();
         TxtSshUsername.Text = cfg.SshUsername;
@@ -465,8 +467,9 @@ public partial class ConnectionView : UserControl
         TxtPgPassword.Text = "";
         ComboPgSsl.SelectedIndex = 1;
 
-        ChkUseSshTunnel.IsChecked = false;
-        PanelSshConfigFields.IsVisible = false;
+        TabsPostgresConnection.SelectedIndex = 0;
+        BadgeSshTabActive.IsVisible = false;
+        PanelSshConfigFields.IsVisible = true;
         TxtSshHost.Text = "";
         TxtSshPort.Text = "22";
         TxtSshUsername.Text = "";
@@ -509,7 +512,7 @@ public partial class ConnectionView : UserControl
             _currentConfig.Password = TxtPgPassword.Text ?? "";
             _currentConfig.SslMode = (ComboPgSsl.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Prefer";
 
-            _currentConfig.UseSshTunnel = ChkUseSshTunnel.IsChecked == true;
+            _currentConfig.UseSshTunnel = TabsPostgresConnection.SelectedIndex == 1;
             _currentConfig.SshHost = TxtSshHost.Text?.Trim() ?? "";
             _currentConfig.SshPort = int.TryParse(TxtSshPort.Text, out var sshPort) && sshPort > 0 ? sshPort : 22;
             _currentConfig.SshUsername = TxtSshUsername.Text?.Trim() ?? "";

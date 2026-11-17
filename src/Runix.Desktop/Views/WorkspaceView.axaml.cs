@@ -1251,7 +1251,7 @@ public partial class WorkspaceView : UserControl
         return null;
     }
 
-    public void OpenTableDataTab(string tableName)
+    public void OpenTableDataTab(string tableName, string? initialFilter = null)
     {
         // Check if tab already open
         foreach (var item in WorkspaceTabs.Items)
@@ -1259,12 +1259,17 @@ public partial class WorkspaceView : UserControl
             if (item is TabItem t && t.Tag is string tag && tag == $"data:{tableName}")
             {
                 WorkspaceTabs.SelectedItem = t;
+                if (!string.IsNullOrWhiteSpace(initialFilter) && t.Content is TableDataTabControl ctrl)
+                {
+                    ctrl.SetFilter(initialFilter);
+                }
                 return;
             }
         }
 
-        var tableDataControl = new TableDataTabControl(_databaseService, tableName);
+        var tableDataControl = new TableDataTabControl(_databaseService, tableName, initialFilter);
         tableDataControl.ViewStructureRequested += tbl => OpenTableStructureTab(tbl);
+        tableDataControl.NavigateToForeignKeyRequested += (tbl, filter) => OpenTableDataTab(tbl, filter);
 
         var tabItem = CreateTabItem(tableName, "🗄", tableDataControl);
         tabItem.Tag = $"data:{tableName}";

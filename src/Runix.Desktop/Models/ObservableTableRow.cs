@@ -6,12 +6,16 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using Runix.Core.Models;
 
-public class ObservableTableRow : INotifyPropertyChanged
+public class ObservableTableRow : INotifyPropertyChanged, IReadOnlyList<object?>
 {
     private readonly IReadOnlyList<string> _columns;
     private readonly Dictionary<string, int> _columnIndices;
     private readonly List<object?> _values;
     private RowEditState _state = RowEditState.Unchanged;
+
+    public int Count => _values.Count;
+    public IEnumerator<object?> GetEnumerator() => _values.GetEnumerator();
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
 
     public int RowIndex { get; set; }
     public Dictionary<string, object?> OriginalValues { get; }

@@ -69,7 +69,7 @@
                 </StackPanel>
 
                 <!-- Recommended Platform Installer Card -->
-                <Border Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8" Padding="14,10">
+                <Border Name="CardInstallerAction" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8" Padding="14,10">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
                             <TextBlock Text="{DynamicResource Update.RecommendedPackageLabel}" FontSize="9.5" FontWeight="Bold" Foreground="#38bdf8"/>
@@ -82,8 +82,35 @@
                                     AutomationProperties.Name="Ver release no GitHub"/>
                             <Button Name="BtnDownloadInstaller" Content="{DynamicResource Update.DownloadInstaller}"
                                     Classes="btn-primary" Padding="14,6" FontSize="11.5"
-                                    AutomationProperties.Name="Baixar instalador recomendado"/>
+                                    AutomationProperties.Name="Baixar e iniciar instalação"/>
                         </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Download & Installation Live Progress Card -->
+                <Border Name="CardDownloadProgress" Background="#091829" BorderBrush="#0284c7" BorderThickness="1.5" CornerRadius="8" Padding="14,12" IsVisible="False">
+                    <StackPanel Spacing="8">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Name="TxtDownloadStatus" Grid.Column="0" Text="{DynamicResource Update.Downloading}" FontSize="12" FontWeight="SemiBold" Foreground="#38bdf8"/>
+                            <TextBlock Name="TxtDownloadBytes" Grid.Column="1" Text="0 MB / 0 MB" FontSize="11" Foreground="#94a3b8" FontFamily="Consolas,Menlo,monospace"/>
+                        </Grid>
+
+                        <ProgressBar Name="ProgressDownload" Height="6" Minimum="0" Maximum="100" Value="0"
+                                     Foreground="#34d399" Background="#141d2b" CornerRadius="3"/>
+
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Name="TxtDownloadNotice" Grid.Column="0" Text="{DynamicResource Update.AutoCloseNotice}" FontSize="10.5" Foreground="#64748b" VerticalAlignment="Center"/>
+                            <Button Name="BtnCancelDownload" Grid.Column="1" Content="{DynamicResource Update.CancelDownload}" Classes="btn-outline" Padding="10,3" FontSize="10.5"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Download Error Notification -->
+                <Border Name="CardDownloadError" Background="#2b1111" BorderBrush="#f87171" BorderThickness="1" CornerRadius="8" Padding="12,8" IsVisible="False">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <TextBlock Name="TxtDownloadError" Grid.Column="0" Text="{DynamicResource Update.DownloadError}" FontSize="11" Foreground="#f87171" VerticalAlignment="Center"/>
+                        <Button Name="BtnRetryDownload" Grid.Column="1" Content="{DynamicResource Update.RetryDownload}" Classes="btn-secondary" Padding="10,4" FontSize="10.5" Margin="8,0,0,0"/>
+                        <Button Name="BtnFallbackBrowser" Grid.Column="2" Content="{DynamicResource Update.ViewOnGitHub}" Classes="btn-outline" Padding="10,4" FontSize="10.5" Margin="6,0,0,0"/>
                     </Grid>
                 </Border>
             </StackPanel>

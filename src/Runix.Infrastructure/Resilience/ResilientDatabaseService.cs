@@ -155,6 +155,45 @@ public class ResilientDatabaseService : IDatabaseService
             CancellationToken.None);
     }
 
+    public async Task<List<QueryResult>> ExecuteMultipleQueriesAsync(string sql, int limit = 50000)
+    {
+        // Safety & Read-Only / Production Validation Safeguard
+        var safety = _safetyService.ValidateQuery(sql, Config);
+        if (!safety.IsAllowed)
+        {
+            var errMessage = $"{safety.Reason}";
+            if (!string.IsNullOrWhiteSpace(safety.OffendingStatement))
+            {
+                errMessage += $"\n[Comando]: {safety.OffendingStatement}";
+            }
+            return new List<QueryResult> { QueryResult.CreateError(errMessage) };
+        }
+
+        try
+        {
+            if (IsIdempotentQuery(sql))
+            {
+                return await _idempotentPipeline.ExecuteAsync(
+                    async ct => await _inner.ExecuteMultipleQueriesAsync(sql, limit),
+                    CancellationToken.None);
+            }
+            else
+            {
+                return await _circuitBreakerPolicy.ExecuteAsync(
+                    async ct => await _inner.ExecuteMultipleQueriesAsync(sql, limit),
+                    CancellationToken.None);
+            }
+        }
+        catch (CircuitBreakerOpenException cbEx)
+        {
+            return new List<QueryResult>
+            {
+                QueryResult.CreateError(
+                    $"[Circuit Breaker Open] Database target is currently unreachable. Failing fast without blocking. Reset in {cbEx.RetryAfter?.TotalSeconds ?? 30:F0}s.")
+            };
+        }
+    }
+
     public async Task<QueryResult> ExecuteQueryAsync(string sql, int limit = 50000)
     {
         // Safety & Read-Only / Production Validation Safeguard

@@ -12,6 +12,10 @@ public class QueryResult
     public int AffectedRows { get; set; }
     public int RowsAffected { get => AffectedRows; set => AffectedRows = value; }
     public double ElapsedMilliseconds { get; set; }
+    public string? ExecutedSql { get; set; }
+    public string? Title { get; set; }
+    public List<QueryResult> SubResults { get; set; } = new();
+    public bool HasMultipleResults => SubResults.Count > 1;
 
     public static QueryResult CreateSuccess(List<string> columns, List<List<object?>> rows, double elapsedMs, int affected = 0)
     {

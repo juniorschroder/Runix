@@ -34,27 +34,45 @@ public partial class TableDataTabControl : UserControl
     private StagedChangeset _changeset;
     private readonly IDmlGeneratorService _dmlGenerator;
 
+    private readonly Dictionary<string, ForeignKeyInfo> _foreignKeys = new(StringComparer.OrdinalIgnoreCase);
+    private readonly IColumnFilterService _columnFilterService = ColumnFilterService.Instance;
+    private readonly Dictionary<string, TextBox> _columnFilterInputs = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<(string Column, bool Ascending)> _sortOrders = new();
+    private (string TargetTable, string TargetColumn, string Value)? _pendingFkNavigation;
+    private bool _isShiftPressed;
+    private bool _isLoadingData;
+
     public string TableName => _tableName;
     public string? GetFilter() => TxtFilter.Text;
     public void SetFilter(string filter)
     {
         TxtFilter.Text = filter;
         _currentPage = 1;
-        LoadData();
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => LoadData());
     }
 
     public event Action<string>? ViewStructureRequested;
+    public event Action<string, string>? NavigateToForeignKeyRequested;
 
     public TableDataTabControl() : this(new SqliteDatabaseService(new ConnectionConfig()), "")
     {
     }
 
-    public TableDataTabControl(IDatabaseService databaseService, string tableName)
+    public TableDataTabControl(IDatabaseService databaseService, string tableName) : this(databaseService, tableName, null)
+    {
+    }
+
+    public TableDataTabControl(IDatabaseService databaseService, string tableName, string? initialFilter)
     {
         InitializeComponent();
         _databaseService = databaseService;
         _tableName = tableName;
         TxtTableName.Text = tableName;
+
+        if (!string.IsNullOrWhiteSpace(initialFilter))
+        {
+            TxtFilter.Text = initialFilter;
+        }
 
         _changeset = new StagedChangeset
         {
@@ -70,6 +88,9 @@ public partial class TableDataTabControl : UserControl
 
         // Toolbar Events
         BtnApplyFilter.Click += (s, e) => { _currentPage = 1; LoadData(); };
+        BtnToggleColumnFilters.Click += (s, e) => ToggleColumnFiltersBar();
+        BtnApplyInlineFilters.Click += (s, e) => ApplyInlineFilters();
+        BtnClearInlineFilters.Click += (s, e) => ClearInlineFilters();
         BtnRefresh.Click += (s, e) => LoadData();
         BtnPrevPage.Click += (s, e) => { if (_currentPage > 1) { _currentPage--; LoadData(); } };
         BtnNextPage.Click += (s, e) => { _currentPage++; LoadData(); };
@@ -78,6 +99,10 @@ public partial class TableDataTabControl : UserControl
         BtnToggleChart.Click += (s, e) => ToggleChartView();
         BtnToggleInspector.Click += (s, e) => ToggleInspectorDrawer();
         BtnViewStructure.Click += (s, e) => ViewStructureRequested?.Invoke(_tableName);
+
+        // FK Quick Nav Events
+        BtnQuickNavigateFk.Click += (s, e) => OnNavigateForeignKeyClicked();
+        BtnCloseFkQuickNav.Click += (s, e) => BarForeignKeyQuickNav.IsVisible = false;
 
         DrawerInspector.SetEditable(true);
         DrawerInspector.CloseRequested += () =>
@@ -94,6 +119,7 @@ public partial class TableDataTabControl : UserControl
             {
                 SyncSelectedRowToInspector();
             }
+            CheckAndDisplayForeignKeyQuickNav();
         };
 
         // Row Editing & Staging Actions
@@ -107,6 +133,12 @@ public partial class TableDataTabControl : UserControl
         GridTableRows.LoadingRow += OnLoadingRow;
         GridTableRows.DoubleTapped += (s, e) =>
         {
+            if (_pendingFkNavigation.HasValue)
+            {
+                OnNavigateForeignKeyClicked();
+                return;
+            }
+
             if (!_databaseService.Config.IsReadOnly)
             {
                 GridTableRows.BeginEdit();
@@ -144,90 +176,191 @@ public partial class TableDataTabControl : UserControl
             }
         };
 
+        // Multi-column sorting
+        GridTableRows.Sorting += OnGridSorting;
+        KeyDown += (s, e) =>
+        {
+            if (e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift))
+            {
+                _isShiftPressed = true;
+            }
+        };
+        KeyUp += (s, e) =>
+        {
+            if (!e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift))
+            {
+                _isShiftPressed = false;
+            }
+        };
+
+        // Context Menu (Copy Cell Value & FK Navigation & Quick Filter)
+        MenuGridCell.Opened += (s, e) => UpdateGridContextMenu();
+        MenuCopyCellValue.Click += async (s, e) => await CopySelectedCellValueAsync();
+        MenuFilterByCellValue.Click += (s, e) => OnFilterBySelectedCellValue();
+        MenuNavigateForeignKey.Click += (s, e) => OnNavigateForeignKeyClicked();
+
         LoadData();
     }
 
     public async void LoadData()
     {
+        if (_isLoadingData) return;
+        _isLoadingData = true;
         ProgressLoading.IsVisible = true;
-        var offset = (_currentPage - 1) * PageSize;
-        var filter = TxtFilter.Text;
 
-        // Discover primary keys for the table if not cached
-        if (_primaryKeys.Count == 0)
+        try
         {
-            try
+            var offset = (_currentPage - 1) * PageSize;
+            var filter = TxtFilter.Text;
+
+            // Discover primary keys for the table if not cached
+            if (_primaryKeys.Count == 0)
             {
-                var schemaCols = await _databaseService.GetTableColumnsAsync(_tableName);
-                _primaryKeys = schemaCols.Where(c => c.IsPrimaryKey).Select(c => c.Name).ToList();
-                _changeset = new StagedChangeset
+                try
                 {
-                    TableName = _tableName,
-                    PrimaryKeyColumns = _primaryKeys
-                };
+                    var schemaCols = await _databaseService.GetTableColumnsAsync(_tableName);
+                    _primaryKeys = schemaCols.Where(c => c.IsPrimaryKey).Select(c => c.Name).ToList();
+                    _changeset = new StagedChangeset
+                    {
+                        TableName = _tableName,
+                        PrimaryKeyColumns = _primaryKeys
+                    };
 
-                TxtWarningNoPk.IsVisible = _primaryKeys.Count == 0;
-            }
-            catch
-            {
-                // Ignore schema column discovery errors on view or mock
-            }
-        }
-
-        var result = await _databaseService.GetTableDataAsync(_tableName, offset, PageSize, filter);
-        ProgressLoading.IsVisible = false;
-        _lastResult = result;
-
-        if (!result.Success)
-        {
-            TxtPaginationInfo.Text = $"Error: {result.ErrorMessage}";
-            return;
-        }
-
-        var pageLabel = LocalizationManager.GetString("TableData.Page", "Page");
-        TxtPageNumber.Text = $"{pageLabel} {_currentPage}";
-
-        var pattern = LocalizationManager.GetString("TableData.ShowingRows", "Showing {0} rows");
-        TxtPaginationInfo.Text = $"{string.Format(pattern, result.Rows.Count)} (offset {offset}) in {result.ElapsedMilliseconds:F1}ms";
-        BtnPrevPage.IsEnabled = _currentPage > 1;
-        BtnNextPage.IsEnabled = result.Rows.Count == PageSize;
-
-        _columns = result.Columns;
-
-        // Build dynamic columns for DataGrid
-        GridTableRows.ItemsSource = null;
-        GridTableRows.Columns.Clear();
-        for (int i = 0; i < result.Columns.Count; i++)
-        {
-            var colIndex = i;
-            var colName = result.Columns[i];
-
-            var col = new DataGridTextColumn
-            {
-                Header = colName,
-                Binding = new Binding($"[{colIndex}]")
+                    TxtWarningNoPk.IsVisible = _primaryKeys.Count == 0;
+                }
+                catch
                 {
-                    Mode = BindingMode.TwoWay
-                },
-                CanUserSort = true,
-                IsReadOnly = false,
-                FontSize = 11.5
-            };
-            GridTableRows.Columns.Add(col);
+                    // Ignore schema column discovery errors on view or mock
+                }
+            }
+
+            // Discover foreign keys if not cached
+            if (_foreignKeys.Count == 0)
+            {
+                try
+                {
+                    var fks = await _databaseService.GetForeignKeysAsync(_tableName);
+                    foreach (var fk in fks)
+                    {
+                        if (!string.IsNullOrWhiteSpace(fk.SourceColumn))
+                        {
+                            _foreignKeys[fk.SourceColumn] = fk;
+                        }
+                    }
+                }
+                catch
+                {
+                    // Ignore foreign key discovery errors
+                }
+            }
+
+            var sortClause = _sortOrders.Count > 0 ? _columnFilterService.BuildOrderByClause(_sortOrders) : null;
+            var result = await _databaseService.GetTableDataAsync(_tableName, offset, PageSize, filter, sortClause);
+            _lastResult = result;
+
+            if (!result.Success)
+            {
+                TxtPaginationInfo.Text = $"Error: {result.ErrorMessage}";
+                return;
+            }
+
+            var pageLabel = LocalizationManager.GetString("TableData.Page", "Page");
+            TxtPageNumber.Text = $"{pageLabel} {_currentPage}";
+
+            var pattern = LocalizationManager.GetString("TableData.ShowingRows", "Showing {0} rows");
+            TxtPaginationInfo.Text = $"{string.Format(pattern, result.Rows.Count)} (offset {offset}) in {result.ElapsedMilliseconds:F1}ms";
+            BtnPrevPage.IsEnabled = _currentPage > 1;
+            BtnNextPage.IsEnabled = result.Rows.Count == PageSize;
+
+            _columns = result.Columns;
+
+            // Reutiliza colunas existentes para evitar recriação destrutiva durante ordenação repetida
+            if (GridTableRows.Columns.Count == result.Columns.Count)
+            {
+                for (int i = 0; i < result.Columns.Count; i++)
+                {
+                    var colName = result.Columns[i];
+                    var isPk = _primaryKeys.Contains(colName, StringComparer.OrdinalIgnoreCase);
+                    var isFk = _foreignKeys.ContainsKey(colName);
+                    var prefix = isPk ? "🔑 " : (isFk ? "🔗 " : "");
+
+                    var sortIdx = _sortOrders.FindIndex(s => string.Equals(s.Column, colName, StringComparison.OrdinalIgnoreCase));
+                    var sortIndicator = "";
+                    if (sortIdx >= 0)
+                    {
+                        var isAsc = _sortOrders[sortIdx].Ascending;
+                        var arrow = isAsc ? "▲" : "▼";
+                        sortIndicator = _sortOrders.Count > 1 ? $" {arrow}{sortIdx + 1}" : $" {arrow}";
+                    }
+
+                    GridTableRows.Columns[i].Header = $"{prefix}{colName}{sortIndicator}";
+                    GridTableRows.Columns[i].CustomSortComparer = new SafeRowComparer(i);
+                }
+            }
+            else
+            {
+                GridTableRows.Columns.Clear();
+                for (int i = 0; i < result.Columns.Count; i++)
+                {
+                    var colIndex = i;
+                    var colName = result.Columns[i];
+                    var isPk = _primaryKeys.Contains(colName, StringComparer.OrdinalIgnoreCase);
+                    var isFk = _foreignKeys.ContainsKey(colName);
+                    var prefix = isPk ? "🔑 " : (isFk ? "🔗 " : "");
+
+                    var sortIdx = _sortOrders.FindIndex(s => string.Equals(s.Column, colName, StringComparison.OrdinalIgnoreCase));
+                    var sortIndicator = "";
+                    if (sortIdx >= 0)
+                    {
+                        var isAsc = _sortOrders[sortIdx].Ascending;
+                        var arrow = isAsc ? "▲" : "▼";
+                        sortIndicator = _sortOrders.Count > 1 ? $" {arrow}{sortIdx + 1}" : $" {arrow}";
+                    }
+
+                    var col = new DataGridTextColumn
+                    {
+                        Header = $"{prefix}{colName}{sortIndicator}",
+                        Tag = colName,
+                        Binding = new Binding($"[{colIndex}]")
+                        {
+                            Mode = BindingMode.TwoWay
+                        },
+                        CanUserSort = true,
+                        CustomSortComparer = new SafeRowComparer(colIndex),
+                        IsReadOnly = false,
+                        FontSize = 11.5
+                    };
+                    GridTableRows.Columns.Add(col);
+                }
+            }
+
+            BuildInlineFilterInputs(result.Columns);
+
+            // Populate rows
+            _rows.Clear();
+            _changeset.Clear();
+            UpdateStagingBar();
+
+            for (int i = 0; i < result.Rows.Count; i++)
+            {
+                var rowItem = new ObservableTableRow(i, _columns, result.Rows[i]);
+                _rows.Add(rowItem);
+            }
+
+            if (!ReferenceEquals(GridTableRows.ItemsSource, _rows))
+            {
+                GridTableRows.ItemsSource = _rows;
+            }
         }
-
-        // Populate rows
-        _rows.Clear();
-        _changeset.Clear();
-        UpdateStagingBar();
-
-        for (int i = 0; i < result.Rows.Count; i++)
+        catch (Exception ex)
         {
-            var rowItem = new ObservableTableRow(i, _columns, result.Rows[i]);
-            _rows.Add(rowItem);
+            TxtPaginationInfo.Text = $"Erro: {ex.Message}";
         }
-
-        GridTableRows.ItemsSource = _rows.ToList();
+        finally
+        {
+            _isLoadingData = false;
+            ProgressLoading.IsVisible = false;
+        }
     }
 
     private void OnLoadingRow(object? sender, DataGridRowEventArgs e)
@@ -603,7 +736,7 @@ public partial class TableDataTabControl : UserControl
     {
         TxtFilter.Text = filterSqlClause;
         _currentPage = 1;
-        LoadData();
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => LoadData());
     }
 
     private void SyncSelectedRowToInspector()
@@ -634,6 +767,315 @@ public partial class TableDataTabControl : UserControl
                 _changeset.TrackCellEdit(row.RowIndex, columnName, oldValue, newValue);
             }
             UpdateStagingBar();
+        }
+    }
+
+    public void ToggleColumnFiltersBar()
+    {
+        BarInlineColumnFilters.IsVisible = !BarInlineColumnFilters.IsVisible;
+        BtnToggleColumnFilters.Classes.Clear();
+        BtnToggleColumnFilters.Classes.Add(BarInlineColumnFilters.IsVisible ? "btn-secondary" : "btn-outline");
+
+        if (BarInlineColumnFilters.IsVisible && _columnFilterInputs.Count == 0 && _columns.Count > 0)
+        {
+            BuildInlineFilterInputs(_columns);
+        }
+    }
+
+    private void BuildInlineFilterInputs(List<string> columns)
+    {
+        if (columns.Count == 0) return;
+
+        // Check if layout needs rebuild
+        var isMatch = _columnFilterInputs.Count == columns.Count && columns.All(c => _columnFilterInputs.ContainsKey(c));
+        if (isMatch) return;
+
+        PanelColumnFiltersHost.Children.Clear();
+        _columnFilterInputs.Clear();
+
+        foreach (var col in columns)
+        {
+            var isPk = _primaryKeys.Contains(col, StringComparer.OrdinalIgnoreCase);
+            var isFk = _foreignKeys.ContainsKey(col);
+            var icon = isPk ? "🔑 " : (isFk ? "🔗 " : "");
+
+            var panel = new StackPanel
+            {
+                Width = 145,
+                Margin = new Avalonia.Thickness(0, 0, 8, 4)
+            };
+
+            var header = new TextBlock
+            {
+                Text = $"{icon}{col}",
+                FontSize = 10.5,
+                FontWeight = (isPk || isFk) ? FontWeight.Bold : FontWeight.Normal,
+                Foreground = isFk ? new SolidColorBrush(Color.Parse("#38bdf8")) : (isPk ? new SolidColorBrush(Color.Parse("#fbbf24")) : new SolidColorBrush(Color.Parse("#94a3b8"))),
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Margin = new Avalonia.Thickness(2, 0, 0, 4)
+            };
+            panel.Children.Add(header);
+
+            var tb = new TextBox
+            {
+                Watermark = isFk ? "FK / >10, %abc%" : "ex: >10, %abc%",
+                FontSize = 11,
+                Padding = new Avalonia.Thickness(6, 4),
+                Height = 28
+            };
+
+            tb.KeyDown += (s, ev) =>
+            {
+                if (ev.Key == Avalonia.Input.Key.Enter)
+                {
+                    ApplyInlineFilters();
+                }
+            };
+
+            _columnFilterInputs[col] = tb;
+            panel.Children.Add(tb);
+            PanelColumnFiltersHost.Children.Add(panel);
+        }
+    }
+
+    private void ApplyInlineFilters()
+    {
+        var activeFilters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (col, tb) in _columnFilterInputs)
+        {
+            if (!string.IsNullOrWhiteSpace(tb.Text))
+            {
+                activeFilters[col] = tb.Text.Trim();
+            }
+        }
+
+        if (activeFilters.Count > 0)
+        {
+            var whereClause = _columnFilterService.BuildWhereClause(activeFilters);
+            TxtFilter.Text = whereClause;
+            TxtActiveFiltersCount.Text = $"{activeFilters.Count} ativo{(activeFilters.Count > 1 ? "s" : "")}";
+            BadgeActiveFiltersCount.IsVisible = true;
+        }
+        else
+        {
+            TxtFilter.Text = "";
+            BadgeActiveFiltersCount.IsVisible = false;
+        }
+
+        _currentPage = 1;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => LoadData());
+    }
+
+    private void ClearInlineFilters()
+    {
+        foreach (var tb in _columnFilterInputs.Values)
+        {
+            tb.Text = "";
+        }
+
+        BadgeActiveFiltersCount.IsVisible = false;
+        TxtFilter.Text = "";
+        _currentPage = 1;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => LoadData());
+    }
+
+    private void OnGridSorting(object? sender, DataGridColumnEventArgs e)
+    {
+        e.Handled = true;
+
+        var colName = e.Column.Tag as string;
+        if (string.IsNullOrWhiteSpace(colName))
+        {
+            return;
+        }
+
+        if (_isShiftPressed)
+        {
+            var existingIndex = _sortOrders.FindIndex(s => string.Equals(s.Column, colName, StringComparison.OrdinalIgnoreCase));
+            if (existingIndex >= 0)
+            {
+                if (_sortOrders[existingIndex].Ascending)
+                {
+                    _sortOrders[existingIndex] = (colName, false);
+                }
+                else
+                {
+                    _sortOrders.RemoveAt(existingIndex);
+                }
+            }
+            else
+            {
+                _sortOrders.Add((colName, true));
+            }
+        }
+        else
+        {
+            if (_sortOrders.Count == 1 && string.Equals(_sortOrders[0].Column, colName, StringComparison.OrdinalIgnoreCase))
+            {
+                if (_sortOrders[0].Ascending)
+                {
+                    _sortOrders[0] = (colName, false);
+                }
+                else
+                {
+                    _sortOrders.Clear();
+                }
+            }
+            else
+            {
+                _sortOrders.Clear();
+                _sortOrders.Add((colName, true));
+            }
+        }
+
+        _currentPage = 1;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => LoadData());
+    }
+
+    private void UpdateGridContextMenu()
+    {
+        if (GridTableRows.SelectedItem is ObservableTableRow row && GridTableRows.CurrentColumn is { } currentCol)
+        {
+            var colName = currentCol.Tag as string;
+            if (!string.IsNullOrEmpty(colName) && _foreignKeys.TryGetValue(colName, out var fk))
+            {
+                var val = row.GetValue(colName);
+                if (val != null && val != DBNull.Value && !string.IsNullOrWhiteSpace(val.ToString()))
+                {
+                    var targetCol = string.IsNullOrWhiteSpace(fk.TargetColumn) ? "id" : fk.TargetColumn;
+                    _pendingFkNavigation = (fk.TargetTable, targetCol, val.ToString()!);
+                    MenuNavigateForeignKey.Header = $"🔗 Ir para {fk.TargetTable} ({targetCol} = {val})";
+                    MenuNavigateForeignKey.IsVisible = true;
+                    SepFkNavigation.IsVisible = true;
+                    return;
+                }
+            }
+        }
+
+        _pendingFkNavigation = null;
+        MenuNavigateForeignKey.IsVisible = false;
+        SepFkNavigation.IsVisible = false;
+    }
+
+    private void CheckAndDisplayForeignKeyQuickNav()
+    {
+        if (GridTableRows.SelectedItem is ObservableTableRow row)
+        {
+            var colName = GridTableRows.CurrentColumn?.Tag as string;
+            if (!string.IsNullOrEmpty(colName) && _foreignKeys.TryGetValue(colName, out var currentFk))
+            {
+                var val = row.GetValue(colName);
+                if (val != null && val != DBNull.Value && !string.IsNullOrWhiteSpace(val.ToString()))
+                {
+                    var targetCol = string.IsNullOrWhiteSpace(currentFk.TargetColumn) ? "id" : currentFk.TargetColumn;
+                    _pendingFkNavigation = (currentFk.TargetTable, targetCol, val.ToString()!);
+                    TxtForeignKeyInfo.Text = $"Chave Estrangeira: {currentFk.SourceColumn} = {val}  →  Tabela {currentFk.TargetTable} ({targetCol})";
+                    BtnQuickNavigateFk.Content = $"↗ Ir para {currentFk.TargetTable} ({targetCol} = {val})";
+                    BarForeignKeyQuickNav.IsVisible = true;
+                    return;
+                }
+            }
+
+            foreach (var (fkCol, fk) in _foreignKeys)
+            {
+                var val = row.GetValue(fkCol);
+                if (val != null && val != DBNull.Value && !string.IsNullOrWhiteSpace(val.ToString()))
+                {
+                    var targetCol = string.IsNullOrWhiteSpace(fk.TargetColumn) ? "id" : fk.TargetColumn;
+                    _pendingFkNavigation = (fk.TargetTable, targetCol, val.ToString()!);
+                    TxtForeignKeyInfo.Text = $"Chave Estrangeira: {fk.SourceColumn} = {val}  →  Tabela {fk.TargetTable} ({targetCol})";
+                    BtnQuickNavigateFk.Content = $"↗ Ir para {fk.TargetTable} ({targetCol} = {val})";
+                    BarForeignKeyQuickNav.IsVisible = true;
+                    return;
+                }
+            }
+        }
+
+        _pendingFkNavigation = null;
+        BarForeignKeyQuickNav.IsVisible = false;
+    }
+
+    private void OnNavigateForeignKeyClicked()
+    {
+        if (_pendingFkNavigation.HasValue)
+        {
+            var nav = _pendingFkNavigation.Value;
+            var targetCol = string.IsNullOrWhiteSpace(nav.TargetColumn) ? "id" : nav.TargetColumn;
+            string formattedVal;
+            if (long.TryParse(nav.Value, out _) || double.TryParse(nav.Value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out _))
+            {
+                formattedVal = nav.Value;
+            }
+            else
+            {
+                formattedVal = $"'{nav.Value.Replace("'", "''")}'";
+            }
+
+            var filterClause = $"\"{targetCol}\" = {formattedVal}";
+            NavigateToForeignKeyRequested?.Invoke(nav.TargetTable, filterClause);
+        }
+    }
+
+    private void OnFilterBySelectedCellValue()
+    {
+        if (GridTableRows.SelectedItem is ObservableTableRow row && GridTableRows.CurrentColumn is { } currentCol)
+        {
+            var colName = currentCol.Tag as string;
+            if (string.IsNullOrEmpty(colName)) return;
+
+            var val = row.GetValue(colName);
+            var strVal = val == null || val == DBNull.Value ? "IS NULL" : val.ToString() ?? "";
+
+            BarInlineColumnFilters.IsVisible = true;
+            BtnToggleColumnFilters.Classes.Clear();
+            BtnToggleColumnFilters.Classes.Add("btn-secondary");
+
+            if (!_columnFilterInputs.ContainsKey(colName) && _columns.Count > 0)
+            {
+                BuildInlineFilterInputs(_columns);
+            }
+
+            if (_columnFilterInputs.TryGetValue(colName, out var tb))
+            {
+                if (val == null || val == DBNull.Value)
+                {
+                    tb.Text = "IS NULL";
+                }
+                else if (long.TryParse(strVal, out _) || double.TryParse(strVal, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out _))
+                {
+                    tb.Text = $"= {strVal}";
+                }
+                else
+                {
+                    tb.Text = $"= '{strVal}'";
+                }
+
+                ApplyInlineFilters();
+            }
+        }
+    }
+
+    private async Task CopySelectedCellValueAsync()
+    {
+        if (GridTableRows.SelectedItem is ObservableTableRow row)
+        {
+            var colName = GridTableRows.CurrentColumn?.Tag as string;
+            object? val = null;
+            if (!string.IsNullOrEmpty(colName))
+            {
+                val = row.GetValue(colName);
+            }
+            else
+            {
+                val = row.CurrentValues.Values.FirstOrDefault(v => v != null);
+            }
+
+            var text = val?.ToString() ?? "";
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel?.Clipboard != null)
+            {
+                await topLevel.Clipboard.SetTextAsync(text);
+            }
         }
     }
 }

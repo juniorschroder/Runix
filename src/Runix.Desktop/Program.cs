@@ -132,11 +132,16 @@ class Program
         {
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
-        catch (InvalidOperationException)
+        catch (Exception ex) when (ex is InvalidOperationException && (ex.Message.Contains("display", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("X11", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("platform", StringComparison.OrdinalIgnoreCase)))
         {
             // Fallback for headless environments if started without --screenshot
             Console.WriteLine("No active display detected; running in headless mode.");
             BuildHeadlessApp().SetupWithoutStarting();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Runix Error] {ex}");
+            throw;
         }
     }
 
@@ -164,6 +169,7 @@ class Program
         Runix.Desktop.Services.LocalizationManager.Initialize(explicitLang);
 
         var window = new MainWindow();
+        window.SuppressStartupUpdatePrompt = true;
         window.Width = 1200;
         window.Height = 800;
 

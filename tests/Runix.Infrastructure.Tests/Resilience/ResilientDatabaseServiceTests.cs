@@ -38,6 +38,12 @@ public class ResilientDatabaseServiceTests
                 1.0));
         }
 
+        public async Task<List<QueryResult>> ExecuteMultipleQueriesAsync(string sql, int limit = 50000)
+        {
+            var res = await ExecuteQueryAsync(sql, limit);
+            return new List<QueryResult> { res };
+        }
+
         public Task ConnectAsync() => Task.CompletedTask;
         public Task DisconnectAsync() => Task.CompletedTask;
         public Task<bool> TestConnectionAsync() => Task.FromResult(true);
