@@ -64,14 +64,13 @@ public partial class WorkspaceView : UserControl
 
         SetupHeader();
         SetupEvents();
-        LoadSchema();
         UpdateLanguageButton();
         UpdateResponsiveHeaderLayout();
 
         _databaseService.ResilienceEventOccurred += OnResilienceEvent;
 
-        // Restore saved workspace session (tabs, SQL drafts, scroll offsets) or open initial Query Tab
-        _ = RestoreWorkspaceSessionOrOpenDefaultAsync();
+        // Sequentially initialize workspace: load schema catalog first, then restore session tabs
+        _ = InitializeWorkspaceAsync();
     }
 
     private void SetupHeader()
@@ -204,6 +203,8 @@ public partial class WorkspaceView : UserControl
         MenuOpenErd.Click += (s, e) => OpenErdTab();
         MenuOpenDba.Click += (s, e) => OpenDbaTab();
         MenuOpenCompare.Click += (s, e) => OpenCompareTab();
+        MenuCaptureSnapshotHeader.Click += (s, e) => OpenCaptureSnapshotDialog(_databaseService);
+        MenuSnapshotCatalogHeader.Click += (s, e) => OpenSnapshotCatalogDialog();
         MenuOpenBackup.Click += (s, e) => OpenBackupRestoreTab();
         MenuRefreshSchema.Click += (s, e) => LoadSchema();
         MenuLanguageToggle.Click += (s, e) =>
@@ -380,6 +381,8 @@ public partial class WorkspaceView : UserControl
             }
         };
 
+        MenuCaptureSnapshot.Click += (s, e) => OpenCaptureSnapshotDialog(_databaseService);
+
         MenuImportTableData.Click += (s, e) =>
         {
             if (GetSelectedTable() is TableInfo table)
@@ -518,6 +521,12 @@ public partial class WorkspaceView : UserControl
         {
             TxtTableCount.Text = $"Error: {ex.Message}";
         }
+    }
+
+    private async Task InitializeWorkspaceAsync()
+    {
+        await LoadSchemaAsync();
+        await RestoreWorkspaceSessionOrOpenDefaultAsync();
     }
 
     private void LoadSchema()
@@ -968,6 +977,8 @@ public partial class WorkspaceView : UserControl
             new() { Id = "action:health", Title = "Dashboard de Saúde & Telemetria (VACUUM / ANALYZE)", Subtitle = "Inspecionar tamanho, Cache Hit Ratio, Dead Tuples, índices e integridade", Category = CommandPaletteCategory.Action, Icon = "🩺", ShortcutHint = "Health", Payload = "health" },
             new() { Id = "action:erd", Title = "Diagrama Entidade-Relacionamento (DER Visual)", Subtitle = "Abrir canvas interativo de modelagem de schema e migrações", Category = CommandPaletteCategory.Action, Icon = "📐", ShortcutHint = "ERD", Payload = "erd" },
             new() { Id = "action:compare", Title = "Comparador de Schemas (Database Diff & Sync)", Subtitle = "Comparar dois bancos ou snapshots JSON e gerar script de sincronização", Category = CommandPaletteCategory.Action, Icon = "⚖️", ShortcutHint = "Diff", Payload = "compare" },
+            new() { Id = "action:capture-snapshot", Title = "Salvar Snapshot de Schema (.rschema)", Subtitle = "Capturar estrutura compactada com integridade SHA-256", Category = CommandPaletteCategory.Action, Icon = "📸", ShortcutHint = "Snapshot", Payload = "capture-snapshot" },
+            new() { Id = "action:snapshot-catalog", Title = "Abrir Catálogo de Snapshots de Schema", Subtitle = "Explorar snapshots salvos em ~/.runix/snapshots/ e comparar", Category = CommandPaletteCategory.Action, Icon = "🗂️", ShortcutHint = "Catalog", Payload = "snapshot-catalog" },
             new() { Id = "action:backup", Title = "Gerenciador de Backup & Restore", Subtitle = "Exportar backup online .db, dump .sql/.sql.gz ou restaurar banco", Category = CommandPaletteCategory.Action, Icon = "💾", ShortcutHint = "Backup", Payload = "backup" },
             new() { Id = "action:new-ddl", Title = "Novo Objeto Programável (View, Trigger, Function, Index)", Subtitle = "Criar objeto a partir de template DDL com transação segura", Category = CommandPaletteCategory.Action, Icon = "➕", ShortcutHint = "DDL", Payload = "new-ddl" },
             new() { Id = "action:refresh", Title = "Atualizar Catálogo de Schema", Subtitle = "Recarregar tabelas, views e objetos programáveis", Category = CommandPaletteCategory.Action, Icon = "🔄", ShortcutHint = "Refresh", Payload = "refresh" },
@@ -1014,6 +1025,8 @@ public partial class WorkspaceView : UserControl
                     case "erd": OpenErdTab(); break;
                     case "dba": OpenDbaTab(); break;
                     case "compare": OpenCompareTab(); break;
+                    case "capture-snapshot": OpenCaptureSnapshotDialog(_databaseService); break;
+                    case "snapshot-catalog": OpenSnapshotCatalogDialog(); break;
                     case "backup": OpenBackupRestoreTab(); break;
                     case "new-ddl": OpenNewProgrammableObjectTab(); break;
                     case "refresh": await LoadSchemaAsync(); break;
@@ -1176,6 +1189,54 @@ public partial class WorkspaceView : UserControl
             }
         }
         return null;
+    }
+
+    public void OpenCaptureSnapshotDialog(IDatabaseService db)
+    {
+        var dialog = new Runix.Desktop.Views.Dialogs.CaptureSnapshotDialog(db);
+        dialog.CloseRequested += () =>
+        {
+            PanelModalOverlay.IsVisible = false;
+            ModalContainer.Content = null;
+        };
+        dialog.SnapshotCaptured += (path, envelope) =>
+        {
+            // Snapshot captured successfully
+        };
+        ModalContainer.Content = dialog;
+        PanelModalOverlay.IsVisible = true;
+    }
+
+    public void OpenSnapshotCatalogDialog()
+    {
+        var dialog = new Runix.Desktop.Views.Dialogs.SnapshotCatalogDialog();
+        dialog.CloseRequested += () =>
+        {
+            PanelModalOverlay.IsVisible = false;
+            ModalContainer.Content = null;
+        };
+        dialog.NewSnapshotRequested += () =>
+        {
+            OpenCaptureSnapshotDialog(_databaseService);
+        };
+        dialog.CompareRequested += item =>
+        {
+            PanelModalOverlay.IsVisible = false;
+            ModalContainer.Content = null;
+            OpenSchemaCompareWithSnapshot(item.FilePath);
+        };
+        ModalContainer.Content = dialog;
+        PanelModalOverlay.IsVisible = true;
+    }
+
+    public void OpenSchemaCompareWithSnapshot(string snapshotFilePath)
+    {
+        OpenCompareTab();
+        var compare = GetActiveCompareTabControl();
+        if (compare != null)
+        {
+            _ = compare.LoadSnapshotFileDirectAsync(snapshotFilePath);
+        }
     }
 
     public void OpenOrLoadQuery(string sqlText, string? title = null)

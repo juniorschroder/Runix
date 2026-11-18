@@ -237,7 +237,7 @@ public class ConnectionStorageService
             {
                 Id = "demo-sqlite",
                 Name = "Cheeses Demo (SQLite)",
-                Category = "Local / Demo",
+                Category = string.Empty,
                 Type = DatabaseType.SQLite,
                 FilePath = demoPath
             },
@@ -245,7 +245,7 @@ public class ConnectionStorageService
             {
                 Id = "local-postgres",
                 Name = "Local PostgreSQL",
-                Category = "Desenvolvimento",
+                Category = string.Empty,
                 Type = DatabaseType.PostgreSQL,
                 Host = "localhost",
                 Port = 5432,

@@ -47,103 +47,19 @@ public static class ErdLayoutService
         return ErdCardinality.OneToMany;
     }
 
+    private static readonly IGraphLayoutEngine DefaultLayoutEngine = new SugiyamaHierarchicalLayoutEngine();
+
     /// <summary>
-    /// Aplica distribuição em colunas hierárquicas ordenadas por dependência topológica.
+    /// Aplica distribuição em colunas hierárquicas ordenadas por dependência topológica via algoritmo Sugiyama.
     /// </summary>
-    public static void ApplyTopologicalLayout(ErdGraphModel graph)
+    public static void ApplyTopologicalLayout(ErdGraphModel graph, GraphLayoutOptions? options = null)
     {
-        if (graph.Nodes.Count == 0) return;
-
-        // Mapear dependências (tabelas que a tabela A aponta via FK)
-        var dependencies = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
-        foreach (var node in graph.Nodes)
-        {
-            dependencies[node.TableName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        }
-
-        foreach (var rel in graph.Relationships)
-        {
-            if (dependencies.TryGetValue(rel.SourceTable, out var set) && !string.Equals(rel.SourceTable, rel.TargetTable, StringComparison.OrdinalIgnoreCase))
-            {
-                set.Add(rel.TargetTable);
-            }
-        }
-
-        // Calcular profundidade (coluna) de cada tabela
-        var columnLevels = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-
-        // Algoritmo iterativo de atribuição de camadas
-        foreach (var node in graph.Nodes)
-        {
-            columnLevels[node.TableName] = 0;
-        }
-
-        bool changed = true;
-        int iterations = 0;
-        while (changed && iterations < graph.Nodes.Count * 2)
-        {
-            changed = false;
-            iterations++;
-
-            foreach (var node in graph.Nodes)
-            {
-                var deps = dependencies[node.TableName];
-                if (deps.Count > 0)
-                {
-                    int maxTargetCol = -1;
-                    foreach (var target in deps)
-                    {
-                        if (columnLevels.TryGetValue(target, out var targetLevel))
-                        {
-                            maxTargetCol = Math.Max(maxTargetCol, targetLevel);
-                        }
-                    }
-
-                    int newCol = maxTargetCol + 1;
-                    if (newCol != columnLevels[node.TableName])
-                    {
-                        columnLevels[node.TableName] = newCol;
-                        changed = true;
-                    }
-                }
-            }
-        }
-
-        // Agrupar nós por coluna
-        var columns = new Dictionary<int, List<ErdTableNode>>();
-        foreach (var node in graph.Nodes)
-        {
-            var col = columnLevels[node.TableName];
-            if (!columns.TryGetValue(col, out var list))
-            {
-                list = new List<ErdTableNode>();
-                columns[col] = list;
-            }
-            list.Add(node);
-        }
-
-        // Atribuir coordenadas espaciais
-        const double ColWidth = 360;
-        const double StartX = 40;
-        const double StartY = 40;
-        const double SpacingY = 36;
-
-        foreach (var (colIdx, nodesInCol) in columns.OrderBy(kv => kv.Key))
-        {
-            double currentY = StartY;
-            double currentX = StartX + (colIdx * ColWidth);
-
-            foreach (var node in nodesInCol)
-            {
-                node.X = currentX;
-                node.Y = currentY;
-                currentY += node.Height + SpacingY;
-            }
-        }
+        if (graph == null || graph.Nodes.Count == 0) return;
+        DefaultLayoutEngine.ArrangeLayout(graph, options);
     }
 
     /// <summary>
-    /// Salva posições coordenadas do grafo em arquivo JSON local.
+    /// Salva posições coordenadas do grafo e Subject Areas em envelope JSON local (v2).
     /// </summary>
     public static void SaveLayout(string databaseId, ErdGraphModel graph)
     {
@@ -153,8 +69,14 @@ public static class ErdLayoutService
             var safeName = SanitizeFileName(databaseId) + ".json";
             var filePath = Path.Combine(LayoutsDir, safeName);
 
-            var dict = graph.Nodes.ToDictionary(n => n.TableName, n => new NodeCoordinates { X = n.X, Y = n.Y });
-            var json = JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = true });
+            var envelope = new DiagramLayoutEnvelope
+            {
+                Version = 2,
+                Nodes = graph.Nodes.ToDictionary(n => n.TableName, n => new NodeCoordinates { X = n.X, Y = n.Y }, StringComparer.OrdinalIgnoreCase),
+                SubjectAreas = graph.SubjectAreas ?? new List<SubjectAreaModel>()
+            };
+
+            var json = JsonSerializer.Serialize(envelope, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(filePath, json);
         }
         catch
@@ -164,7 +86,7 @@ public static class ErdLayoutService
     }
 
     /// <summary>
-    /// Restaura posições coordenadas salvas se existirem.
+    /// Restaura posições coordenadas e Subject Areas salvas, com suporte retrocompatível para envelopes v2 e layouts legados v1.
     /// </summary>
     public static bool LoadLayout(string databaseId, ErdGraphModel graph)
     {
@@ -175,18 +97,54 @@ public static class ErdLayoutService
             if (!File.Exists(filePath)) return false;
 
             var json = File.ReadAllText(filePath);
-            var dict = JsonSerializer.Deserialize<Dictionary<string, NodeCoordinates>>(json);
-            if (dict == null) return false;
 
-            foreach (var node in graph.Nodes)
+            // 1. Se contiver a propriedade "version", deserializar como envelope v2
+            if (json.Contains("\"version\"", StringComparison.OrdinalIgnoreCase))
             {
-                if (dict.TryGetValue(node.TableName, out var coord))
+                try
                 {
-                    node.X = coord.X;
-                    node.Y = coord.Y;
+                    var envelope = JsonSerializer.Deserialize<DiagramLayoutEnvelope>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (envelope != null && envelope.Version >= 2)
+                    {
+                        if (envelope.Nodes != null)
+                        {
+                            foreach (var node in graph.Nodes)
+                            {
+                                if (envelope.Nodes.TryGetValue(node.TableName, out var coord))
+                                {
+                                    node.X = coord.X;
+                                    node.Y = coord.Y;
+                                }
+                            }
+                        }
+
+                        graph.SubjectAreas = envelope.SubjectAreas ?? new List<SubjectAreaModel>();
+                        return true;
+                    }
+                }
+                catch
+                {
+                    // Fallback para layout legado v1 se houver corrupção no envelope
                 }
             }
-            return true;
+
+            // 2. Fallback retrocompatível: layout legado v1 (Dictionary<string, NodeCoordinates>)
+            var legacyDict = JsonSerializer.Deserialize<Dictionary<string, NodeCoordinates>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (legacyDict != null)
+            {
+                foreach (var node in graph.Nodes)
+                {
+                    if (legacyDict.TryGetValue(node.TableName, out var coord))
+                    {
+                        node.X = coord.X;
+                        node.Y = coord.Y;
+                    }
+                }
+                graph.SubjectAreas.Clear();
+                return true;
+            }
+
+            return false;
         }
         catch
         {
@@ -203,7 +161,14 @@ public static class ErdLayoutService
         return name;
     }
 
-    private record NodeCoordinates
+    public class DiagramLayoutEnvelope
+    {
+        public int Version { get; set; } = 2;
+        public Dictionary<string, NodeCoordinates> Nodes { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public List<SubjectAreaModel> SubjectAreas { get; set; } = new();
+    }
+
+    public class NodeCoordinates
     {
         public double X { get; set; }
         public double Y { get; set; }

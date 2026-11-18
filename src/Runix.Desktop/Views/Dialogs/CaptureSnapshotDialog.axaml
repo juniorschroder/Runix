@@ -1,0 +1,115 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="680"
+             x:Class="Runix.Desktop.Views.Dialogs.CaptureSnapshotDialog">
+
+    <Border Background="#0e141f" BorderBrush="#38bdf8" BorderThickness="1.5" CornerRadius="12" 
+            Width="540" MaxHeight="660" Padding="20">
+        <Grid RowDefinitions="Auto,*,Auto,Auto">
+            <!-- Header -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,14">
+                <StackPanel Spacing="3">
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <TextBlock Text="📸" FontSize="18"/>
+                        <TextBlock Name="TxtDialogTitle" Text="{DynamicResource Snapshot.CaptureTitle}" 
+                                   FontSize="15" FontWeight="Bold" Foreground="#f0f6fc"/>
+                    </StackPanel>
+                    <TextBlock Text="{DynamicResource Snapshot.CaptureSubtitle}" 
+                               FontSize="11" Foreground="#8b9cb3" Margin="26,0,0,0"/>
+                </StackPanel>
+                <Button Name="BtnClose" Grid.Column="1" Content="✕" Classes="btn-icon" FontSize="12"
+                        AutomationProperties.Name="{DynamicResource A11y.CloseModal}"/>
+            </Grid>
+
+            <!-- Form Body -->
+            <ScrollViewer Grid.Row="1" Margin="0,0,0,12">
+                <StackPanel Spacing="12">
+                    <!-- Snapshot Custom Label -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Rótulo / Nome do Snapshot" FontSize="11" FontWeight="SemiBold" Foreground="#8b9cb3"/>
+                        <TextBox Name="TxtSnapshotLabel" Background="#141d2b" Foreground="#f0f6fc" 
+                                 BorderBrush="#1e2d42" CornerRadius="5" Padding="8,6" FontSize="12"
+                                 Watermark="{DynamicResource Snapshot.LabelPlaceholder}"
+                                 AutomationProperties.Name="Rótulo do Snapshot"/>
+                    </StackPanel>
+
+                    <!-- Snapshot Notes -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Notas / Descrição (Opcional)" FontSize="11" FontWeight="SemiBold" Foreground="#8b9cb3"/>
+                        <TextBox Name="TxtSnapshotNotes" Background="#141d2b" Foreground="#f0f6fc" 
+                                 BorderBrush="#1e2d42" CornerRadius="5" Padding="8,6" FontSize="11"
+                                 AcceptsReturn="True" Height="50" TextWrapping="Wrap"
+                                 Watermark="{DynamicResource Snapshot.NotesPlaceholder}"
+                                 AutomationProperties.Name="Notas do Snapshot"/>
+                    </StackPanel>
+
+                    <!-- Scope Selection Box -->
+                    <Border Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="{DynamicResource Snapshot.ScopeTitle}" FontSize="11" FontWeight="Bold" Foreground="#38bdf8"/>
+
+                            <CheckBox Name="ChkTables" Content="{DynamicResource Snapshot.ScopeTables}"
+                                      IsChecked="True" IsEnabled="False" Foreground="#cbd5e1" FontSize="11"
+                                      ToolTip.Tip="Tabelas e colunas são o núcleo obrigatório do snapshot de schema"/>
+
+                            <CheckBox Name="ChkForeignKeys" Content="{DynamicResource Snapshot.ScopeForeignKeys}"
+                                      IsChecked="True" IsEnabled="False" Foreground="#cbd5e1" FontSize="11"
+                                      ToolTip.Tip="Chaves primárias e relacionamentos referenciais são essenciais"/>
+
+                            <CheckBox Name="ChkIndexes" Content="{DynamicResource Snapshot.ScopeIndexes}"
+                                      IsChecked="True" Foreground="#f0f6fc" FontSize="11"/>
+
+                            <CheckBox Name="ChkViews" Content="{DynamicResource Snapshot.ScopeViews}"
+                                      IsChecked="True" Foreground="#f0f6fc" FontSize="11"/>
+
+                            <CheckBox Name="ChkTriggers" Content="{DynamicResource Snapshot.ScopeTriggers}"
+                                      IsChecked="True" Foreground="#f0f6fc" FontSize="11"/>
+
+                            <CheckBox Name="ChkChecks" Content="{DynamicResource Snapshot.ScopeChecks}"
+                                      IsChecked="True" Foreground="#f0f6fc" FontSize="11"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Destination Selection Box -->
+                    <Border Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="{DynamicResource Snapshot.DestTitle}" FontSize="11" FontWeight="Bold" Foreground="#38bdf8"/>
+
+                            <RadioButton Name="RbCatalog" Content="{DynamicResource Snapshot.DestCatalog}" 
+                                         GroupName="SnapshotDest" IsChecked="True" Foreground="#f0f6fc" FontSize="11"/>
+
+                            <RadioButton Name="RbExternalFile" Content="{DynamicResource Snapshot.DestExternal}" 
+                                         GroupName="SnapshotDest" Foreground="#f0f6fc" FontSize="11"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Progress Bar & Status Text -->
+                    <StackPanel Spacing="4">
+                        <ProgressBar Name="PrgProgress" IsIndeterminate="True" Height="4" IsVisible="False" Foreground="#38bdf8"/>
+                        <TextBlock Name="TxtStatusMessage" Text="" FontSize="11" Foreground="#8b9cb3" 
+                                   HorizontalAlignment="Center" TextAlignment="Center"/>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Validation / Error Banner -->
+            <Border Name="PanelValidation" Grid.Row="2" Background="#2c1517" BorderBrush="#f87171" BorderThickness="1" 
+                    CornerRadius="5" Padding="10,6" Margin="0,0,0,12" IsVisible="False">
+                <TextBlock Name="TxtValidationMessage" Foreground="#fca5a5" FontSize="11" TextWrapping="Wrap"
+                           AutomationProperties.LiveSetting="Assertive"/>
+            </Border>
+
+            <!-- Footer Actions -->
+            <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto">
+                <Button Name="BtnCancel" Grid.Column="1" Content="{DynamicResource Common.Cancel}" 
+                        Classes="btn-secondary" Padding="16,8" Margin="0,0,8,0"
+                        AutomationProperties.Name="{DynamicResource Common.Cancel}"/>
+                <Button Name="BtnCapture" Grid.Column="2" Content="{DynamicResource Snapshot.BtnCapture}" 
+                        Classes="btn-primary" Padding="18,8" FontWeight="Bold"
+                        AutomationProperties.Name="{DynamicResource Snapshot.BtnCapture}"/>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

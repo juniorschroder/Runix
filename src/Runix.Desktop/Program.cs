@@ -30,6 +30,8 @@ class Program
         bool isCompareDemo = false;
         bool isChartDemo = false;
         bool isAboutDemo = false;
+        bool isErdSearch = false;
+        bool isErdExportDemo = false;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -119,12 +121,22 @@ class Program
                 isStructureDemo = true;
                 isDemo = true;
             }
+            if (args[i] == "--erd-search")
+            {
+                isErdSearch = true;
+                isDemo = true;
+            }
+            if (args[i] == "--erd-export-demo")
+            {
+                isErdExportDemo = true;
+                isDemo = true;
+            }
         }
 
         if (!string.IsNullOrEmpty(screenshotPath))
         {
             // Headless capture - works in all terminal/CI environments without display server requirements
-            RunHeadlessScreenshot(screenshotPath, isDemo, explicitLang, isErd, isEditDemo, isCompletionDemo, isStructureDemo, isErdModeling, isMigrationPreview, isQueryLibraryDemo, isSnippetManagerDemo, isExportDialogDemo, isImportWizardDemo, isExplainPlanDemo, isDbaDemo, isCompareDemo, isChartDemo, isAboutDemo);
+            RunHeadlessScreenshot(screenshotPath, isDemo, explicitLang, isErd, isEditDemo, isCompletionDemo, isStructureDemo, isErdModeling, isMigrationPreview, isQueryLibraryDemo, isSnippetManagerDemo, isExportDialogDemo, isImportWizardDemo, isExplainPlanDemo, isDbaDemo, isCompareDemo, isChartDemo, isAboutDemo, isErdSearch, isErdExportDemo);
             return;
         }
 
@@ -163,7 +175,9 @@ class Program
         bool isDbaDemo = false,
         bool isCompareDemo = false,
         bool isChartDemo = false,
-        bool isAboutDemo = false)
+        bool isAboutDemo = false,
+        bool isErdSearch = false,
+        bool isErdExportDemo = false)
     {
         var app = BuildHeadlessApp().SetupWithoutStarting();
         Runix.Desktop.Services.LocalizationManager.Initialize(explicitLang);
@@ -173,7 +187,7 @@ class Program
         window.Width = 1200;
         window.Height = 800;
 
-        if (isDemo || isErd || isEditDemo || isCompletionDemo || isStructureDemo || isErdModeling || isMigrationPreview || isQueryLibraryDemo || isSnippetManagerDemo || isExportDialogDemo || isImportWizardDemo || isExplainPlanDemo || isDbaDemo)
+        if (isDemo || isErd || isEditDemo || isCompletionDemo || isStructureDemo || isErdModeling || isMigrationPreview || isQueryLibraryDemo || isSnippetManagerDemo || isExportDialogDemo || isImportWizardDemo || isExplainPlanDemo || isDbaDemo || isErdSearch || isErdExportDemo)
         {
             window.ConnectToDemoAsync().GetAwaiter().GetResult();
         }
@@ -307,6 +321,26 @@ class Program
 
             var erdTab = window.CurrentWorkspaceView.GetActiveErdTabControl();
             erdTab?.EmulateTableEditorForTesting();
+        }
+        else if (isErdSearch && window.CurrentWorkspaceView != null)
+        {
+            window.CurrentWorkspaceView.OpenErdTab();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            System.Threading.Thread.Sleep(300);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            var erdTab = window.CurrentWorkspaceView.GetActiveErdTabControl();
+            erdTab?.EmulateSearchOverlayForTesting("categories");
+        }
+        else if (isErdExportDemo && window.CurrentWorkspaceView != null)
+        {
+            window.CurrentWorkspaceView.OpenErdTab();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            System.Threading.Thread.Sleep(300);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            var erdTab = window.CurrentWorkspaceView.GetActiveErdTabControl();
+            erdTab?.EmulateExportDialogForTesting();
         }
         else if (isMigrationPreview && window.CurrentWorkspaceView != null)
         {

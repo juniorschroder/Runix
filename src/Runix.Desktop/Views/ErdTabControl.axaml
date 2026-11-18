@@ -11,25 +11,33 @@
     <Grid RowDefinitions="Auto,*">
         <!-- TOP TOOLBAR -->
         <Border Grid.Row="0" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="12,6">
-            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto">
                 <Button Name="BtnNewTable" Grid.Column="0" Content="{DynamicResource Erd.NewTable}" 
                         Classes="btn-primary" Padding="14,6" Margin="0,0,8,0"
                         AutomationProperties.Name="Criar Nova Tabela no Diagrama ER"/>
 
                 <Button Name="BtnAutoLayout" Grid.Column="1" Content="{DynamicResource Erd.AutoLayout}" 
                         Classes="btn-secondary" Padding="12,6" Margin="0,0,8,0"
+                        ToolTip.Tip="{DynamicResource Erd.AutoLayout.Tooltip}"
                         AutomationProperties.Name="Organizar Layout do Diagrama Automaticamente"/>
 
-                <Button Name="BtnExportPng" Grid.Column="2" Content="{DynamicResource Erd.ExportPng}" 
-                        Classes="btn-outline" Padding="10,6" Margin="0,0,8,0"
-                        AutomationProperties.Name="Exportar Diagrama ER como imagem PNG"/>
+                <Button Name="BtnNewSubjectArea" Grid.Column="2" Content="{DynamicResource Erd.SubjectAreas.NewArea}"
+                        Classes="btn-outline" Padding="12,6" Margin="0,0,8,0"
+                        ToolTip.Tip="Criar nova Área de Domínio (Subject Area) para agrupar tabelas"
+                        AutomationProperties.Name="Criar Nova Área de Domínio"/>
 
-                <Button Name="BtnExportSql" Grid.Column="3" Content="{DynamicResource Erd.ExportSql}" 
+                <Button Name="BtnExportDiagram" Grid.Column="3" Content="{DynamicResource Erd.Export.Button}" 
+                        Classes="btn-outline" Padding="12,6" Margin="0,0,8,0"
+                        ToolTip.Tip="{DynamicResource Erd.Export.Tooltip}"
+                        AutomationProperties.Name="Exportar Diagrama ER"/>
+
+                <Button Name="BtnSearch" Grid.Column="4" Content="{DynamicResource Erd.Search.Button}"
                         Classes="btn-outline" Padding="10,6"
-                        AutomationProperties.Name="Exportar DDL SQL do Diagrama ER"/>
+                        ToolTip.Tip="{DynamicResource Erd.Search.Tooltip}"
+                        AutomationProperties.Name="Buscar tabelas ou colunas no diagrama"/>
 
                 <!-- Zoom Controls -->
-                <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                     <Button Name="BtnZoomOut" Content="{DynamicResource Erd.ZoomOut}" Classes="btn-icon"
                             AutomationProperties.Name="Diminuir Zoom do Diagrama"/>
                     <TextBlock Name="TxtZoomPercent" Text="100%" VerticalAlignment="Center" FontSize="11" Foreground="#f0f6fc" Width="40" TextAlignment="Center"
@@ -49,9 +57,24 @@
                                     AutomationProperties.Name="{DynamicResource A11y.ErdCanvas}"
                                     AutomationProperties.HelpText="Diagrama visual interativo de entidades e relacionamentos entre tabelas"/>
 
+            <!-- FAST SEARCH OVERLAY (Ctrl/Cmd+F) -->
+            <views:ErdSearchOverlayControl Name="OverlaySearch"
+                                           HorizontalAlignment="Right" VerticalAlignment="Top"
+                                           Margin="0,12,16,0" IsVisible="False" ZIndex="95"/>
+
             <!-- Loading Indicator -->
             <ProgressBar Name="ProgressLoading" IsIndeterminate="True" Height="4" Width="220" 
                          Foreground="#008bb9" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False"/>
+
+            <!-- Error / Retry Banner -->
+            <Border Name="BannerError" Background="#2e1414" BorderBrush="#f87171" BorderThickness="1"
+                    CornerRadius="6" Padding="16,12" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    IsVisible="False" ZIndex="90">
+                <StackPanel Orientation="Vertical" Spacing="8" HorizontalAlignment="Center">
+                    <TextBlock Name="TxtErrorMessage" Text="Erro ao carregar o diagrama ER." Foreground="#fca5a5" FontSize="13" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="400"/>
+                    <Button Name="BtnRetryLoad" Content="Tentar Novamente" Classes="btn-secondary" HorizontalAlignment="Center" Padding="12,6"/>
+                </StackPanel>
+            </Border>
 
             <!-- TABLE EDITOR MODAL OVERLAY -->
             <Border Name="OverlayTableEditor" Background="#d0090d14" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" 
@@ -69,6 +92,18 @@
             <Border Name="OverlayMigrationPreview" Background="#d0090d14" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" 
                     IsVisible="False" ZIndex="110">
                 <dialogs:MigrationPreviewDialog Name="DialogMigrationPreview" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+
+            <!-- CREATE SUBJECT AREA MODAL OVERLAY -->
+            <Border Name="OverlaySubjectArea" Background="#d0090d14" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" 
+                    IsVisible="False" ZIndex="105">
+                <dialogs:CreateSubjectAreaDialog Name="DialogCreateSubjectArea" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+
+            <!-- EXPORT MODAL OVERLAY -->
+            <Border Name="OverlayExport" Background="#d0090d14" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" 
+                    IsVisible="False" ZIndex="115">
+                <dialogs:ErdExportDialog Name="DialogExport" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
         </Grid>
     </Grid>

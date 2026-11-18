@@ -16,6 +16,7 @@ public class PostgresDatabaseService : IDatabaseService
 {
     private NpgsqlConnection? _connection;
     private readonly ISshTunnelService _sshTunnelService;
+    private readonly System.Threading.SemaphoreSlim _connectionLock = new(1, 1);
     public ConnectionConfig Config { get; }
     public bool IsConnected => _connection != null && _connection.State == System.Data.ConnectionState.Open;
     public CircuitState CurrentCircuitState => CircuitState.Closed;
@@ -90,27 +91,48 @@ public class PostgresDatabaseService : IDatabaseService
 
     public async Task ConnectAsync()
     {
-        if (_connection != null)
+        await _connectionLock.WaitAsync();
+        try
         {
-            await DisconnectAsync();
-        }
+            if (_connection != null)
+            {
+                await DisconnectInternalAsync();
+            }
 
-        string connStr;
-        if (Config.UseSshTunnel)
-        {
-            var localPort = await _sshTunnelService.EstablishTunnelAsync(Config);
-            connStr = BuildConnectionString(overridePort: localPort, overrideHost: "127.0.0.1");
-        }
-        else
-        {
-            connStr = BuildConnectionString();
-        }
+            string connStr;
+            if (Config.UseSshTunnel)
+            {
+                var localPort = await _sshTunnelService.EstablishTunnelAsync(Config);
+                connStr = BuildConnectionString(overridePort: localPort, overrideHost: "127.0.0.1");
+            }
+            else
+            {
+                connStr = BuildConnectionString();
+            }
 
-        _connection = new NpgsqlConnection(connStr);
-        await _connection.OpenAsync();
+            _connection = new NpgsqlConnection(connStr);
+            await _connection.OpenAsync();
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
     }
 
     public async Task DisconnectAsync()
+    {
+        await _connectionLock.WaitAsync();
+        try
+        {
+            await DisconnectInternalAsync();
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
+    }
+
+    private async Task DisconnectInternalAsync()
     {
         if (_connection != null)
         {
@@ -130,56 +152,64 @@ public class PostgresDatabaseService : IDatabaseService
         var tables = new List<TableInfo>();
         if (_connection == null) return tables;
 
-        const string sql = @"
-            SELECT table_name, table_schema, table_type
-            FROM information_schema.tables 
-            WHERE table_schema NOT IN ('information_schema', 'pg_catalog') 
-            ORDER BY table_type, table_schema, table_name;";
-
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = sql;
-        using var reader = await cmd.ExecuteReaderAsync();
-
-        while (await reader.ReadAsync())
+        await _connectionLock.WaitAsync();
+        try
         {
-            var name = reader.GetString(0);
-            var schema = reader.GetString(1);
-            var rawType = reader.GetString(2);
-            var type = rawType.Contains("VIEW", StringComparison.OrdinalIgnoreCase) ? "view" : "table";
+            const string sql = @"
+                SELECT table_name, table_schema, table_type
+                FROM information_schema.tables 
+                WHERE table_schema NOT IN ('information_schema', 'pg_catalog') 
+                ORDER BY table_type, table_schema, table_name;";
 
-            tables.Add(new TableInfo
-            {
-                Name = name,
-                Schema = schema,
-                Type = type
-            });
-        }
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = sql;
+            using var reader = await cmd.ExecuteReaderAsync();
 
-        // Fast row count estimate from pg_class
-        foreach (var tbl in tables)
-        {
-            if (tbl.Type == "table")
+            while (await reader.ReadAsync())
             {
-                try
+                var name = reader.GetString(0);
+                var schema = reader.GetString(1);
+                var rawType = reader.GetString(2);
+                var type = rawType.Contains("VIEW", StringComparison.OrdinalIgnoreCase) ? "view" : "table";
+
+                tables.Add(new TableInfo
                 {
-                    using var countCmd = _connection.CreateCommand();
-                    countCmd.CommandText = "SELECT reltuples::bigint FROM pg_class WHERE relname = @name;";
-                    countCmd.Parameters.AddWithValue("@name", tbl.Name);
-                    var count = await countCmd.ExecuteScalarAsync();
-                    if (count != null && count != DBNull.Value)
+                    Name = name,
+                    Schema = schema,
+                    Type = type
+                });
+            }
+
+            // Fast row count estimate from pg_class
+            foreach (var tbl in tables)
+            {
+                if (tbl.Type == "table")
+                {
+                    try
                     {
-                        var c = Convert.ToInt64(count);
-                        tbl.RowCount = c >= 0 ? c : -1;
+                        using var countCmd = _connection.CreateCommand();
+                        countCmd.CommandText = "SELECT reltuples::bigint FROM pg_class WHERE relname = @name;";
+                        countCmd.Parameters.AddWithValue("@name", tbl.Name);
+                        var count = await countCmd.ExecuteScalarAsync();
+                        if (count != null && count != DBNull.Value)
+                        {
+                            var c = Convert.ToInt64(count);
+                            tbl.RowCount = c >= 0 ? c : -1;
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore
                     }
                 }
-                catch
-                {
-                    // Ignore
-                }
             }
-        }
 
-        return tables;
+            return tables;
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
     }
 
     public async Task<List<QueryResult>> ExecuteMultipleQueriesAsync(string sql, int limit = 50000)
@@ -194,6 +224,7 @@ public class PostgresDatabaseService : IDatabaseService
         }
 
         var sw = Stopwatch.StartNew();
+        await _connectionLock.WaitAsync();
         try
         {
             using var cmd = _connection.CreateCommand();
@@ -266,6 +297,7 @@ public class PostgresDatabaseService : IDatabaseService
                 if (set.ElapsedMilliseconds == 0)
                     set.ElapsedMilliseconds = sw.Elapsed.TotalMilliseconds;
             }
+            _connectionLock.Release();
         }
 
         var selectSets = resultSets.Where(r => r.Columns.Count > 0).ToList();
@@ -365,68 +397,13 @@ public class PostgresDatabaseService : IDatabaseService
               AND NOT a.attisdropped
             ORDER BY a.attnum;";
 
+        await _connectionLock.WaitAsync();
         try
         {
-            using var cmd = _connection.CreateCommand();
-            cmd.CommandText = catalogSql;
-            cmd.Parameters.Add(new NpgsqlParameter("tableName", NpgsqlTypes.NpgsqlDbType.Text) { Value = cleanTable });
-            cmd.Parameters.Add(new NpgsqlParameter("schemaName", NpgsqlTypes.NpgsqlDbType.Text) { Value = (object?)schemaName ?? DBNull.Value });
-
-            using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-            {
-                var pos = reader.GetInt32(0);
-                var colName = reader.GetString(1);
-                var type = reader.GetString(2);
-                var isNullable = reader.GetBoolean(3);
-                var defVal = reader.IsDBNull(4) ? null : reader.GetString(4);
-                var isPk = reader.GetBoolean(5);
-
-                columns.Add(new ColumnInfo
-                {
-                    OrdinalPosition = pos,
-                    Name = colName,
-                    DataType = type,
-                    IsNullable = isNullable,
-                    IsPrimaryKey = isPk,
-                    DefaultValue = defVal
-                });
-            }
-        }
-        catch
-        {
-            // Fallback to information_schema if restricted catalog permissions
-        }
-
-        if (columns.Count == 0)
-        {
-            const string fallbackSql = @"
-                SELECT 
-                    c.ordinal_position,
-                    c.column_name,
-                    c.data_type,
-                    c.is_nullable,
-                    c.column_default,
-                    COALESCE((
-                        SELECT true 
-                        FROM information_schema.table_constraints tc
-                        JOIN information_schema.key_column_usage kcu 
-                          ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
-                        WHERE tc.constraint_type = 'PRIMARY KEY' 
-                          AND (tc.table_name = c.table_name OR tc.table_name = LOWER(c.table_name))
-                          AND tc.table_schema = c.table_schema 
-                          AND kcu.column_name = c.column_name
-                        LIMIT 1
-                    ), false) AS is_pk
-                FROM information_schema.columns c
-                WHERE (c.table_name = @tableName OR c.table_name = LOWER(@tableName))
-                  AND (CAST(@schemaName AS text) IS NULL OR c.table_schema = @schemaName)
-                ORDER BY c.ordinal_position;";
-
             try
             {
                 using var cmd = _connection.CreateCommand();
-                cmd.CommandText = fallbackSql;
+                cmd.CommandText = catalogSql;
                 cmd.Parameters.Add(new NpgsqlParameter("tableName", NpgsqlTypes.NpgsqlDbType.Text) { Value = cleanTable });
                 cmd.Parameters.Add(new NpgsqlParameter("schemaName", NpgsqlTypes.NpgsqlDbType.Text) { Value = (object?)schemaName ?? DBNull.Value });
 
@@ -436,7 +413,7 @@ public class PostgresDatabaseService : IDatabaseService
                     var pos = reader.GetInt32(0);
                     var colName = reader.GetString(1);
                     var type = reader.GetString(2);
-                    var isNullable = reader.GetString(3).Equals("YES", StringComparison.OrdinalIgnoreCase);
+                    var isNullable = reader.GetBoolean(3);
                     var defVal = reader.IsDBNull(4) ? null : reader.GetString(4);
                     var isPk = reader.GetBoolean(5);
 
@@ -453,8 +430,71 @@ public class PostgresDatabaseService : IDatabaseService
             }
             catch
             {
-                // Ignore fallback error
+                // Fallback to information_schema if restricted catalog permissions
             }
+
+            if (columns.Count == 0)
+            {
+                const string fallbackSql = @"
+                    SELECT 
+                        c.ordinal_position,
+                        c.column_name,
+                        c.data_type,
+                        c.is_nullable,
+                        c.column_default,
+                        COALESCE((
+                            SELECT true 
+                            FROM information_schema.table_constraints tc
+                            JOIN information_schema.key_column_usage kcu 
+                              ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+                            WHERE tc.constraint_type = 'PRIMARY KEY' 
+                              AND (tc.table_name = c.table_name OR tc.table_name = LOWER(c.table_name))
+                              AND tc.table_schema = c.table_schema 
+                              AND kcu.column_name = c.column_name
+                            LIMIT 1
+                        ), false) AS is_pk
+                    FROM information_schema.columns c
+                    WHERE (c.table_name = @tableName OR c.table_name = LOWER(@tableName))
+                      AND (CAST(@schemaName AS text) IS NULL OR c.table_schema = @schemaName)
+                    ORDER BY c.ordinal_position;";
+
+                try
+                {
+                    using var cmd = _connection.CreateCommand();
+                    cmd.CommandText = fallbackSql;
+                    cmd.Parameters.Add(new NpgsqlParameter("tableName", NpgsqlTypes.NpgsqlDbType.Text) { Value = cleanTable });
+                    cmd.Parameters.Add(new NpgsqlParameter("schemaName", NpgsqlTypes.NpgsqlDbType.Text) { Value = (object?)schemaName ?? DBNull.Value });
+
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        var pos = reader.GetInt32(0);
+                        var colName = reader.GetString(1);
+                        var type = reader.GetString(2);
+                        var isNullable = reader.GetString(3).Equals("YES", StringComparison.OrdinalIgnoreCase);
+                        var defVal = reader.IsDBNull(4) ? null : reader.GetString(4);
+                        var isPk = reader.GetBoolean(5);
+
+                        columns.Add(new ColumnInfo
+                        {
+                            OrdinalPosition = pos,
+                            Name = colName,
+                            DataType = type,
+                            IsNullable = isNullable,
+                            IsPrimaryKey = isPk,
+                            DefaultValue = defVal
+                        });
+                    }
+                }
+                catch
+                {
+                    // Ignore fallback error
+                }
+            }
+        }
+        finally
+        {
+            _connectionLock.Release();
         }
 
         // Correlate with foreign keys
@@ -519,6 +559,7 @@ public class PostgresDatabaseService : IDatabaseService
             GROUP BY i.relname, t.relname, idx.indisunique, idx.indisprimary, am.amname, idx.indexrelid
             ORDER BY idx.indisprimary DESC, idx.indisunique DESC, i.relname;";
 
+        await _connectionLock.WaitAsync();
         try
         {
             using var cmd = _connection.CreateCommand();
@@ -552,6 +593,10 @@ public class PostgresDatabaseService : IDatabaseService
         catch
         {
             // Ignore index query errors on older pg or views
+        }
+        finally
+        {
+            _connectionLock.Release();
         }
 
         return indexes;
@@ -679,61 +724,14 @@ public class PostgresDatabaseService : IDatabaseService
               AND ns_src.nspname NOT IN ('pg_catalog', 'information_schema')
             ORDER BY cl_src.relname, con.conname, k.ord;";
 
+        await _connectionLock.WaitAsync();
         try
         {
-            using var cmd = _connection.CreateCommand();
-            cmd.CommandText = catalogSql;
-            cmd.Parameters.Add(new NpgsqlParameter("tableName", NpgsqlTypes.NpgsqlDbType.Text) { Value = (object?)cleanTable ?? DBNull.Value });
-            cmd.Parameters.Add(new NpgsqlParameter("schemaName", NpgsqlTypes.NpgsqlDbType.Text) { Value = (object?)schemaName ?? DBNull.Value });
-
-            using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-            {
-                fks.Add(new ForeignKeyInfo
-                {
-                    ConstraintName = reader.GetString(0),
-                    SourceTable = reader.GetString(1),
-                    SourceColumn = reader.GetString(2),
-                    TargetTable = reader.GetString(3),
-                    TargetColumn = reader.GetString(4),
-                    OnUpdate = reader.GetString(5),
-                    OnDelete = reader.GetString(6)
-                });
-            }
-        }
-        catch
-        {
-            // Fallback to information_schema
-        }
-
-        if (fks.Count == 0 && !string.IsNullOrEmpty(cleanTable))
-        {
-            const string fallbackSql = @"
-                SELECT
-                    tc.constraint_name,
-                    tc.table_name AS source_table,
-                    kcu.column_name AS source_column,
-                    ccu.table_name AS target_table,
-                    ccu.column_name AS target_column,
-                    rc.update_rule,
-                    rc.delete_rule
-                FROM information_schema.table_constraints AS tc
-                JOIN information_schema.key_column_usage AS kcu
-                  ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
-                JOIN information_schema.referential_constraints AS rc
-                  ON tc.constraint_name = rc.constraint_name AND tc.table_schema = rc.constraint_schema
-                JOIN information_schema.constraint_column_usage AS ccu
-                  ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
-                WHERE tc.constraint_type = 'FOREIGN KEY'
-                  AND (tc.table_name = @tableName OR tc.table_name = LOWER(@tableName))
-                  AND (CAST(@schemaName AS text) IS NULL OR tc.table_schema = @schemaName)
-                ORDER BY tc.table_name, kcu.ordinal_position;";
-
             try
             {
                 using var cmd = _connection.CreateCommand();
-                cmd.CommandText = fallbackSql;
-                cmd.Parameters.Add(new NpgsqlParameter("tableName", NpgsqlTypes.NpgsqlDbType.Text) { Value = cleanTable });
+                cmd.CommandText = catalogSql;
+                cmd.Parameters.Add(new NpgsqlParameter("tableName", NpgsqlTypes.NpgsqlDbType.Text) { Value = (object?)cleanTable ?? DBNull.Value });
                 cmd.Parameters.Add(new NpgsqlParameter("schemaName", NpgsqlTypes.NpgsqlDbType.Text) { Value = (object?)schemaName ?? DBNull.Value });
 
                 using var reader = await cmd.ExecuteReaderAsync();
@@ -753,8 +751,63 @@ public class PostgresDatabaseService : IDatabaseService
             }
             catch
             {
-                // Ignore fallback error
+                // Fallback to information_schema
             }
+
+            if (fks.Count == 0 && !string.IsNullOrEmpty(cleanTable))
+            {
+                const string fallbackSql = @"
+                    SELECT
+                        tc.constraint_name,
+                        tc.table_name AS source_table,
+                        kcu.column_name AS source_column,
+                        ccu.table_name AS target_table,
+                        ccu.column_name AS target_column,
+                        rc.update_rule,
+                        rc.delete_rule
+                    FROM information_schema.table_constraints AS tc
+                    JOIN information_schema.key_column_usage AS kcu
+                      ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+                    JOIN information_schema.referential_constraints AS rc
+                      ON tc.constraint_name = rc.constraint_name AND tc.table_schema = rc.constraint_schema
+                    JOIN information_schema.constraint_column_usage AS ccu
+                      ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
+                    WHERE tc.constraint_type = 'FOREIGN KEY'
+                      AND (tc.table_name = @tableName OR tc.table_name = LOWER(@tableName))
+                      AND (CAST(@schemaName AS text) IS NULL OR tc.table_schema = @schemaName)
+                    ORDER BY tc.table_name, kcu.ordinal_position;";
+
+                try
+                {
+                    using var cmd = _connection.CreateCommand();
+                    cmd.CommandText = fallbackSql;
+                    cmd.Parameters.Add(new NpgsqlParameter("tableName", NpgsqlTypes.NpgsqlDbType.Text) { Value = cleanTable });
+                    cmd.Parameters.Add(new NpgsqlParameter("schemaName", NpgsqlTypes.NpgsqlDbType.Text) { Value = (object?)schemaName ?? DBNull.Value });
+
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        fks.Add(new ForeignKeyInfo
+                        {
+                            ConstraintName = reader.GetString(0),
+                            SourceTable = reader.GetString(1),
+                            SourceColumn = reader.GetString(2),
+                            TargetTable = reader.GetString(3),
+                            TargetColumn = reader.GetString(4),
+                            OnUpdate = reader.GetString(5),
+                            OnDelete = reader.GetString(6)
+                        });
+                    }
+                }
+                catch
+                {
+                    // Ignore fallback error
+                }
+            }
+        }
+        finally
+        {
+            _connectionLock.Release();
         }
 
         return fks;
@@ -833,6 +886,7 @@ public class PostgresDatabaseService : IDatabaseService
             return result;
         }
 
+        await _connectionLock.WaitAsync(cancellationToken);
         var sw = Stopwatch.StartNew();
         NpgsqlTransaction? tx = null;
         try
@@ -892,13 +946,33 @@ public class PostgresDatabaseService : IDatabaseService
             {
                 await tx.DisposeAsync();
             }
+            _connectionLock.Release();
         }
     }
 
     public void Dispose()
     {
-        _connection?.Dispose();
-        _connection = null;
-        _sshTunnelService.Dispose();
+        try
+        {
+            _connectionLock.Wait(1000);
+            _connection?.Dispose();
+            _connection = null;
+            _sshTunnelService.Dispose();
+        }
+        catch
+        {
+            // Ignore disposal lock timeout
+        }
+        finally
+        {
+            try
+            {
+                _connectionLock.Release();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+            _connectionLock.Dispose();
+        }
     }
 }

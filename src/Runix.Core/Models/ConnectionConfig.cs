@@ -11,8 +11,10 @@ public enum SshAuthMethod
     PrivateKey
 }
 
-public class ConnectionConfig
+public class ConnectionConfig : INotifyPropertyChanged
 {
+    private bool _isBeingDragged;
+
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name { get; set; } = "New Connection";
     public string Category { get; set; } = string.Empty;
@@ -122,12 +124,33 @@ public class ConnectionConfig
         };
     }
 
+    public bool IsBeingDragged
+    {
+        get => _isBeingDragged;
+        set
+        {
+            if (_isBeingDragged != value)
+            {
+                _isBeingDragged = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
     public override string ToString() => $"{Name} ({Type})";
 }
 
 public class ConnectionCategoryGroup : INotifyPropertyChanged
 {
     private bool _isExpanded = true;
+    private bool _isDragOver;
 
     public string CategoryName { get; set; } = string.Empty;
     public string DisplayTitle { get; set; } = string.Empty;
@@ -137,6 +160,19 @@ public class ConnectionCategoryGroup : INotifyPropertyChanged
 
     public int Count => Connections.Count;
     public string HeaderBadge => Count.ToString();
+
+    public bool IsDragOver
+    {
+        get => _isDragOver;
+        set
+        {
+            if (_isDragOver != value)
+            {
+                _isDragOver = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     public bool IsExpanded
     {

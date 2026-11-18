@@ -2,11 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Runix.Core.Models;
 using Runix.Core.Services;
 
@@ -27,11 +29,13 @@ public class ErdCanvasControl : Panel
     private Point _panStart;
     private bool _hasInitiallyCentered;
 
+    public string CurrentDatabaseId { get; set; } = "current_diagram";
     public double ZoomScale => _scaleTransform.ScaleX;
     public event Action<double>? ZoomChanged;
     public event Action<ErdTableNode>? NodeDoubleClicked;
     public event Action<ErdTableNode>? EditTableRequested;
     public event Action<ErdTableNode, ColumnInfo, ErdTableNode, ColumnInfo?>? ConnectionRequested;
+    public event Action<SubjectAreaModel>? SubjectAreaRemoved;
 
     public ErdCanvasControl()
     {
@@ -224,6 +228,176 @@ public class ErdCanvasControl : Panel
         _surface.InvalidateVisual();
     }
 
+    /// <summary>
+    /// Anima suavemente a transição das coordenadas das tabelas e Subject Areas (~250ms com interpolação ease-in-out).
+    /// </summary>
+    public async Task AnimateLayoutTransitionAsync(GraphLayoutOptions? options = null, int durationMs = 250)
+    {
+        if (_graph.Nodes.Count == 0) return;
+
+        // Capturar posições iniciais
+        var startNodes = _graph.Nodes.ToDictionary(n => n.TableName, n => (n.X, n.Y), StringComparer.OrdinalIgnoreCase);
+        var startAreas = _graph.SubjectAreas.ToDictionary(a => a.Id, a => (a.X, a.Y, a.Width, a.Height));
+
+        // Calcular layout alvo via Sugiyama
+        var engine = new SugiyamaHierarchicalLayoutEngine();
+        engine.ArrangeLayout(_graph, options);
+
+        var targetNodes = _graph.Nodes.ToDictionary(n => n.TableName, n => (n.X, n.Y), StringComparer.OrdinalIgnoreCase);
+        var targetAreas = _graph.SubjectAreas.ToDictionary(a => a.Id, a => (a.X, a.Y, a.Width, a.Height));
+
+        // Restaurar posições de partida para animar suavemente
+        foreach (var n in _graph.Nodes)
+        {
+            var (sx, sy) = startNodes[n.TableName];
+            n.X = sx;
+            n.Y = sy;
+        }
+        foreach (var a in _graph.SubjectAreas)
+        {
+            var (sx, sy, sw, sh) = startAreas[a.Id];
+            a.X = sx;
+            a.Y = sy;
+            a.Width = sw;
+            a.Height = sh;
+        }
+        _surface.UpdateNodePositions();
+
+        var tcs = new TaskCompletionSource<bool>();
+        var startTime = DateTime.UtcNow;
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+
+        timer.Tick += (s, e) =>
+        {
+            var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            var progress = Math.Clamp(elapsed / durationMs, 0.0, 1.0);
+
+            // Ease-in-out quadratic
+            double ease = progress < 0.5
+                ? 2.0 * progress * progress
+                : 1.0 - (Math.Pow((-2.0 * progress) + 2.0, 2) / 2.0);
+
+            foreach (var n in _graph.Nodes)
+            {
+                var (sx, sy) = startNodes[n.TableName];
+                var (tx, ty) = targetNodes[n.TableName];
+                n.X = sx + ((tx - sx) * ease);
+                n.Y = sy + ((ty - sy) * ease);
+            }
+
+            foreach (var a in _graph.SubjectAreas)
+            {
+                var (sx, sy, sw, sh) = startAreas[a.Id];
+                var (tx, ty, tw, th) = targetAreas[a.Id];
+                a.X = sx + ((tx - sx) * ease);
+                a.Y = sy + ((ty - sy) * ease);
+                a.Width = sw + ((tw - sw) * ease);
+                a.Height = sh + ((th - sh) * ease);
+            }
+
+            _surface.UpdateNodePositions();
+
+            if (progress >= 1.0)
+            {
+                timer.Stop();
+                foreach (var n in _graph.Nodes)
+                {
+                    var (tx, ty) = targetNodes[n.TableName];
+                    n.X = tx;
+                    n.Y = ty;
+                }
+                foreach (var a in _graph.SubjectAreas)
+                {
+                    var (tx, ty, tw, th) = targetAreas[a.Id];
+                    a.X = tx;
+                    a.Y = ty;
+                    a.Width = tw;
+                    a.Height = th;
+                }
+                _surface.UpdateNodePositions();
+                CenterOnContent();
+                ErdLayoutService.SaveLayout(CurrentDatabaseId, _graph);
+                tcs.TrySetResult(true);
+            }
+        };
+
+        timer.Start();
+        await tcs.Task;
+    }
+
+    /// <summary>
+    /// Centraliza suavemente o viewport do canvas na tabela especificada.
+    /// </summary>
+    public void PanToNode(string tableName)
+    {
+        var node = _graph.FindNode(tableName);
+        if (node == null) return;
+
+        double nodeW = node.Width > 0 ? node.Width : 250;
+        double nodeH = node.Height > 0 ? node.Height : 200;
+        double nodeCenterX = node.X + (nodeW / 2.0);
+        double nodeCenterY = node.Y + (nodeH / 2.0);
+
+        double viewWidth = Bounds.Width > 100 ? Bounds.Width : 1000;
+        double viewHeight = Bounds.Height > 100 ? Bounds.Height : 700;
+
+        _translateTransform.X = (viewWidth / 2.0) - (nodeCenterX * ZoomScale);
+        _translateTransform.Y = (viewHeight / 2.0) - (nodeCenterY * ZoomScale);
+
+        ClampTranslation();
+    }
+
+    /// <summary>
+    /// Aplica destaque pulsante luminoso ciano (#00e5ff) no cartão da tabela encontrada.
+    /// </summary>
+    public void HighlightNodePulse(string tableName)
+    {
+        var card = _surface.GetNodeCard(tableName);
+        if (card == null) return;
+
+        card.ZIndex = 90;
+        var origBrush = card.BorderBrush;
+        var origThickness = card.BorderThickness;
+        var glowBrush = Brush.Parse("#00e5ff");
+
+        int ticks = 0;
+        const int maxTicks = 8;
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
+
+        timer.Tick += (s, e) =>
+        {
+            ticks++;
+            bool isGlow = (ticks % 2) != 0;
+            card.BorderBrush = isGlow ? glowBrush : origBrush;
+            card.BorderThickness = isGlow ? new Thickness(3.0) : origThickness;
+
+            if (ticks >= maxTicks)
+            {
+                timer.Stop();
+                card.BorderBrush = origBrush;
+                card.BorderThickness = origThickness;
+                card.ZIndex = 0;
+            }
+        };
+
+        timer.Start();
+    }
+
+    public void AddSubjectArea(SubjectAreaModel area)
+    {
+        _graph.SubjectAreas.Add(area);
+        _surface.AddSubjectArea(area);
+        ErdLayoutService.SaveLayout(CurrentDatabaseId, _graph);
+    }
+
+    public void RemoveSubjectArea(SubjectAreaModel area)
+    {
+        _graph.SubjectAreas.Remove(area);
+        _surface.RemoveSubjectArea(area.Id);
+        ErdLayoutService.SaveLayout(CurrentDatabaseId, _graph);
+        SubjectAreaRemoved?.Invoke(area);
+    }
+
     private void OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
         var pos = e.GetPosition(this);
@@ -290,12 +464,27 @@ public class ErdCanvasControl : Panel
         private readonly ErdCanvasControl _parent;
         private ErdGraphModel _graph = new();
         private readonly Dictionary<string, Border> _nodeCards = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Border> _areaCards = new(StringComparer.OrdinalIgnoreCase);
         private readonly ConnectorOverlayControl _connectorLayer;
 
         private ErdTableNode? _draggedNode;
         private Border? _draggedCard;
         private Point _dragStartPos;
         private Point _nodeOrigPos;
+
+        // Subject Area Batch Dragging State
+        private SubjectAreaModel? _draggedArea;
+        private Border? _draggedAreaCard;
+        private Point _areaDragStartPos;
+        private Point _areaOrigPos;
+        private readonly Dictionary<string, Point> _containedNodesOrigPositions = new(StringComparer.OrdinalIgnoreCase);
+
+        // Subject Area Resizing State
+        private SubjectAreaModel? _resizingArea;
+        private Border? _resizingAreaCard;
+        private Point _resizeStartPos;
+        private Size _origAreaSize;
+        private TextBlock? _resizingCountText;
 
         // Interactive Connection State
         private bool _isConnecting;
@@ -320,10 +509,23 @@ public class ErdCanvasControl : Panel
             _graph = graph;
             Children.Clear();
             _nodeCards.Clear();
+            _areaCards.Clear();
 
-            // Adiciona a camada de conectores primeiro (fundo)
+            // 1. Camada de Subject Areas (Fundo)
+            foreach (var area in graph.SubjectAreas)
+            {
+                var areaCard = CreateSubjectAreaCard(area);
+                _areaCards[area.Id] = areaCard;
+                Children.Add(areaCard);
+
+                SetLeft(areaCard, area.X);
+                SetTop(areaCard, area.Y);
+            }
+
+            // 2. Camada de Conectores (Meio)
             Children.Add(_connectorLayer);
 
+            // 3. Camada de Cards de Tabelas (Frente)
             foreach (var node in graph.Nodes)
             {
                 var card = CreateTableCard(node);
@@ -337,6 +539,37 @@ public class ErdCanvasControl : Panel
             _connectorLayer.InvalidateVisual();
         }
 
+        public void AddSubjectArea(SubjectAreaModel area)
+        {
+            var card = CreateSubjectAreaCard(area);
+            _areaCards[area.Id] = card;
+
+            int connectorIndex = Children.IndexOf(_connectorLayer);
+            if (connectorIndex >= 0)
+            {
+                Children.Insert(connectorIndex, card);
+            }
+            else
+            {
+                Children.Add(card);
+            }
+
+            SetLeft(card, area.X);
+            SetTop(card, area.Y);
+        }
+
+        public void RemoveSubjectArea(string areaId)
+        {
+            if (_areaCards.TryGetValue(areaId, out var card))
+            {
+                Children.Remove(card);
+                _areaCards.Remove(areaId);
+            }
+        }
+
+        public Border? GetNodeCard(string tableName) =>
+            _nodeCards.TryGetValue(tableName, out var card) ? card : null;
+
         public void UpdateNodePositions()
         {
             foreach (var node in _graph.Nodes)
@@ -347,7 +580,178 @@ public class ErdCanvasControl : Panel
                     SetTop(card, node.Y);
                 }
             }
+
+            foreach (var area in _graph.SubjectAreas)
+            {
+                if (_areaCards.TryGetValue(area.Id, out var areaCard))
+                {
+                    SetLeft(areaCard, area.X);
+                    SetTop(areaCard, area.Y);
+                    areaCard.Width = area.Width;
+                    areaCard.Height = area.Height;
+                }
+            }
+
             _connectorLayer.InvalidateVisual();
+        }
+
+        private Border CreateSubjectAreaCard(SubjectAreaModel area)
+        {
+            var baseColor = Color.Parse(area.ColorHex);
+            var bgColor = Color.FromArgb(28, baseColor.R, baseColor.G, baseColor.B);
+            var headerColor = Color.FromArgb(60, baseColor.R, baseColor.G, baseColor.B);
+
+            var areaCard = new Border
+            {
+                Width = area.Width,
+                Height = area.Height,
+                CornerRadius = new CornerRadius(8),
+                Background = new SolidColorBrush(bgColor),
+                BorderBrush = new SolidColorBrush(baseColor),
+                BorderThickness = new Thickness(1.5),
+                ClipToBounds = true
+            };
+
+            var grid = new Grid
+            {
+                RowDefinitions = new RowDefinitions("Auto,*")
+            };
+
+            // Header
+            var header = new Border
+            {
+                Background = new SolidColorBrush(headerColor),
+                Padding = new Thickness(12, 6),
+                Cursor = new Cursor(StandardCursorType.SizeAll)
+            };
+
+            var headerGrid = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto")
+            };
+
+            var icon = new TextBlock
+            {
+                Text = "📁 ",
+                FontSize = 13,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            Grid.SetColumn(icon, 0);
+
+            var title = new TextBlock
+            {
+                Text = area.Title,
+                FontWeight = FontWeight.Bold,
+                FontSize = 12,
+                Foreground = Brush.Parse("#f0f6fc"),
+                VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            Grid.SetColumn(title, 1);
+
+            var countText = new TextBlock
+            {
+                Text = $"{area.TableCount} tabelas",
+                FontSize = 10,
+                Foreground = new SolidColorBrush(baseColor),
+                FontWeight = FontWeight.SemiBold,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(6, 0, 8, 0)
+            };
+            Grid.SetColumn(countText, 2);
+
+            var btnUngroup = new Button
+            {
+                Content = "✕",
+                Classes = { "btn-icon" },
+                Padding = new Thickness(4, 2),
+                FontSize = 10,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            ToolTip.SetTip(btnUngroup, "Desagrupar Área");
+            Grid.SetColumn(btnUngroup, 3);
+
+            headerGrid.Children.Add(icon);
+            headerGrid.Children.Add(title);
+            headerGrid.Children.Add(countText);
+            headerGrid.Children.Add(btnUngroup);
+            header.Child = headerGrid;
+            Grid.SetRow(header, 0);
+
+            // Body with Resize Handle
+            var bodyGrid = new Grid();
+            Grid.SetRow(bodyGrid, 1);
+
+            var resizeThumb = new Border
+            {
+                Width = 16,
+                Height = 16,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Background = Brushes.Transparent,
+                Cursor = new Cursor(StandardCursorType.BottomRightCorner),
+                Margin = new Thickness(0, 0, 4, 4),
+                Child = new TextBlock
+                {
+                    Text = "◢",
+                    FontSize = 10,
+                    Foreground = new SolidColorBrush(baseColor),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
+            bodyGrid.Children.Add(resizeThumb);
+
+            grid.Children.Add(header);
+            grid.Children.Add(bodyGrid);
+            areaCard.Child = grid;
+
+            // Events
+            btnUngroup.Click += (s, e) =>
+            {
+                _parent.RemoveSubjectArea(area);
+            };
+
+            header.PointerPressed += (s, e) =>
+            {
+                if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+                {
+                    _draggedArea = area;
+                    _draggedAreaCard = areaCard;
+                    _areaDragStartPos = e.GetPosition(this);
+                    _areaOrigPos = new Point(area.X, area.Y);
+
+                    _containedNodesOrigPositions.Clear();
+                    area.TableNames.Clear();
+
+                    foreach (var node in _graph.Nodes)
+                    {
+                        if (area.ContainsTableCenter(node))
+                        {
+                            area.AddTable(node.TableName);
+                            _containedNodesOrigPositions[node.TableName] = new Point(node.X, node.Y);
+                        }
+                    }
+
+                    countText.Text = $"{area.TableCount} tabelas";
+                    e.Handled = true;
+                }
+            };
+
+            resizeThumb.PointerPressed += (s, e) =>
+            {
+                if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+                {
+                    _resizingArea = area;
+                    _resizingAreaCard = areaCard;
+                    _resizeStartPos = e.GetPosition(this);
+                    _origAreaSize = new Size(area.Width, area.Height);
+                    _resizingCountText = countText;
+                    e.Handled = true;
+                }
+            };
+
+            return areaCard;
         }
 
         private Border CreateTableCard(ErdTableNode node)
@@ -559,6 +963,68 @@ public class ErdCanvasControl : Panel
                 return;
             }
 
+            if (_draggedArea != null && _draggedAreaCard != null)
+            {
+                var cur = e.GetPosition(this);
+                var delta = cur - _areaDragStartPos;
+
+                _draggedArea.X = Math.Max(20, _areaOrigPos.X + delta.X);
+                _draggedArea.Y = Math.Max(20, _areaOrigPos.Y + delta.Y);
+
+                SetLeft(_draggedAreaCard, _draggedArea.X);
+                SetTop(_draggedAreaCard, _draggedArea.Y);
+
+                foreach (var (tableName, origPos) in _containedNodesOrigPositions)
+                {
+                    var node = _graph.FindNode(tableName);
+                    if (node != null)
+                    {
+                        node.X = Math.Max(20, origPos.X + delta.X);
+                        node.Y = Math.Max(20, origPos.Y + delta.Y);
+
+                        if (_nodeCards.TryGetValue(tableName, out var card))
+                        {
+                            SetLeft(card, node.X);
+                            SetTop(card, node.Y);
+                        }
+                    }
+                }
+
+                _connectorLayer.InvalidateVisual();
+                e.Handled = true;
+                return;
+            }
+
+            if (_resizingArea != null && _resizingAreaCard != null)
+            {
+                var cur = e.GetPosition(this);
+                var dw = cur.X - _resizeStartPos.X;
+                var dh = cur.Y - _resizeStartPos.Y;
+
+                _resizingArea.Width = Math.Max(240, _origAreaSize.Width + dw);
+                _resizingArea.Height = Math.Max(160, _origAreaSize.Height + dh);
+
+                _resizingAreaCard.Width = _resizingArea.Width;
+                _resizingAreaCard.Height = _resizingArea.Height;
+
+                _resizingArea.TableNames.Clear();
+                foreach (var node in _graph.Nodes)
+                {
+                    if (_resizingArea.ContainsTableCenter(node))
+                    {
+                        _resizingArea.AddTable(node.TableName);
+                    }
+                }
+
+                if (_resizingCountText != null)
+                {
+                    _resizingCountText.Text = $"{_resizingArea.TableCount} tabelas";
+                }
+
+                e.Handled = true;
+                return;
+            }
+
             if (_draggedNode != null && _draggedCard != null)
             {
                 var cur = e.GetPosition(this);
@@ -617,15 +1083,50 @@ public class ErdCanvasControl : Panel
                 return;
             }
 
+            if (_draggedArea != null)
+            {
+                _draggedArea = null;
+                _draggedAreaCard = null;
+                _containedNodesOrigPositions.Clear();
+                ErdLayoutService.SaveLayout(_parent.CurrentDatabaseId, _graph);
+                _connectorLayer.InvalidateVisual();
+                e.Handled = true;
+                return;
+            }
+
+            if (_resizingArea != null)
+            {
+                _resizingArea = null;
+                _resizingAreaCard = null;
+                _resizingCountText = null;
+                ErdLayoutService.SaveLayout(_parent.CurrentDatabaseId, _graph);
+                e.Handled = true;
+                return;
+            }
+
             if (_draggedNode != null && _draggedCard != null)
             {
                 _draggedCard.BorderBrush = Brush.Parse("#1e2d42");
                 _draggedCard.ZIndex = 0;
+
+                // Atualizar membership de subject areas
+                foreach (var area in _graph.SubjectAreas)
+                {
+                    if (area.ContainsTableCenter(_draggedNode))
+                    {
+                        area.AddTable(_draggedNode.TableName);
+                    }
+                    else
+                    {
+                        area.RemoveTable(_draggedNode.TableName);
+                    }
+                }
+
                 _draggedNode = null;
                 _draggedCard = null;
 
                 // Salva posições ajustadas
-                ErdLayoutService.SaveLayout("current_diagram", _graph);
+                ErdLayoutService.SaveLayout(_parent.CurrentDatabaseId, _graph);
                 _connectorLayer.InvalidateVisual();
                 e.Handled = true;
             }

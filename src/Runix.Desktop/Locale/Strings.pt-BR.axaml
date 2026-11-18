@@ -22,12 +22,14 @@
     <sys:String x:Key="Connection.SavedConnections">CONEXÕES SALVAS</sys:String>
     <sys:String x:Key="Connection.New">+ Nova</sys:String>
     <sys:String x:Key="Connection.NewCategory">+ Categoria</sys:String>
-    <sys:String x:Key="Connection.CategoryLabel">Categoria / Grupo (Opcional)</sys:String>
-    <sys:String x:Key="Connection.CategoryWatermark">ex: Produção, Homologação, Cliente X, Local</sys:String>
-    <sys:String x:Key="Connection.UncategorizedGroup">Sem Categoria</sys:String>
+    <sys:String x:Key="Connection.CategoryLabel">Categoria / Grupo</sys:String>
+    <sys:String x:Key="Connection.CategoryWatermark">ex: Financeiro, Produção, Cliente X (ou vazio para Geral)</sys:String>
+    <sys:String x:Key="Connection.UncategorizedGroup">Geral</sys:String>
     <sys:String x:Key="Connection.FilterPlaceholder">🔍 Filtrar conexões ou categorias...</sys:String>
     <sys:String x:Key="Connection.NewCategoryWatermark">Nome da nova categoria...</sys:String>
     <sys:String x:Key="Connection.AddCategoryBtn">Criar</sys:String>
+    <sys:String x:Key="Connection.RenameCategoryWatermark">Novo nome da categoria...</sys:String>
+    <sys:String x:Key="Connection.MoveToCategory">Mover para Categoria</sys:String>
     <sys:String x:Key="Connection.Title">Configurações de Conexão</sys:String>
     <sys:String x:Key="Connection.Subtitle">Configure os parâmetros de conexão para SQLite ou PostgreSQL</sys:String>
     <sys:String x:Key="Connection.Name">Nome da Conexão</sys:String>
@@ -54,6 +56,8 @@
     <sys:String x:Key="Connection.Testing">Testando...</sys:String>
     <sys:String x:Key="Connection.Connect">Conectar ➔</sys:String>
     <sys:String x:Key="Connection.Connecting">Conectando...</sys:String>
+    <sys:String x:Key="Connection.QuickConnect">⚡ Conectar Agora</sys:String>
+    <sys:String x:Key="Connection.SavedTip">Dica: Clique em ⚡ Conectar ou dê duplo-clique para abrir.</sys:String>
     <sys:String x:Key="Connection.QuickDemo">🧀 Abrir Banco Demo de Queijos</sys:String>
 
     <!-- Workspace View -->
@@ -319,5 +323,61 @@
     <sys:String x:Key="A11y.ChartCanvas">Gráfico visual estatístico dos dados da consulta</sys:String>
     <sys:String x:Key="A11y.ExplainCanvas">Visualização em árvore do plano de execução da query</sys:String>
 
+    <!-- Schema Snapshots (.rschema) -->
+    <sys:String x:Key="Snapshot.CaptureTitle">Capturar Snapshot de Schema (.rschema)</sys:String>
+    <sys:String x:Key="Snapshot.CaptureSubtitle">Gere uma fotografia portátil e compactada da estrutura do banco</sys:String>
+    <sys:String x:Key="Snapshot.LabelPlaceholder">Ex: v1.4-baseline, pre-migration-auth</sys:String>
+    <sys:String x:Key="Snapshot.NotesPlaceholder">Notas ou descrição opcional do snapshot...</sys:String>
+    <sys:String x:Key="Snapshot.ScopeTitle">Escopo dos Metadados</sys:String>
+    <sys:String x:Key="Snapshot.ScopeTables">Tabelas e Colunas (tipos, nulidade, defaults)</sys:String>
+    <sys:String x:Key="Snapshot.ScopeForeignKeys">Chaves Primárias e Estrangeiras (ações referenciais)</sys:String>
+    <sys:String x:Key="Snapshot.ScopeIndexes">Índices e Uniques</sys:String>
+    <sys:String x:Key="Snapshot.ScopeViews">Views e Definições DDL</sys:String>
+    <sys:String x:Key="Snapshot.ScopeTriggers">Triggers e Procedures</sys:String>
+    <sys:String x:Key="Snapshot.ScopeChecks">Check Constraints e Comentários</sys:String>
+    <sys:String x:Key="Snapshot.DestTitle">Destino da Gravação</sys:String>
+    <sys:String x:Key="Snapshot.DestCatalog">Salvar no Catálogo Local (~/.runix/snapshots/)</sys:String>
+    <sys:String x:Key="Snapshot.DestExternal">Salvar em Arquivo Externo (.rschema)...</sys:String>
+    <sys:String x:Key="Snapshot.BtnCapture">📸 Capturar Snapshot</sys:String>
+    <sys:String x:Key="Snapshot.CatalogTitle">Catálogo de Snapshots de Schema</sys:String>
+    <sys:String x:Key="Snapshot.CatalogSearchPlaceholder">Buscar por rótulo, banco ou motor...</sys:String>
+    <sys:String x:Key="Snapshot.BtnNew">+ Novo Snapshot</sys:String>
+    <sys:String x:Key="Snapshot.ActionCompare">⚡ Comparar com Conexão Ativa</sys:String>
+    <sys:String x:Key="Snapshot.ActionExport">📁 Exportar</sys:String>
+    <sys:String x:Key="Snapshot.ActionRename">✏️ Renomear</sys:String>
+    <sys:String x:Key="Snapshot.ActionDelete">🗑️ Excluir</sys:String>
+    <sys:String x:Key="Snapshot.IntegrityValid">✓ Íntegro</sys:String>
+    <sys:String x:Key="Snapshot.IntegrityCompromised">⚠️ Checksum Divergente</sys:String>
+    <sys:String x:Key="Snapshot.CompromisedWarning">Aviso: Este snapshot possui integridade comprometida (checksum divergente). O schema pode conter definições corrompidas ou alteradas.</sys:String>
+    <sys:String x:Key="Snapshot.ForceOpenButton">Forçar Abertura por Minha Conta e Risco</sys:String>
+
+    <!-- Phase 30: Hybrid Schema Diff & Dual Endpoints -->
+    <sys:String x:Key="Diff.Endpoints.Swap">Inverter Origem e Destino</sys:String>
+    <sys:String x:Key="Diff.Endpoints.StrictTypes">Comparação Estrita de Tipos</sys:String>
+    <sys:String x:Key="Diff.Endpoints.SaveUpdatedSnapshot">📸 Salvar Snapshot Atualizado (.rschema)</sys:String>
+    <sys:String x:Key="Diff.Endpoints.OfflineTargetTooltip">O destino é um snapshot offline. Use 'Salvar Snapshot Atualizado' ou 'Copiar DDL'.</sys:String>
+    <sys:String x:Key="Diff.Endpoints.DialectCompatibleBadge">Compatível entre dialetos</sys:String>
+
+    <!-- Phase 31: DER Subject Areas -->
+    <sys:String x:Key="Erd.SubjectAreas.NewArea">📁 Nova Área</sys:String>
+    <sys:String x:Key="Erd.SubjectAreas.DialogTitle">Criar Área de Domínio</sys:String>
+    <sys:String x:Key="Erd.SubjectAreas.TitlePlaceholder">Nome do módulo (ex: Autenticação, Faturamento)</sys:String>
+    <sys:String x:Key="Erd.SubjectAreas.Ungroup">Desagrupar Área</sys:String>
+
+    <!-- Phase 32: Relational Graph Auto-Layout Engine & Fast Search Overlay -->
+    <sys:String x:Key="Erd.AutoLayout.Tooltip">Organizar tabelas automaticamente via Sugiyama (Ctrl+Shift+L)</sys:String>
+    <sys:String x:Key="Erd.Search.Button">🔍 Buscar</sys:String>
+    <sys:String x:Key="Erd.Search.Tooltip">Buscar tabela ou coluna no diagrama (Ctrl+F)</sys:String>
+    <sys:String x:Key="Erd.Search.Placeholder">Buscar tabela ou coluna... (Ctrl+F)</sys:String>
+    <sys:String x:Key="Erd.Search.NoResults">Nenhuma tabela ou coluna encontrada</sys:String>
+
+    <!-- Phase 33: High-Fidelity Vector Exporters -->
+    <sys:String x:Key="Erd.Export.Button">📥 Exportar...</sys:String>
+    <sys:String x:Key="Erd.Export.Tooltip">Exportar diagrama em PDF vetorial, SVG, PNG ou SQL (Ctrl+Shift+E)</sys:String>
+    <sys:String x:Key="Erd.Export.DialogTitle">Exportar Diagrama ER</sys:String>
+    <sys:String x:Key="Erd.Export.Format">Formato de Exportação</sys:String>
+    <sys:String x:Key="Erd.Export.Theme">Tema Visual</sys:String>
+    <sys:String x:Key="Erd.Export.PageSize">Tamanho da Página (PDF)</sys:String>
+    <sys:String x:Key="Erd.Export.Success">Diagrama exportado com sucesso para {0}</sys:String>
 
 </ResourceDictionary>

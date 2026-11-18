@@ -10,9 +10,9 @@ namespace Runix.Core.Interfaces;
 public interface ISchemaDiffService
 {
     /// <summary>
-    /// Extrai o snapshot estrutural completo (tabelas, colunas, PKs, FKs, índices) da conexão ativa.
+    /// Extrai o snapshot estrutural completo (tabelas, colunas, PKs, FKs, índices, views, triggers, check constraints) da conexão ativa.
     /// </summary>
-    Task<SchemaSnapshotModel> ExtractSnapshotAsync(IDatabaseService db);
+    Task<SchemaSnapshotModel> ExtractSnapshotAsync(IDatabaseService db, SnapshotExtractionOptions? options = null);
 
     /// <summary>
     /// Serializa um snapshot estrutural para JSON formatado.
@@ -28,6 +28,11 @@ public interface ISchemaDiffService
     /// Compara dois snapshots e gera o relatório diferencial com status semânticos.
     /// </summary>
     SchemaDiffResult CompareSnapshots(SchemaSnapshotModel source, SchemaSnapshotModel target, bool invertDirection = false);
+
+    /// <summary>
+    /// Compara dois snapshots com opções avançadas (tolerância cross-dialect, direção e índices).
+    /// </summary>
+    SchemaDiffResult CompareSnapshots(SchemaSnapshotModel source, SchemaSnapshotModel target, SchemaCompareOptions options);
 
     /// <summary>
     /// Sintetiza o script DDL de sincronização para o dialeto alvo respeitando as opções e o SafeMode.

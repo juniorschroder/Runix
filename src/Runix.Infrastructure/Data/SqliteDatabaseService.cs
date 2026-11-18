@@ -15,6 +15,7 @@ namespace Runix.Infrastructure.Data;
 public class SqliteDatabaseService : IDatabaseService
 {
     private SqliteConnection? _connection;
+    private readonly System.Threading.SemaphoreSlim _connectionLock = new(1, 1);
     public ConnectionConfig Config { get; }
     public bool IsConnected => _connection != null && _connection.State == System.Data.ConnectionState.Open;
     public CircuitState CurrentCircuitState => CircuitState.Closed;
@@ -67,16 +68,37 @@ public class SqliteDatabaseService : IDatabaseService
 
     public async Task ConnectAsync()
     {
-        if (_connection != null)
+        await _connectionLock.WaitAsync();
+        try
         {
-            await DisconnectAsync();
-        }
+            if (_connection != null)
+            {
+                await DisconnectInternalAsync();
+            }
 
-        _connection = new SqliteConnection(BuildConnectionString());
-        await _connection.OpenAsync();
+            _connection = new SqliteConnection(BuildConnectionString());
+            await _connection.OpenAsync();
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
     }
 
     public async Task DisconnectAsync()
+    {
+        await _connectionLock.WaitAsync();
+        try
+        {
+            await DisconnectInternalAsync();
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
+    }
+
+    private async Task DisconnectInternalAsync()
     {
         if (_connection != null)
         {
@@ -91,51 +113,59 @@ public class SqliteDatabaseService : IDatabaseService
         var tables = new List<TableInfo>();
         if (_connection == null) return tables;
 
-        const string sql = @"
-            SELECT name, type 
-            FROM sqlite_master 
-            WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%' 
-            ORDER BY type, name;";
-
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = sql;
-        using var reader = await cmd.ExecuteReaderAsync();
-
-        while (await reader.ReadAsync())
+        await _connectionLock.WaitAsync();
+        try
         {
-            var name = reader.GetString(0);
-            var type = reader.GetString(1);
-            tables.Add(new TableInfo
-            {
-                Name = name,
-                Schema = "main",
-                Type = type
-            });
-        }
+            const string sql = @"
+                SELECT name, type 
+                FROM sqlite_master 
+                WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%' 
+                ORDER BY type, name;";
 
-        // Try getting row count estimates
-        foreach (var tbl in tables)
-        {
-            if (tbl.Type == "table")
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = sql;
+            using var reader = await cmd.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
             {
-                try
+                var name = reader.GetString(0);
+                var type = reader.GetString(1);
+                tables.Add(new TableInfo
                 {
-                    using var countCmd = _connection.CreateCommand();
-                    countCmd.CommandText = $"SELECT COUNT(*) FROM \"{tbl.Name.Replace("\"", "\"\"")}\";";
-                    var count = await countCmd.ExecuteScalarAsync();
-                    if (count != null && count != DBNull.Value)
+                    Name = name,
+                    Schema = "main",
+                    Type = type
+                });
+            }
+
+            // Try getting row count estimates
+            foreach (var tbl in tables)
+            {
+                if (tbl.Type == "table")
+                {
+                    try
                     {
-                        tbl.RowCount = Convert.ToInt64(count);
+                        using var countCmd = _connection.CreateCommand();
+                        countCmd.CommandText = $"SELECT COUNT(*) FROM \"{tbl.Name.Replace("\"", "\"\"")}\";";
+                        var count = await countCmd.ExecuteScalarAsync();
+                        if (count != null && count != DBNull.Value)
+                        {
+                            tbl.RowCount = Convert.ToInt64(count);
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore row count failure
                     }
                 }
-                catch
-                {
-                    // Ignore row count failure
-                }
             }
-        }
 
-        return tables;
+            return tables;
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
     }
 
     public async Task<List<QueryResult>> ExecuteMultipleQueriesAsync(string sql, int limit = 50000)
@@ -150,6 +180,7 @@ public class SqliteDatabaseService : IDatabaseService
         }
 
         var sw = Stopwatch.StartNew();
+        await _connectionLock.WaitAsync();
         try
         {
             using var cmd = _connection.CreateCommand();
@@ -222,6 +253,7 @@ public class SqliteDatabaseService : IDatabaseService
                 if (set.ElapsedMilliseconds == 0)
                     set.ElapsedMilliseconds = sw.Elapsed.TotalMilliseconds;
             }
+            _connectionLock.Release();
         }
 
         // If multiple SELECT result sets with columns were returned, prioritize them
@@ -284,29 +316,37 @@ public class SqliteDatabaseService : IDatabaseService
         var columns = new List<ColumnInfo>();
         if (_connection == null) return columns;
 
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = $"PRAGMA table_info(\"{tableName.Replace("\"", "\"\"")}\");";
-
-        using var reader = await cmd.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
+        await _connectionLock.WaitAsync();
+        try
         {
-            // cid, name, type, notnull, dflt_value, pk
-            var cid = reader.GetInt32(0);
-            var colName = reader.GetString(1);
-            var type = reader.IsDBNull(2) ? "TEXT" : reader.GetString(2);
-            var notNull = reader.GetInt32(3) == 1;
-            var dfltVal = reader.IsDBNull(4) ? null : reader.GetString(4);
-            var isPk = reader.GetInt32(5) > 0;
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = $"PRAGMA table_info(\"{tableName.Replace("\"", "\"\"")}\");";
 
-            columns.Add(new ColumnInfo
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
             {
-                OrdinalPosition = cid,
-                Name = colName,
-                DataType = type,
-                IsNullable = !notNull,
-                IsPrimaryKey = isPk,
-                DefaultValue = dfltVal
-            });
+                // cid, name, type, notnull, dflt_value, pk
+                var cid = reader.GetInt32(0);
+                var colName = reader.GetString(1);
+                var type = reader.IsDBNull(2) ? "TEXT" : reader.GetString(2);
+                var notNull = reader.GetInt32(3) == 1;
+                var dfltVal = reader.IsDBNull(4) ? null : reader.GetString(4);
+                var isPk = reader.GetInt32(5) > 0;
+
+                columns.Add(new ColumnInfo
+                {
+                    OrdinalPosition = cid,
+                    Name = colName,
+                    DataType = type,
+                    IsNullable = !notNull,
+                    IsPrimaryKey = isPk,
+                    DefaultValue = dfltVal
+                });
+            }
+        }
+        finally
+        {
+            _connectionLock.Release();
         }
 
         // Correlate with foreign keys
@@ -336,6 +376,7 @@ public class SqliteDatabaseService : IDatabaseService
         var indexes = new List<TableIndexInfo>();
         if (_connection == null) return indexes;
 
+        await _connectionLock.WaitAsync();
         try
         {
             using var cmd = _connection.CreateCommand();
@@ -393,6 +434,10 @@ public class SqliteDatabaseService : IDatabaseService
         {
             // Ignore index discovery errors
         }
+        finally
+        {
+            _connectionLock.Release();
+        }
 
         return indexes;
     }
@@ -401,39 +446,47 @@ public class SqliteDatabaseService : IDatabaseService
     {
         if (_connection == null) return string.Empty;
 
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT sql FROM sqlite_master WHERE name = @name;";
-        cmd.Parameters.AddWithValue("@name", tableName);
-
-        var val = await cmd.ExecuteScalarAsync();
-        var tableDdl = val?.ToString() ?? $"-- No DDL found for {tableName}";
-
+        await _connectionLock.WaitAsync();
         try
         {
-            using var idxCmd = _connection.CreateCommand();
-            idxCmd.CommandText = "SELECT sql FROM sqlite_master WHERE type = 'index' AND tbl_name = @tbl AND sql IS NOT NULL;";
-            idxCmd.Parameters.AddWithValue("@tbl", tableName);
-            using var idxReader = await idxCmd.ExecuteReaderAsync();
-            var idxList = new List<string>();
-            while (await idxReader.ReadAsync())
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "SELECT sql FROM sqlite_master WHERE name = @name;";
+            cmd.Parameters.AddWithValue("@name", tableName);
+
+            var val = await cmd.ExecuteScalarAsync();
+            var tableDdl = val?.ToString() ?? $"-- No DDL found for {tableName}";
+
+            try
             {
-                if (!idxReader.IsDBNull(0))
+                using var idxCmd = _connection.CreateCommand();
+                idxCmd.CommandText = "SELECT sql FROM sqlite_master WHERE type = 'index' AND tbl_name = @tbl AND sql IS NOT NULL;";
+                idxCmd.Parameters.AddWithValue("@tbl", tableName);
+                using var idxReader = await idxCmd.ExecuteReaderAsync();
+                var idxList = new List<string>();
+                while (await idxReader.ReadAsync())
                 {
-                    idxList.Add(idxReader.GetString(0));
+                    if (!idxReader.IsDBNull(0))
+                    {
+                        idxList.Add(idxReader.GetString(0));
+                    }
+                }
+
+                if (idxList.Count > 0)
+                {
+                    tableDdl += "\n\n-- Indexes\n" + string.Join(";\n", idxList) + ";";
                 }
             }
-
-            if (idxList.Count > 0)
+            catch
             {
-                tableDdl += "\n\n-- Indexes\n" + string.Join(";\n", idxList) + ";";
+                // Ignore
             }
-        }
-        catch
-        {
-            // Ignore
-        }
 
-        return tableDdl;
+            return tableDdl;
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
     }
 
     public async Task<List<ForeignKeyInfo>> GetForeignKeysAsync(string? tableName = null)
@@ -445,39 +498,47 @@ public class SqliteDatabaseService : IDatabaseService
             ? (await GetTablesAsync()).Where(t => !t.IsView).Select(t => t.Name).ToList()
             : new List<string> { tableName };
 
-        foreach (var tbl in tablesToInspect)
+        await _connectionLock.WaitAsync();
+        try
         {
-            using var cmd = _connection.CreateCommand();
-            cmd.CommandText = $"PRAGMA foreign_key_list(\"{tbl.Replace("\"", "\"\"")}\");";
-
-            using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
+            foreach (var tbl in tablesToInspect)
             {
-                // id, seq, table, from, to, on_update, on_delete, match
-                var targetTable = reader.IsDBNull(2) ? "" : reader.GetString(2);
-                var fromCol = reader.IsDBNull(3) ? "" : reader.GetString(3);
-                var toCol = reader.IsDBNull(4) ? "id" : reader.GetString(4);
-                if (string.IsNullOrWhiteSpace(toCol)) toCol = "id";
-                var onUpdate = reader.IsDBNull(5) ? "NO ACTION" : reader.GetString(5);
-                var onDelete = reader.IsDBNull(6) ? "NO ACTION" : reader.GetString(6);
+                using var cmd = _connection.CreateCommand();
+                cmd.CommandText = $"PRAGMA foreign_key_list(\"{tbl.Replace("\"", "\"\"")}\");";
 
-                if (!string.IsNullOrWhiteSpace(fromCol) && !string.IsNullOrWhiteSpace(targetTable))
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
                 {
-                    fks.Add(new ForeignKeyInfo
+                    // id, seq, table, from, to, on_update, on_delete, match
+                    var targetTable = reader.IsDBNull(2) ? "" : reader.GetString(2);
+                    var fromCol = reader.IsDBNull(3) ? "" : reader.GetString(3);
+                    var toCol = reader.IsDBNull(4) ? "id" : reader.GetString(4);
+                    if (string.IsNullOrWhiteSpace(toCol)) toCol = "id";
+                    var onUpdate = reader.IsDBNull(5) ? "NO ACTION" : reader.GetString(5);
+                    var onDelete = reader.IsDBNull(6) ? "NO ACTION" : reader.GetString(6);
+
+                    if (!string.IsNullOrWhiteSpace(fromCol) && !string.IsNullOrWhiteSpace(targetTable))
                     {
-                        ConstraintName = $"fk_{tbl}_{fromCol}",
-                        SourceTable = tbl,
-                        SourceColumn = fromCol,
-                        TargetTable = targetTable,
-                        TargetColumn = toCol,
-                        OnUpdate = onUpdate,
-                        OnDelete = onDelete
-                    });
+                        fks.Add(new ForeignKeyInfo
+                        {
+                            ConstraintName = $"fk_{tbl}_{fromCol}",
+                            SourceTable = tbl,
+                            SourceColumn = fromCol,
+                            TargetTable = targetTable,
+                            TargetColumn = toCol,
+                            OnUpdate = onUpdate,
+                            OnDelete = onDelete
+                        });
+                    }
                 }
             }
-        }
 
-        return fks;
+            return fks;
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
     }
 
     public async Task<ErdGraphModel> GetErdGraphAsync()
@@ -591,6 +652,7 @@ public class SqliteDatabaseService : IDatabaseService
             return result;
         }
 
+        await _connectionLock.WaitAsync(cancellationToken);
         var sw = Stopwatch.StartNew();
         SqliteTransaction? tx = null;
         try
@@ -650,12 +712,32 @@ public class SqliteDatabaseService : IDatabaseService
             {
                 await tx.DisposeAsync();
             }
+            _connectionLock.Release();
         }
     }
 
     public void Dispose()
     {
-        _connection?.Dispose();
-        _connection = null;
+        try
+        {
+            _connectionLock.Wait(1000);
+            _connection?.Dispose();
+            _connection = null;
+        }
+        catch
+        {
+            // Ignore lock timeout on disposal
+        }
+        finally
+        {
+            try
+            {
+                _connectionLock.Release();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+            _connectionLock.Dispose();
+        }
     }
 }

@@ -1,14 +1,20 @@
+using System;
+using System.IO;
+
 namespace Runix.Core.Constants;
 
 public static class AppConstants
 {
     public const string AppName = "RUNIX Database Studio";
-    public const string AppVersion = "1.3.0";
+    public const string AppVersion = "1.4.0";
     public const string AppAuthor = "José Carlos Schröder Júnior";
     public const string AppCopyright = "© 2026 José Carlos Schröder Júnior";
     public const string AppLicense = "GPL-3.0 License";
     public const string AppRepositoryUrl = "https://github.com/juniorschroder/Runix";
     public const string AppAuthorLinkedInUrl = "https://www.linkedin.com/in/juniorschroder/";
+
+    public static string DefaultSnapshotsDirectory =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".runix", "snapshots");
 
     public const int WindowDefaultWidth = 1200;
     public const int WindowDefaultHeight = 800;

@@ -30,7 +30,7 @@ public class AppUpdateDownloaderService : IAppUpdateDownloaderService
 
         if (!_httpClient.DefaultRequestHeaders.Contains("User-Agent"))
         {
-            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Runix-Database-Studio/1.3.0");
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Runix-Database-Studio/1.4.0");
         }
 
         _shutdownAction = shutdownAction;

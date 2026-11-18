@@ -28,12 +28,36 @@
         <Style Selector="TreeViewItem:selected:pointerover /template/ Border#PART_LayoutRoot">
             <Setter Property="Background" Value="#1e446d"/>
         </Style>
+        <Style Selector="Border.category-group-header">
+            <Setter Property="Background" Value="#0b111a"/>
+            <Setter Property="BorderBrush" Value="#152030"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.12"/>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.12"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.category-group-header.dragover">
+            <Setter Property="Background" Value="#0d2847"/>
+            <Setter Property="BorderBrush" Value="#38bdf8"/>
+            <Setter Property="BorderThickness" Value="2"/>
+        </Style>
+        <Style Selector="Border.connection-item">
+            <Setter Property="Background" Value="#141d2b"/>
+            <Setter Property="BorderBrush" Value="#1a2639"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="Border.connection-item.dragging">
+            <Setter Property="Opacity" Value="0.35"/>
+        </Style>
     </UserControl.Styles>
 
-    <Grid ColumnDefinitions="340,4,*">
+    <Grid ColumnDefinitions="360,4,*">
         <!-- LEFT PANEL: Saved Connections & Categories -->
         <Border Grid.Column="0" MinWidth="260" MaxWidth="600" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="0,0,1,0">
-            <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" Margin="16">
+            <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="16">
                 <!-- Branding Header -->
                 <StackPanel Grid.Row="0" Margin="0,0,0,16">
                     <StackPanel Orientation="Horizontal" Spacing="10">
@@ -76,42 +100,114 @@
                     </Grid>
                 </Border>
 
+                <!-- Inline Rename Category Bar -->
+                <Border Name="PanelRenameCategoryBar" Grid.Row="2" Background="#090d14" BorderBrush="#38bdf8" BorderThickness="1"
+                        CornerRadius="6" Padding="8,6" Margin="0,0,0,8" IsVisible="False">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <TextBox Name="TxtRenameCategoryInput" Grid.Column="0" Watermark="{DynamicResource Connection.RenameCategoryWatermark}"
+                                 Background="#0e141f" Foreground="#f0f6fc" BorderBrush="#1e2d42" CornerRadius="4"
+                                 Padding="8,4" FontSize="11.5" Margin="0,0,6,0"
+                                 AutomationProperties.Name="{DynamicResource Connection.RenameCategoryWatermark}"/>
+                        <Button Name="BtnConfirmRenameCategory" Grid.Column="1" Content="Salvar"
+                                Classes="btn-primary" FontSize="11" Padding="10,4" Margin="0,0,4,0"/>
+                        <Button Name="BtnCancelRenameCategory" Grid.Column="2" Content="✕"
+                                Classes="btn-icon" FontSize="10" Padding="6,4"
+                                AutomationProperties.Name="{DynamicResource Common.Cancel}"/>
+                    </Grid>
+                </Border>
+
                 <!-- Filter Search Box -->
                 <TextBox Name="TxtFilterConnections" Grid.Row="3" Watermark="{DynamicResource Connection.FilterPlaceholder}"
                          Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42" CornerRadius="6"
-                         Padding="9,6" FontSize="11.5" Margin="0,0,0,8"
+                         Padding="9,6" FontSize="11.5" Margin="0,0,0,6"
                          AutomationProperties.Name="{DynamicResource A11y.SearchConnections}"/>
 
+                <!-- Helpful Tip Banner for Instant Connection -->
+                <Border Grid.Row="4" Background="#091424" BorderBrush="#152b44" BorderThickness="1" CornerRadius="5" Padding="8,5" Margin="0,0,0,8">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Grid.Column="0" Text="💡" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{DynamicResource Connection.SavedTip}"
+                                   FontSize="10" Foreground="#64748b" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+
                 <!-- Grouped Connections TreeView -->
-                <TreeView Name="TreeSavedConnections" Grid.Row="4" Background="Transparent" BorderThickness="0"
+                <TreeView Name="TreeSavedConnections" Grid.Row="5" Background="Transparent" BorderThickness="0"
+                          DragDrop.AllowDrop="True"
                           ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                           AutomationProperties.Name="{DynamicResource A11y.SavedConnectionsList}">
                     <TreeView.DataTemplates>
                         <!-- Category Group Header Node -->
                         <TreeDataTemplate DataType="models:ConnectionCategoryGroup" ItemsSource="{Binding Connections}">
-                            <Border Padding="8,5" Margin="0,2,14,1" CornerRadius="5" Background="#0b111a" BorderBrush="#152030" BorderThickness="1">
-                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                            <Border DragDrop.AllowDrop="True"
+                                    Classes="category-group-header"
+                                    Classes.dragover="{Binding IsDragOver}"
+                                    Padding="8,5" Margin="0,2,14,1" CornerRadius="6">
+                                <Border.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="➕ Nova Conexão nesta Categoria" Click="OnCategoryMenuAddConnectionClick"/>
+                                        <MenuItem Header="✏️ Renomear Categoria" Click="OnCategoryMenuRenameClick" IsVisible="{Binding !IsUncategorized}"/>
+                                        <Separator IsVisible="{Binding !IsUncategorized}"/>
+                                        <MenuItem Header="🗑️ Excluir Categoria (Mover para Geral)" Click="OnCategoryMenuDeleteClick" IsVisible="{Binding !IsUncategorized}"/>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto">
                                     <TextBlock Grid.Column="0" Text="{Binding Icon}" FontSize="12" Margin="0,0,7,0" VerticalAlignment="Center"/>
                                     <TextBlock Grid.Column="1" Text="{Binding DisplayTitle}" FontWeight="Bold" FontSize="11.5"
                                                Foreground="#38bdf8" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                    <Border Grid.Column="2" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1"
-                                            CornerRadius="4" Padding="5,1" Margin="6,0,0,0" VerticalAlignment="Center">
+                                    
+                                    <!-- Efeito visual de destaque ao arrastar: badge 'Soltar aqui' -->
+                                    <Border Grid.Column="2" IsVisible="{Binding IsDragOver}"
+                                            Background="#0284c7" BorderBrush="#38bdf8" BorderThickness="1"
+                                            CornerRadius="4" Padding="6,2" Margin="4,0,0,0" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock Text="📥" FontSize="9.5" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Soltar aqui" FontSize="9.5" FontWeight="Bold" Foreground="#ffffff" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Contador de conexões (visível quando não em dragover) -->
+                                    <Border Grid.Column="3" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1"
+                                            CornerRadius="4" Padding="5,1" Margin="6,0,0,0" VerticalAlignment="Center"
+                                            IsVisible="{Binding !IsDragOver}">
                                         <TextBlock Text="{Binding HeaderBadge}" FontSize="9.5" FontWeight="Bold" Foreground="#8b9cb3"/>
                                     </Border>
-                                    <Button Grid.Column="3" Name="BtnAddInCategory" Content="+" Classes="btn-icon"
+                                    <Button Grid.Column="4" Name="BtnAddInCategory" Content="+" Classes="btn-icon"
                                             Padding="5,0" Margin="6,0,0,0" FontSize="11" FontWeight="Bold"
                                             Background="Transparent" BorderThickness="0" Foreground="#38bdf8"
                                             Tag="{Binding CategoryName}"
                                             Click="OnAddConnectionInCategoryClick"
                                             ToolTip.Tip="Nova conexão nesta categoria"/>
+                                    <Button Grid.Column="5" Name="BtnCategoryOptions" Content="⋮" Classes="btn-icon"
+                                            Padding="4,0" Margin="2,0,0,0" FontSize="12"
+                                            Background="Transparent" BorderThickness="0" Foreground="#8b9cb3"
+                                            Tag="{Binding}"
+                                            Click="OnCategoryOptionsClick"
+                                            ToolTip.Tip="Opções da categoria (Renomear, Excluir)"/>
                                 </Grid>
                             </Border>
                         </TreeDataTemplate>
 
                         <!-- Individual Connection Leaf Node -->
                         <DataTemplate DataType="models:ConnectionConfig">
-                            <Border Padding="8,6" Margin="0,1,14,1" CornerRadius="6" Background="#141d2b" BorderBrush="#1a2639" BorderThickness="1">
-                                <Grid ColumnDefinitions="Auto,*,Auto">
+                            <Border Classes="connection-item"
+                                    Classes.dragging="{Binding IsBeingDragged}"
+                                    DragDrop.AllowDrop="True"
+                                    Padding="8,6" Margin="0,1,14,1" CornerRadius="6"
+                                    PointerPressed="OnConnectionPointerPressed"
+                                    PointerMoved="OnConnectionPointerMoved">
+                                <Border.ContextMenu>
+                                    <ContextMenu Opened="OnConnectionContextMenuOpened">
+                                        <MenuItem Header="⚡ Conectar Agora" Click="OnContextMenuConnectClick"/>
+                                        <MenuItem Header="✏️ Editar Configurações" Click="OnContextMenuEditClick"/>
+                                        <MenuItem Name="MenuMoveToCategory" Header="{DynamicResource Connection.MoveToCategory}"/>
+                                        <Separator/>
+                                        <MenuItem Header="🧪 Testar Conexão" Click="OnContextMenuTestClick"/>
+                                        <MenuItem Header="📋 Duplicar Conexão" Click="OnContextMenuDuplicateClick"/>
+                                        <MenuItem Header="🗑️ Excluir" Click="OnContextMenuDeleteClick"/>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                                     <Border Width="28" Height="28" CornerRadius="6" Margin="0,0,9,0"
                                             Background="#1a3a5c" BorderBrush="#1e2d42" BorderThickness="1"
                                             VerticalAlignment="Center">
@@ -136,6 +232,13 @@
                                             <TextBlock Text="🔒 RO" FontSize="9" FontWeight="Bold" Foreground="#c7d2fe"/>
                                         </Border>
                                     </StackPanel>
+                                    <!-- Direct 1-Click Connect Button -->
+                                    <Button Grid.Column="3" Name="BtnQuickConnectItem" Classes="btn-accent-subtle"
+                                            Content="⚡ Conectar" FontSize="10.5" Padding="8,4" Margin="8,0,0,0"
+                                            VerticalAlignment="Center" FontWeight="SemiBold"
+                                            ToolTip.Tip="Conectar imediatamente a esta base de dados"
+                                            Click="OnDirectConnectItemClick"
+                                            Tag="{Binding}"/>
                                 </Grid>
                             </Border>
                         </DataTemplate>
@@ -143,7 +246,7 @@
                 </TreeView>
 
                 <!-- Export / Import .RCF Bundle Footer -->
-                <Border Grid.Row="5" BorderBrush="#1e2d42" BorderThickness="0,1,0,0" Padding="0,12,0,0" Margin="0,10,0,0">
+                <Border Grid.Row="6" BorderBrush="#1e2d42" BorderThickness="0,1,0,0" Padding="0,12,0,0" Margin="0,10,0,0">
                     <StackPanel Spacing="6">
                         <TextBlock Text="COMPARTILHAR PACOTE CRIPTOGRAFADO (.RCF)" FontSize="9" FontWeight="Bold" Foreground="#64748b" LetterSpacing="0.5"/>
                         <Grid ColumnDefinitions="*,*">
@@ -192,6 +295,48 @@
                         </Button>
                     </StackPanel>
                 </Grid>
+
+                <!-- QUICK CONNECT HERO BANNER (Direct & Highly Visible Action without Scrolling) -->
+                <Border Name="CardQuickConnect" Background="#0b1726" BorderBrush="#008bb9" BorderThickness="1.5"
+                        CornerRadius="10" Padding="18,14" BoxShadow="0 6 20 #40000000" IsVisible="True">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <!-- Engine Icon Badge -->
+                        <Border Grid.Column="0" Width="44" Height="44" CornerRadius="8" Background="#142c44" BorderBrush="#008bb9" BorderThickness="1"
+                                Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock Name="TxtQuickIcon" Text="📁" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+
+                        <!-- Connection Info -->
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Name="TxtQuickName" Text="Conexão" FontSize="17" FontWeight="Bold" Foreground="#f0f6fc"/>
+                                <Border Name="BadgeQuickSaved" Background="#064e3b" BorderBrush="#10b981" BorderThickness="1" CornerRadius="4" Padding="6,1" VerticalAlignment="Center">
+                                    <TextBlock Text="SALVA" FontSize="9.5" FontWeight="Bold" Foreground="#34d399"/>
+                                </Border>
+                                <Border Name="BadgeQuickEngine" Background="#142c44" BorderBrush="#38bdf8" BorderThickness="1" CornerRadius="4" Padding="6,1" VerticalAlignment="Center">
+                                    <TextBlock Name="TxtQuickEngineTag" Text="SQLITE" FontSize="9.5" FontWeight="Bold" Foreground="#38bdf8"/>
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Name="TxtQuickDetails" Text="demo.db" FontSize="12" Foreground="#8b9cb3"/>
+                        </StackPanel>
+
+                        <!-- Action Buttons (Immediately Accessible without Scrolling!) -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                            <Button Name="BtnQuickTestTop" Content="{DynamicResource Connection.Test}" Classes="btn-outline" 
+                                    Padding="14,10" FontSize="12"
+                                    AutomationProperties.Name="Testar Conexão Rápida"
+                                    ToolTip.Tip="Testar se o banco de dados responde antes de conectar"/>
+                            <Button Name="BtnQuickConnectTop" Classes="btn-primary" 
+                                    Padding="22,10" FontSize="13" FontWeight="Bold"
+                                    AutomationProperties.Name="Conectar Imediatamente">
+                                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                    <TextBlock Text="⚡" FontSize="14" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{DynamicResource Connection.QuickConnect}" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
 
                 <!-- Connecting Progress Bar -->
                 <ProgressBar Name="ProgressConnecting" Height="3" IsIndeterminate="True" IsVisible="False" 

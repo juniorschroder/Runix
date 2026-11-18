@@ -107,17 +107,23 @@ public class ErdGraphModelTests
             }
         };
 
+        // Default: TopToBottom
         ErdLayoutService.ApplyTopologicalLayout(graph);
 
         var authors = graph.FindNode("authors")!;
         var books = graph.FindNode("books")!;
         var reviews = graph.FindNode("reviews")!;
 
-        // Authors is independent -> col 0
-        authors.X.Should().Be(40);
-        // Books depends on authors -> col 1
+        // Authors is independent -> rank 0 (top)
+        authors.Y.Should().Be(40);
+        // Books depends on authors -> rank 1 (below authors)
+        books.Y.Should().BeGreaterThan(authors.Y);
+        // Reviews depends on books -> rank 2 (below books)
+        reviews.Y.Should().BeGreaterThan(books.Y);
+
+        // LeftToRight direction
+        ErdLayoutService.ApplyTopologicalLayout(graph, new GraphLayoutOptions { Direction = LayoutDirection.LeftToRight });
         books.X.Should().BeGreaterThan(authors.X);
-        // Reviews depends on books -> col 2
         reviews.X.Should().BeGreaterThan(books.X);
     }
 }

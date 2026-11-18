@@ -91,7 +91,7 @@ public static class SyncDdlGenerator
 
                 if (options.SafeMode)
                 {
-                    sb.AppendLine($"-- [- EXTRA] Tabela '{fullTableName}' omitida em Modo Seguro (DROP TABLE não executado).");
+                    sb.AppendLine($"-- [SAFE MODE] DROP TABLE {fullTableName}; -- Comentado para prevenir perda acidental de dados.");
                 }
                 else
                 {
@@ -161,7 +161,7 @@ public static class SyncDdlGenerator
         {
             if (options.SafeMode)
             {
-                sb.AppendLine($"-- Omitido em Modo Seguro: ALTER TABLE {targetTable} DROP COLUMN \"{col.ColumnName}\";");
+                sb.AppendLine($"-- [SAFE MODE] ALTER TABLE {targetTable} DROP COLUMN \"{col.ColumnName}\"; -- Comentado para prevenir perda acidental de dados.");
             }
             else
             {
@@ -184,7 +184,11 @@ public static class SyncDdlGenerator
         // 5. Index Removals
         foreach (var idxDiff in tableDiff.IndexDiffs.Where(i => i.Status == DiffStatus.Removed))
         {
-            if (!options.SafeMode)
+            if (options.SafeMode)
+            {
+                sb.AppendLine($"-- [SAFE MODE] DROP INDEX IF EXISTS \"{idxDiff.IndexName}\"; -- Comentado para prevenir perda acidental de dados.");
+            }
+            else
             {
                 sb.AppendLine($"DROP INDEX IF EXISTS \"{idxDiff.IndexName}\";");
                 count++;

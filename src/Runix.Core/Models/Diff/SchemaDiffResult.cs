@@ -76,6 +76,8 @@ public class ColumnDiffItem
     public string? SourceDefault { get; set; }
     public string? TargetDefault { get; set; }
     public string DifferenceDescription { get; set; } = string.Empty;
+    public bool IsCrossDialectCompatible { get; set; }
+    public string? DialectNote { get; set; }
 
     public string StatusBadge => Status switch
     {
@@ -99,6 +101,8 @@ public class IndexDiffItem
     public string IndexName { get; set; } = string.Empty;
     public DiffStatus Status { get; set; } = DiffStatus.Identical;
     public string DifferenceDescription { get; set; } = string.Empty;
+    public bool IsCrossDialectCompatible { get; set; }
+    public string? DialectNote { get; set; }
 
     public string StatusBadge => Status switch
     {

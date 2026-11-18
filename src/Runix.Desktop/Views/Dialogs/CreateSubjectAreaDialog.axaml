@@ -1,0 +1,55 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="420"
+             x:Class="Runix.Desktop.Views.Dialogs.CreateSubjectAreaDialog">
+
+    <Border Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1.5" CornerRadius="8" 
+            Width="480" Padding="20" BoxShadow="0 8 32 #50000000">
+        <Grid RowDefinitions="Auto,*,Auto">
+            <!-- Header -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="📁" FontSize="18"/>
+                    <TextBlock Name="TxtDialogTitle" Text="{DynamicResource Erd.SubjectAreas.DialogTitle}" FontSize="16" FontWeight="Bold" Foreground="#f0f6fc"/>
+                </StackPanel>
+                <Button Name="BtnClose" Grid.Column="1" Content="✕" Classes="btn-icon" FontSize="12"
+                        AutomationProperties.Name="Fechar"/>
+            </Grid>
+
+            <!-- Form Body -->
+            <StackPanel Grid.Row="1" Spacing="14" Margin="0,0,0,18">
+                <!-- Title -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Título do Domínio" FontSize="11" FontWeight="SemiBold" Foreground="#8b9cb3"/>
+                    <TextBox Name="TxtTitle" Background="#0e141f" Foreground="#f0f6fc" 
+                             BorderBrush="#1e2d42" CornerRadius="5" Padding="10,8" FontSize="12"
+                             Watermark="{DynamicResource Erd.SubjectAreas.TitlePlaceholder}"/>
+                </StackPanel>
+
+                <!-- Description -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Descrição (Opcional)" FontSize="11" FontWeight="SemiBold" Foreground="#8b9cb3"/>
+                    <TextBox Name="TxtDescription" Background="#0e141f" Foreground="#f0f6fc" 
+                             BorderBrush="#1e2d42" CornerRadius="5" Padding="10,8" FontSize="12"
+                             Watermark="Ex: Responsável por gerenciar tabelas de login, tokens e perfis"/>
+                </StackPanel>
+
+                <!-- Color Palette Swatches -->
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Cor de Destaque" FontSize="11" FontWeight="SemiBold" Foreground="#8b9cb3"/>
+                    <WrapPanel Name="PanelColorSwatches" Orientation="Horizontal" Margin="0,4,0,0"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Footer Actions -->
+            <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto">
+                <Button Name="BtnCancel" Grid.Column="1" Content="{DynamicResource Common.Cancel}" Classes="btn-secondary" 
+                        Padding="16,8" Margin="0,0,8,0" FontSize="11"/>
+                <Button Name="BtnConfirm" Grid.Column="2" Content="Criar Domínio" Classes="btn-primary" 
+                        Padding="18,8" FontSize="11" FontWeight="Bold"/>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

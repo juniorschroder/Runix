@@ -1,0 +1,189 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:diff="clr-namespace:Runix.Core.Models.Diff;assembly=Runix.Core"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="Runix.Desktop.Views.Dialogs.SnapshotCatalogDialog">
+
+    <Grid>
+        <Border Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="1.5" CornerRadius="12" 
+                Width="740" Height="580" Padding="20">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <!-- Header -->
+                <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="0,0,0,16">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="🗂️" FontSize="18"/>
+                            <TextBlock Text="{DynamicResource Snapshot.CatalogTitle}" FontSize="15" FontWeight="Bold" Foreground="#f0f6fc"/>
+                        </StackPanel>
+                        <TextBlock Text="~/.runix/snapshots/" FontSize="10" Foreground="#8b9cb3" Margin="26,0,0,0"/>
+                    </StackPanel>
+
+                    <!-- Search Box -->
+                    <TextBox Name="TxtSearch" Grid.Column="2" Width="240" Margin="12,0,8,0"
+                             Background="#141d2b" Foreground="#f0f6fc" BorderBrush="#1e2d42" CornerRadius="5"
+                             Watermark="{DynamicResource Snapshot.CatalogSearchPlaceholder}" Padding="8,6" FontSize="11"
+                             AutomationProperties.Name="{DynamicResource Snapshot.CatalogSearchPlaceholder}"/>
+
+                    <!-- New Snapshot Button -->
+                    <Button Name="BtnNewSnapshot" Grid.Column="3" Content="{DynamicResource Snapshot.BtnNew}" 
+                            Classes="btn-primary" Padding="12,6" Margin="0,0,10,0" FontSize="11" FontWeight="Bold"
+                            AutomationProperties.Name="{DynamicResource Snapshot.BtnNew}"/>
+
+                    <!-- Close Button -->
+                    <Button Name="BtnClose" Grid.Column="4" Content="✕" Classes="btn-icon" FontSize="12" VerticalAlignment="Center"
+                            AutomationProperties.Name="{DynamicResource A11y.CloseModal}"/>
+                </Grid>
+
+                <!-- Catalog List / Empty State -->
+                <Grid Grid.Row="1">
+                    <!-- Snapshots ListBox -->
+                    <ListBox Name="ListSnapshots" Background="Transparent" BorderThickness="0" Padding="0,2"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="diff:SnapshotCatalogItem">
+                                <Border Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" 
+                                        CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                                    <Grid RowDefinitions="Auto,Auto,Auto">
+                                        <!-- Top Row: Engine Badge, Label, Database, Integrity Badge, Date -->
+                                        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <!-- Engine Badge & Label -->
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                <Border Background="#1e3a5f" CornerRadius="4" Padding="6,2">
+                                                    <TextBlock Text="{Binding EngineType}" FontSize="10" FontWeight="Bold" Foreground="#38bdf8"/>
+                                                </Border>
+
+                                                <TextBlock Text="{Binding Label}" FontSize="13" FontWeight="Bold" Foreground="#f0f6fc"
+                                                           MaxWidth="220" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+
+                                                <Border Background="#090d14" CornerRadius="4" Padding="5,2" BorderBrush="#1e2d42" BorderThickness="1">
+                                                    <TextBlock Text="{Binding DatabaseName}" FontSize="10" Foreground="#94a3b8" VerticalAlignment="Center"/>
+                                                </Border>
+                                            </StackPanel>
+
+                                            <!-- Integrity Badge -->
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="8,0">
+                                                <Border Background="#064e3b" BorderBrush="#10b981" BorderThickness="1" 
+                                                        CornerRadius="4" Padding="6,2" IsVisible="{Binding IsIntegrityValid}">
+                                                    <TextBlock Text="✓ Íntegro" FontSize="10" FontWeight="Bold" Foreground="#34d399"/>
+                                                </Border>
+                                                <Border Background="#451a03" BorderBrush="#f59e0b" BorderThickness="1" 
+                                                        CornerRadius="4" Padding="6,2" IsVisible="{Binding !IsIntegrityValid}">
+                                                    <TextBlock Text="⚠️ Checksum Divergente" FontSize="10" FontWeight="Bold" Foreground="#fbbf24"/>
+                                                </Border>
+                                            </StackPanel>
+
+                                            <!-- Creation Date -->
+                                            <TextBlock Grid.Column="3" Text="{Binding CreatedAt, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}" 
+                                                       FontSize="11" Foreground="#8b9cb3" VerticalAlignment="Center"/>
+                                        </Grid>
+
+                                        <!-- Middle Row: Optional Notes -->
+                                        <TextBlock Grid.Row="1" Text="{Binding Notes}" FontSize="11" Foreground="#94a3b8" 
+                                                   TextTrimming="CharacterEllipsis" Margin="0,6,0,0"/>
+
+                                        <!-- Bottom Row: Metadata Pills (Left) & Actions (Right) -->
+                                        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+                                            <!-- Pills -->
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                <Border Background="#1e293b" CornerRadius="4" Padding="5,2">
+                                                    <TextBlock Text="{Binding TableCount, StringFormat='{}{0} tabelas'}" FontSize="10" Foreground="#cbd5e1"/>
+                                                </Border>
+                                                <Border Background="#1e293b" CornerRadius="4" Padding="5,2">
+                                                    <TextBlock Text="{Binding ViewCount, StringFormat='{}{0} views'}" FontSize="10" Foreground="#cbd5e1"/>
+                                                </Border>
+                                                <Border Background="#1e293b" CornerRadius="4" Padding="5,2">
+                                                    <TextBlock Text="{Binding TriggerCount, StringFormat='{}{0} triggers'}" FontSize="10" Foreground="#cbd5e1"/>
+                                                </Border>
+                                                <Border Background="#1e293b" CornerRadius="4" Padding="5,2">
+                                                    <TextBlock Text="{Binding FormattedFileSize}" FontSize="10" Foreground="#38bdf8"/>
+                                                </Border>
+                                            </StackPanel>
+
+                                            <!-- Action Buttons -->
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                                <Button Content="{DynamicResource Snapshot.ActionCompare}" Classes="btn-primary" 
+                                                        Padding="10,4" FontSize="11" FontWeight="SemiBold"
+                                                        Click="OnCardCompareClick"
+                                                        ToolTip.Tip="Comparar este snapshot com a conexão ativa"/>
+
+                                                <Button Content="📁" Classes="btn-secondary" 
+                                                        Padding="8,4" FontSize="11"
+                                                        Click="OnCardExportClick"
+                                                        ToolTip.Tip="Exportar snapshot para arquivo externo"/>
+
+                                                <Button Content="✏️" Classes="btn-secondary" 
+                                                        Padding="8,4" FontSize="11"
+                                                        Click="OnCardRenameClick"
+                                                        ToolTip.Tip="Renomear snapshot"/>
+
+                                                <Button Content="🗑️" Classes="btn-danger" 
+                                                        Padding="8,4" FontSize="11"
+                                                        Click="OnCardDeleteClick"
+                                                        ToolTip.Tip="Excluir snapshot do catálogo local"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Empty State -->
+                    <Border Name="PanelEmptyState" Background="#090d14" CornerRadius="8" Padding="20" IsVisible="False">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+                            <TextBlock Text="🗂️" FontSize="36" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Nenhum snapshot encontrado" FontSize="14" FontWeight="SemiBold" Foreground="#f0f6fc" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Capture o estado do seu banco para compará-lo a qualquer momento sem conexão ativa." 
+                                       FontSize="11" Foreground="#8b9cb3" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="360"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Footer Stats -->
+                <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+                    <TextBlock Name="TxtCatalogStats" Text="0 snapshots salvos" FontSize="11" Foreground="#8b9cb3" VerticalAlignment="Center"/>
+                    <Button Name="BtnFooterClose" Grid.Column="1" Content="{DynamicResource Common.Close}" 
+                            Classes="btn-secondary" Padding="14,6" FontSize="11"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- Inline Rename Dialog Overlay -->
+        <Grid Name="PanelRenameModal" Background="#b0000000" IsVisible="False">
+            <Border Background="#141d2b" BorderBrush="#38bdf8" BorderThickness="1.5" CornerRadius="8" Padding="16" Width="380"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Renomear Snapshot" FontSize="13" FontWeight="Bold" Foreground="#f0f6fc"/>
+                    <TextBox Name="TxtRenameInput" Watermark="Novo rótulo do snapshot..." 
+                             Background="#0e141f" Foreground="#f0f6fc" BorderBrush="#1e2d42" CornerRadius="5" Padding="8,6"/>
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <Button Name="BtnCancelRename" Grid.Column="1" Content="{DynamicResource Common.Cancel}" 
+                                Classes="btn-secondary" Padding="12,6" Margin="0,0,8,0"/>
+                        <Button Name="BtnConfirmRename" Grid.Column="2" Content="{DynamicResource Common.Save}" 
+                                Classes="btn-primary" Padding="14,6" FontWeight="Bold"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Inline Delete Confirmation Dialog Overlay -->
+        <Grid Name="PanelDeleteModal" Background="#b0000000" IsVisible="False">
+            <Border Background="#141d2b" BorderBrush="#f87171" BorderThickness="1.5" CornerRadius="8" Padding="16" Width="400"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Excluir Snapshot" FontSize="13" FontWeight="Bold" Foreground="#f87171"/>
+                    <TextBlock Name="TxtDeletePrompt" Text="Deseja realmente excluir este snapshot do catálogo local?" 
+                               FontSize="11" Foreground="#f0f6fc" TextWrapping="Wrap"/>
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <Button Name="BtnCancelDelete" Grid.Column="1" Content="{DynamicResource Common.Cancel}" 
+                                Classes="btn-secondary" Padding="12,6" Margin="0,0,8,0"/>
+                        <Button Name="BtnConfirmDelete" Grid.Column="2" Content="{DynamicResource Common.Delete}" 
+                                Classes="btn-danger" Padding="14,6" FontWeight="Bold"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

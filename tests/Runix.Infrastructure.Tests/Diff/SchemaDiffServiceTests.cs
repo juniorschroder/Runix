@@ -204,9 +204,9 @@ public class SchemaDiffServiceTests
 
         var ddl = _service.GenerateSyncDdl(diff, options);
 
-        Assert.DoesNotContain("DROP TABLE \"public\".\"obsolete_table\";", ddl);
+        Assert.Contains("-- [SAFE MODE] DROP TABLE \"public\".\"obsolete_table\";", ddl);
+        Assert.DoesNotContain("\nDROP TABLE \"public\".\"obsolete_table\";", ddl);
         Assert.Contains("Modo Seguro", ddl);
-        Assert.Contains("omitida em Modo Seguro", ddl);
     }
 
     [Fact]

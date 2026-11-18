@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using FluentAssertions;
 using Runix.Core.Constants;
 using Xunit;
@@ -27,11 +29,18 @@ public class AppConstantsTests
     public void AppConstants_VersionAndCreatorMetadata_ShouldBeCorrect()
     {
         AppConstants.AppName.Should().Be("RUNIX Database Studio");
-        AppConstants.AppVersion.Should().Be("1.3.0");
+        AppConstants.AppVersion.Should().Be("1.4.0");
         AppConstants.AppAuthor.Should().Be("José Carlos Schröder Júnior");
         AppConstants.AppCopyright.Should().Contain("José Carlos Schröder Júnior");
         AppConstants.AppLicense.Should().Be("GPL-3.0 License");
         AppConstants.AppRepositoryUrl.Should().Be("https://github.com/juniorschroder/Runix");
         AppConstants.AppAuthorLinkedInUrl.Should().Be("https://www.linkedin.com/in/juniorschroder/");
+    }
+
+    [Fact]
+    public void AppConstants_DefaultSnapshotsDirectory_ShouldPointToUserRunixSnapshots()
+    {
+        var expected = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".runix", "snapshots");
+        AppConstants.DefaultSnapshotsDirectory.Should().Be(expected);
     }
 }

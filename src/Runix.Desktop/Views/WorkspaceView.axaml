@@ -208,6 +208,8 @@
                             <MenuItem Name="MenuOpenErd" Header="{DynamicResource Erd.OpenErdTab}"/>
                             <MenuItem Name="MenuOpenDba" Header="{DynamicResource Dba.HeaderButton}"/>
                             <MenuItem Name="MenuOpenCompare" Header="{DynamicResource Diff.HeaderButton}"/>
+                            <MenuItem Name="MenuCaptureSnapshotHeader" Header="📸 Capturar Snapshot de Schema (.rschema)..."/>
+                            <MenuItem Name="MenuSnapshotCatalogHeader" Header="🗂️ Catálogo de Snapshots de Schema..."/>
                             <MenuItem Name="MenuOpenBackup" Header="💾 Backup &amp; Restore"/>
                             <Separator/>
                             <MenuItem Name="MenuRefreshSchema" Header="{DynamicResource Workspace.Refresh}"/>
@@ -299,6 +301,7 @@
                                 <MenuItem Name="MenuCopyTableName" Header="📋 Copiar Nome"/>
                                 <MenuItem Name="MenuCopyDdl" Header="📋 Copiar DDL (CREATE TABLE)"/>
                                 <Separator/>
+                                <MenuItem Name="MenuCaptureSnapshot" Header="📸 Capturar Snapshot de Schema (.rschema)..."/>
                                 <MenuItem Name="MenuImportTableData" Header="📥 Importar dados..."/>
                                 <MenuItem Name="MenuExportTableData" Header="⤓ Exportar dados..."/>
                             </ContextMenu>
@@ -472,5 +475,10 @@
 
         <!-- GLOBAL COMMAND PALETTE OVERLAY -->
         <dialogs:CommandPaletteDialog Name="OverlayCommandPalette" Grid.RowSpan="2" IsVisible="False" ZIndex="250"/>
+
+        <!-- MODAL OVERLAY FOR DIALOGS (Snapshots, Catalog, etc.) -->
+        <Grid Name="PanelModalOverlay" Grid.RowSpan="2" Background="#b0000000" IsVisible="False" ZIndex="300">
+            <ContentControl Name="ModalContainer" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Grid>
     </Grid>
 </UserControl>

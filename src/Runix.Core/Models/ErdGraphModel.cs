@@ -10,9 +10,15 @@ public class ErdGraphModel
 {
     public List<ErdTableNode> Nodes { get; set; } = new();
     public List<ErdRelationshipLink> Relationships { get; set; } = new();
+    public List<SubjectAreaModel> SubjectAreas { get; set; } = new();
 
     public ErdTableNode? FindNode(string tableName)
     {
         return Nodes.FirstOrDefault(n => string.Equals(n.TableName, tableName, System.StringComparison.OrdinalIgnoreCase));
+    }
+
+    public SubjectAreaModel? FindSubjectArea(string id)
+    {
+        return SubjectAreas.FirstOrDefault(a => string.Equals(a.Id, id, System.StringComparison.OrdinalIgnoreCase));
     }
 }

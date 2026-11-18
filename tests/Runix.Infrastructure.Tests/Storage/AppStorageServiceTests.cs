@@ -251,4 +251,36 @@ public class AppStorageServiceTests : IDisposable
         var cleared = await _storage.GetWorkspaceSessionAsync(connectionKey);
         cleared.Should().BeNull();
     }
+
+    [Fact]
+    public async Task WorkspaceSession_WithErdTab_PersistsAndRestoresAccurately()
+    {
+        await _storage.InitializeAsync();
+        var connectionKey = "postgres:localhost:5432:ecommerce";
+
+        var session = new WorkspaceSessionState
+        {
+            ConnectionKey = connectionKey,
+            ActiveTabIndex = 0,
+            Tabs = new List<WorkspaceTabSession>
+            {
+                new()
+                {
+                    Title = "ERD Diagram",
+                    TabType = WorkspaceTabType.Erd
+                }
+            }
+        };
+
+        await _storage.SaveWorkspaceSessionAsync(session);
+
+        var restored = await _storage.GetWorkspaceSessionAsync(connectionKey);
+        restored.Should().NotBeNull();
+        restored!.ActiveTabIndex.Should().Be(0);
+        restored.Tabs.Should().HaveCount(1);
+        restored.Tabs[0].TabType.Should().Be(WorkspaceTabType.Erd);
+        restored.Tabs[0].Title.Should().Be("ERD Diagram");
+
+        await _storage.ClearWorkspaceSessionAsync(connectionKey);
+    }
 }

@@ -6,14 +6,21 @@ using Runix.Core.Models.Diff;
 namespace Runix.Infrastructure.Diff;
 
 /// <summary>
-/// Motor de comparação profunda entre dois snapshots estruturais com normalização de tipos e mapeamento semântico.
+/// Motor de comparação profunda entre dois snapshots estruturais com normalização semântica cross-dialect (SQLite ↔ PostgreSQL) e mapeamento tolerante.
 /// </summary>
 public static class SchemaDiffEngine
 {
     public static SchemaDiffResult Compare(SchemaSnapshotModel source, SchemaSnapshotModel target, bool invertDirection = false)
     {
-        var src = invertDirection ? target : source;
-        var tgt = invertDirection ? source : target;
+        return Compare(source, target, new SchemaCompareOptions { InvertDirection = invertDirection });
+    }
+
+    public static SchemaDiffResult Compare(SchemaSnapshotModel source, SchemaSnapshotModel target, SchemaCompareOptions? options)
+    {
+        options ??= new SchemaCompareOptions();
+
+        var src = options.InvertDirection ? target : source;
+        var tgt = options.InvertDirection ? source : target;
 
         var result = new SchemaDiffResult
         {
@@ -87,7 +94,7 @@ public static class SchemaDiffEngine
             else
             {
                 // Table exists in both -> deep compare columns and indexes
-                var item = CompareExistingTable(srcTable!, tgtTable!);
+                var item = CompareExistingTable(srcTable!, tgtTable!, options);
                 result.Tables.Add(item);
             }
         }
@@ -95,7 +102,7 @@ public static class SchemaDiffEngine
         return result;
     }
 
-    private static TableDiffItem CompareExistingTable(TableSnapshot src, TableSnapshot tgt)
+    private static TableDiffItem CompareExistingTable(TableSnapshot src, TableSnapshot tgt, SchemaCompareOptions options)
     {
         var item = new TableDiffItem
         {
@@ -147,10 +154,43 @@ public static class SchemaDiffEngine
             else
             {
                 // Both have column -> compare properties
-                var normSrcType = NormalizeType(sc!.DataType);
-                var normTgtType = NormalizeType(tc!.DataType);
+                bool typeDiff;
+                bool isCompatible = false;
+                string dialectNote = string.Empty;
 
-                bool typeDiff = !string.Equals(normSrcType, normTgtType, StringComparison.OrdinalIgnoreCase);
+                if (options.StrictTypeMatching)
+                {
+                    // Strict mode: exact normalized data type comparison (case-insensitive, trimmed)
+                    var cleanSrc = CleanType(sc.DataType);
+                    var cleanTgt = CleanType(tc.DataType);
+                    typeDiff = !string.Equals(cleanSrc, cleanTgt, StringComparison.OrdinalIgnoreCase);
+                }
+                else
+                {
+                    // Tolerant mode: evaluate cross-dialect equivalence and affinities
+                    var normSrcType = NormalizeType(sc.DataType);
+                    var normTgtType = NormalizeType(tc.DataType);
+
+                    if (string.Equals(normSrcType, normTgtType, StringComparison.OrdinalIgnoreCase))
+                    {
+                        typeDiff = false;
+                        if (!string.Equals(sc.DataType?.Trim(), tc.DataType?.Trim(), StringComparison.OrdinalIgnoreCase))
+                        {
+                            isCompatible = true;
+                            dialectNote = $"Compatível entre dialetos: {sc.DataType} ↔ {tc.DataType}";
+                        }
+                    }
+                    else if (IsCrossDialectEquivalent(sc.DataType, tc.DataType, out dialectNote))
+                    {
+                        typeDiff = false;
+                        isCompatible = true;
+                    }
+                    else
+                    {
+                        typeDiff = true;
+                    }
+                }
+
                 bool nullDiff = sc.IsNullable != tc.IsNullable;
                 bool pkDiff = sc.IsPrimaryKey != tc.IsPrimaryKey;
 
@@ -172,6 +212,8 @@ public static class SchemaDiffEngine
                         TargetNullable = tc.IsNullable,
                         SourceDefault = sc.DefaultValue,
                         TargetDefault = tc.DefaultValue,
+                        IsCrossDialectCompatible = isCompatible,
+                        DialectNote = isCompatible ? dialectNote : null,
                         DifferenceDescription = string.Join("; ", reasons)
                     });
                 }
@@ -187,43 +229,47 @@ public static class SchemaDiffEngine
                         TargetNullable = tc.IsNullable,
                         SourceDefault = sc.DefaultValue,
                         TargetDefault = tc.DefaultValue,
-                        DifferenceDescription = "Idêntica"
+                        IsCrossDialectCompatible = isCompatible,
+                        DialectNote = isCompatible ? dialectNote : null,
+                        DifferenceDescription = isCompatible ? dialectNote : "Idêntica"
                     });
                 }
             }
         }
 
-        // Compare Indexes
-        var srcIdx = src.Indexes.ToDictionary(i => i.Name, StringComparer.OrdinalIgnoreCase);
-        var tgtIdx = tgt.Indexes.ToDictionary(i => i.Name, StringComparer.OrdinalIgnoreCase);
-
+        // Compare Indexes (unless ignored by options)
         bool hasIdxDifferences = false;
-
-        foreach (var idx in src.Indexes)
+        if (!options.IgnoreIndexes)
         {
-            if (!tgtIdx.ContainsKey(idx.Name))
+            var srcIdx = src.Indexes.ToDictionary(i => i.Name, StringComparer.OrdinalIgnoreCase);
+            var tgtIdx = tgt.Indexes.ToDictionary(i => i.Name, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var idx in src.Indexes)
             {
-                hasIdxDifferences = true;
-                item.IndexDiffs.Add(new IndexDiffItem
+                if (!tgtIdx.ContainsKey(idx.Name))
                 {
-                    IndexName = idx.Name,
-                    Status = DiffStatus.Added,
-                    DifferenceDescription = $"Índice ausente no Destino ({string.Join(", ", idx.Columns)})"
-                });
+                    hasIdxDifferences = true;
+                    item.IndexDiffs.Add(new IndexDiffItem
+                    {
+                        IndexName = idx.Name,
+                        Status = DiffStatus.Added,
+                        DifferenceDescription = $"Índice ausente no Destino ({string.Join(", ", idx.Columns)})"
+                    });
+                }
             }
-        }
 
-        foreach (var idx in tgt.Indexes)
-        {
-            if (!srcIdx.ContainsKey(idx.Name))
+            foreach (var idx in tgt.Indexes)
             {
-                hasIdxDifferences = true;
-                item.IndexDiffs.Add(new IndexDiffItem
+                if (!srcIdx.ContainsKey(idx.Name))
                 {
-                    IndexName = idx.Name,
-                    Status = DiffStatus.Removed,
-                    DifferenceDescription = $"Índice extra no Destino ({string.Join(", ", idx.Columns)})"
-                });
+                    hasIdxDifferences = true;
+                    item.IndexDiffs.Add(new IndexDiffItem
+                    {
+                        IndexName = idx.Name,
+                        Status = DiffStatus.Removed,
+                        DifferenceDescription = $"Índice extra no Destino ({string.Join(", ", idx.Columns)})"
+                    });
+                }
             }
         }
 
@@ -240,6 +286,12 @@ public static class SchemaDiffEngine
         return item;
     }
 
+    private static string CleanType(string? type)
+    {
+        if (string.IsNullOrWhiteSpace(type)) return string.Empty;
+        return type.Trim().ToLowerInvariant();
+    }
+
     public static string NormalizeType(string? type)
     {
         if (string.IsNullOrWhiteSpace(type)) return "text";
@@ -253,16 +305,67 @@ public static class SchemaDiffEngine
 
         return t switch
         {
-            "int4" or "int" or "integer" => "integer",
-            "int8" or "bigint" => "bigint",
-            "int2" or "smallint" => "smallint",
+            "int4" or "int" or "integer" or "serial" => "integer",
+            "int8" or "bigint" or "bigserial" => "bigint",
+            "int2" or "smallint" or "smallserial" => "smallint",
             "bool" or "boolean" => "boolean",
-            "varchar" or "character varying" or "char" or "character" or "text" => "text",
+            "varchar" or "character varying" or "char" or "character" or "text" or "clob" => "text",
             "float4" or "real" => "real",
             "float8" or "double precision" or "double" => "double precision",
             "numeric" or "decimal" => "numeric",
+            "bytea" or "blob" or "binary" or "varbinary" => "blob",
             "timestamp" or "timestamptz" or "timestamp without time zone" or "timestamp with time zone" or "datetime" => "timestamp",
             _ => t
         };
+    }
+
+    /// <summary>
+    /// Avalia se dois tipos de dados são semanticamente compatíveis entre diferentes dialetos (ex: SQLite ↔ PostgreSQL).
+    /// </summary>
+    public static bool IsCrossDialectEquivalent(string? typeA, string? typeB, out string note)
+    {
+        var normA = NormalizeType(typeA);
+        var normB = NormalizeType(typeB);
+
+        if (string.Equals(normA, normB, StringComparison.OrdinalIgnoreCase))
+        {
+            note = "Idêntico após normalização";
+            return true;
+        }
+
+        var famA = GetAffinityFamily(normA);
+        var famB = GetAffinityFamily(normB);
+
+        if (famA != AffinityFamily.Unknown && famA == famB)
+        {
+            note = $"Compatível entre dialetos ({famA}): {typeA} ↔ {typeB}";
+            return true;
+        }
+
+        note = string.Empty;
+        return false;
+    }
+
+    private static AffinityFamily GetAffinityFamily(string normalizedType)
+    {
+        return normalizedType switch
+        {
+            "integer" or "bigint" or "smallint" or "boolean" => AffinityFamily.IntegerNumeric,
+            "text" => AffinityFamily.Textual,
+            "numeric" or "real" or "double precision" => AffinityFamily.FloatingDecimal,
+            "blob" => AffinityFamily.BinaryBlob,
+            "timestamp" or "date" or "time" => AffinityFamily.DateTime,
+            _ => AffinityFamily.Unknown
+        };
+    }
+
+    private enum AffinityFamily
+    {
+        Unknown,
+        IntegerNumeric,
+        Textual,
+        FloatingDecimal,
+        BinaryBlob,
+        DateTime
     }
 }

@@ -1,0 +1,145 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="600"
+             x:Class="Runix.Desktop.Views.Dialogs.ErdExportDialog">
+
+    <Border Width="580" MinHeight="500" MaxHeight="640" VerticalAlignment="Center" HorizontalAlignment="Center"
+            Background="#0e141f" BorderBrush="#008bb9" BorderThickness="1.5"
+            CornerRadius="10" BoxShadow="0 16 40 4 #CC000000" Padding="0" ClipToBounds="True">
+        <Grid RowDefinitions="Auto,*,Auto,Auto">
+            <!-- Header -->
+            <Border Grid.Row="0" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="0,0,0,1"
+                    CornerRadius="10,10,0,0" Padding="16,12">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <TextBlock Text="📥" FontSize="16" VerticalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource Erd.Export.DialogTitle}" FontSize="14" FontWeight="Bold"
+                                   Foreground="#f0f6fc" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <Button Name="BtnClose" Grid.Column="1" Content="✕" Classes="btn-icon"
+                            Padding="6,4" FontSize="12" VerticalAlignment="Center"
+                            AutomationProperties.Name="{DynamicResource A11y.CloseModal}"/>
+                </Grid>
+            </Border>
+
+            <!-- Body Options (Scrollable with explicit auto-scrollbar) -->
+            <ScrollViewer Grid.Row="1" 
+                          VerticalScrollBarVisibility="Auto" 
+                          HorizontalScrollBarVisibility="Disabled"
+                          AllowAutoHide="False"
+                          Padding="20,16">
+                <StackPanel Spacing="16">
+                    <!-- Format Selection (2x2 grid for optimal vertical fit) -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="{DynamicResource Erd.Export.Format}" FontSize="12" FontWeight="SemiBold" Foreground="#cbd5e1"/>
+                        <Border Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
+                                <!-- PDF -->
+                                <RadioButton Name="RadioPdf" Grid.Column="0" Grid.Row="0" GroupName="ExportFormat" IsChecked="True" Margin="0,0,8,8">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="📄" FontSize="14" VerticalAlignment="Center"/>
+                                        <StackPanel>
+                                            <TextBlock Text="PDF Vetorial (.pdf)" FontWeight="SemiBold" FontSize="11" Foreground="#f0f6fc"/>
+                                            <TextBlock Text="Nitidez infinita com texto selecionável" FontSize="10" Foreground="#64748b"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </RadioButton>
+
+                                <!-- SVG -->
+                                <RadioButton Name="RadioSvg" Grid.Column="1" Grid.Row="0" GroupName="ExportFormat" Margin="8,0,0,8">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="🎨" FontSize="14" VerticalAlignment="Center"/>
+                                        <StackPanel>
+                                            <TextBlock Text="SVG Vetorial (.svg)" FontWeight="SemiBold" FontSize="11" Foreground="#f0f6fc"/>
+                                            <TextBlock Text="Arquivo XML limpo ideal para Figma e web" FontSize="10" Foreground="#64748b"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </RadioButton>
+
+                                <!-- PNG -->
+                                <RadioButton Name="RadioPng" Grid.Column="0" Grid.Row="1" GroupName="ExportFormat" Margin="0,4,8,0">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="🖼️" FontSize="14" VerticalAlignment="Center"/>
+                                        <StackPanel>
+                                            <TextBlock Text="Imagem Bitmap (.png)" FontWeight="SemiBold" FontSize="11" Foreground="#f0f6fc"/>
+                                            <TextBlock Text="Renderização rasterizada rápida para chats" FontSize="10" Foreground="#64748b"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </RadioButton>
+
+                                <!-- SQL -->
+                                <RadioButton Name="RadioSql" Grid.Column="1" Grid.Row="1" GroupName="ExportFormat" Margin="8,4,0,0">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="💾" FontSize="14" VerticalAlignment="Center"/>
+                                        <StackPanel>
+                                            <TextBlock Text="Script DDL SQL (.sql)" FontWeight="SemiBold" FontSize="11" Foreground="#f0f6fc"/>
+                                            <TextBlock Text="Instruções CREATE TABLE e FKs" FontSize="10" Foreground="#64748b"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </RadioButton>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Theme Selection -->
+                    <StackPanel Name="PanelTheme" Spacing="6">
+                        <TextBlock Text="{DynamicResource Erd.Export.Theme}" FontSize="12" FontWeight="SemiBold" Foreground="#cbd5e1"/>
+                        <Grid ColumnDefinitions="*,*">
+                            <RadioButton Name="RadioThemeDark" Grid.Column="0" GroupName="ExportTheme" IsChecked="True" Margin="0,0,6,0">
+                                <Border Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="6" Padding="10,8">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="Tema Escuro RUNIX" FontWeight="SemiBold" FontSize="11" Foreground="#f0f6fc"/>
+                                        <TextBlock Text="Fundo escuro (#090d14) igual à tela" FontSize="9" Foreground="#64748b"/>
+                                    </StackPanel>
+                                </Border>
+                            </RadioButton>
+
+                            <RadioButton Name="RadioThemeLight" Grid.Column="1" GroupName="ExportTheme" Margin="6,0,0,0">
+                                <Border Background="#ffffff" BorderBrush="#cbd5e1" BorderThickness="1" CornerRadius="6" Padding="10,8">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="Tema Claro (Impressão)" FontWeight="SemiBold" FontSize="11" Foreground="#0f172a"/>
+                                        <TextBlock Text="Fundo branco, economia de tinta" FontSize="9" Foreground="#64748b"/>
+                                    </StackPanel>
+                                </Border>
+                            </RadioButton>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- PDF Page Size Options -->
+                    <StackPanel Name="PanelPdfPageSize" Spacing="6" Margin="0,0,0,8">
+                        <TextBlock Text="{DynamicResource Erd.Export.PageSize}" FontSize="12" FontWeight="SemiBold" Foreground="#cbd5e1"/>
+                        <ComboBox Name="CmbPdfPageSize" HorizontalAlignment="Stretch" SelectedIndex="0">
+                            <ComboBoxItem Content="Ajustar ao Conteúdo (Fit to Diagram) - Página única expansível"/>
+                            <ComboBoxItem Content="A4 Paisagem (842 x 595 pt) - Enquadramento proporcional"/>
+                            <ComboBoxItem Content="A3 Paisagem (1191 x 842 pt) - Schemas amplos e complexos"/>
+                        </ComboBox>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Dedicated Diagram Summary Banner (Row 2) -->
+            <Border Grid.Row="2" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="0,1,0,0" Padding="16,10">
+                <Grid ColumnDefinitions="Auto,*">
+                    <TextBlock Grid.Column="0" Text="📊" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Name="TxtSummary" Grid.Column="1" Text="Carregando dados do diagrama..."
+                               FontSize="11" Foreground="#38bdf8" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                </Grid>
+            </Border>
+
+            <!-- Footer Actions (Row 3) -->
+            <Border Grid.Row="3" Background="#070a10" BorderBrush="#1e2d42" BorderThickness="0,1,0,0"
+                    CornerRadius="0,0,10,10" Padding="16,12">
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                    <Button Name="BtnCancel" Grid.Column="1" Content="Cancelar" Classes="btn-outline"
+                            Padding="14,6" Margin="0,0,8,0"
+                            AutomationProperties.Name="{DynamicResource A11y.CancelAction}"/>
+                    <Button Name="BtnConfirmExport" Grid.Column="2" Content="Exportar Arquivo..." Classes="btn-primary"
+                            Padding="16,6"
+                            AutomationProperties.Name="Confirmar Exportação de Diagrama"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

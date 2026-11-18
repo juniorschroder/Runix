@@ -10,6 +10,7 @@ public partial class SyncPreviewDialog : UserControl
     private string _currentSql = string.Empty;
 
     public event Action? ExecuteRequested;
+    public event Action? SaveSnapshotRequested;
     public event Action? CloseRequested;
 
     public SyncPreviewDialog()
@@ -30,10 +31,12 @@ public partial class SyncPreviewDialog : UserControl
 
         BtnSaveFile.Click += async (s, e) => await SaveToFileAsync();
 
+        BtnSaveSnapshot.Click += (s, e) => SaveSnapshotRequested?.Invoke();
+
         BtnExecute.Click += (s, e) => ExecuteRequested?.Invoke();
     }
 
-    public void Setup(string sqlScript, bool safeMode)
+    public void Setup(string sqlScript, bool safeMode, bool isTargetOfflineSnapshot = false)
     {
         _currentSql = sqlScript;
         TxtSqlScript.Text = sqlScript;
@@ -44,7 +47,18 @@ public partial class SyncPreviewDialog : UserControl
                                             sqlScript.Contains("DROP COLUMN", StringComparison.OrdinalIgnoreCase));
         PanelSafeWarning.IsVisible = hasDestructive;
 
-        BtnExecute.IsEnabled = !string.IsNullOrWhiteSpace(sqlScript) && !sqlScript.StartsWith("-- Nenhuma instrução");
+        if (isTargetOfflineSnapshot)
+        {
+            BtnExecute.IsEnabled = false;
+            ToolTip.SetTip(BtnExecute, "O destino é um snapshot offline. Use 'Salvar Snapshot Atualizado' ou 'Copiar DDL'.");
+            BtnSaveSnapshot.IsVisible = true;
+        }
+        else
+        {
+            ToolTip.SetTip(BtnExecute, null);
+            BtnSaveSnapshot.IsVisible = false;
+            BtnExecute.IsEnabled = !string.IsNullOrWhiteSpace(sqlScript) && !sqlScript.StartsWith("-- Nenhuma instrução");
+        }
     }
 
     public void SetStatus(string message, bool isError = false)

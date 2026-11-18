@@ -154,4 +154,34 @@ public class SqliteDatabaseServiceTests : IDisposable
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().NotBeNullOrWhiteSpace();
     }
+
+    [Fact]
+    public async Task ConcurrentOperations_SerializeSafely_WithoutCollisions()
+    {
+        await _service.ConnectAsync();
+        await _service.ExecuteQueryAsync(@"
+            CREATE TABLE authors (id INTEGER PRIMARY KEY, name TEXT);
+            CREATE TABLE books (id INTEGER PRIMARY KEY, author_id INTEGER, title TEXT, FOREIGN KEY(author_id) REFERENCES authors(id));
+            INSERT INTO authors VALUES (1, 'Tolkien');
+            INSERT INTO books VALUES (1, 1, 'The Hobbit');");
+
+        // Fire 5 concurrent calls that historically caused "already in progress" or connection collisions
+        var task1 = _service.GetTablesAsync();
+        var task2 = _service.GetErdGraphAsync();
+        var task3 = _service.ExecuteQueryAsync("SELECT * FROM books;");
+        var task4 = _service.GetTableColumnsAsync("books");
+        var task5 = _service.GetForeignKeysAsync("books");
+
+        var res1 = await task1;
+        var res2 = await task2;
+        var res3 = await task3;
+        var res4 = await task4;
+        var res5 = await task5;
+
+        res1.Should().HaveCountGreaterOrEqualTo(2);
+        res2.Nodes.Should().HaveCountGreaterOrEqualTo(2);
+        res3.Success.Should().BeTrue();
+        res4.Should().HaveCount(3);
+        res5.Should().HaveCount(1);
+    }
 }

@@ -4,12 +4,14 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Runix.Core.Interfaces;
 using Runix.Core.Models;
 using Runix.Core.Services;
 using Runix.Infrastructure.Data;
+using Runix.Infrastructure.Export;
 using Runix.Infrastructure.Migrations;
 
 namespace Runix.Desktop.Views;
@@ -19,6 +21,7 @@ public partial class ErdTabControl : UserControl
     private readonly IDatabaseService _databaseService;
     private readonly ISchemaMigrationEngine _migrationEngine = new SchemaMigrationEngine();
     private readonly DdlGeneratorService _ddlGenerator = new();
+    private readonly IErdExportService _exportService = new ErdExportService();
     private ErdGraphModel _graph = new();
 
     public event Action? TableCreated;
@@ -30,7 +33,12 @@ public partial class ErdTabControl : UserControl
     public ErdTabControl(IDatabaseService databaseService)
     {
         InitializeComponent();
+        Focusable = true;
         _databaseService = databaseService;
+
+        CanvasErd.CurrentDatabaseId = string.IsNullOrWhiteSpace(_databaseService.Config.FilePath)
+            ? _databaseService.Config.Name
+            : _databaseService.Config.FilePath;
 
         SetupEvents();
         _ = ReloadGraphAsync();
@@ -44,16 +52,39 @@ public partial class ErdTabControl : UserControl
         BtnResetZoom.Click += (s, e) => CanvasErd.ResetView();
         CanvasErd.ZoomChanged += z => TxtZoomPercent.Text = $"{(int)(z * 100)}%";
 
-        // Auto-layout
-        BtnAutoLayout.Click += (s, e) =>
+        // Auto-layout via Sugiyama com transição animada (~250ms)
+        BtnAutoLayout.Click += async (s, e) =>
         {
-            ErdLayoutService.ApplyTopologicalLayout(_graph);
-            CanvasErd.RefreshLayout();
-            CanvasErd.CenterOnContent();
-            var dbId = string.IsNullOrWhiteSpace(_databaseService.Config.FilePath)
-                ? _databaseService.Config.Name
-                : _databaseService.Config.FilePath;
-            ErdLayoutService.SaveLayout(dbId, _graph);
+            await CanvasErd.AnimateLayoutTransitionAsync();
+        };
+
+        // Fast Search Overlay (Ctrl/Cmd+F)
+        BtnSearch.Click += (s, e) => OverlaySearch.OpenAndFocus();
+        OverlaySearch.ItemSelected += (tableName, colName) =>
+        {
+            CanvasErd.PanToNode(tableName);
+            CanvasErd.HighlightNodePulse(tableName);
+        };
+
+        // Global Keyboard Shortcuts
+        KeyDown += async (s, e) =>
+        {
+            bool isCtrlOrCmd = e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta);
+            if (isCtrlOrCmd && e.Key == Key.F)
+            {
+                OverlaySearch.OpenAndFocus();
+                e.Handled = true;
+            }
+            else if (isCtrlOrCmd && e.KeyModifiers.HasFlag(KeyModifiers.Shift) && e.Key == Key.L)
+            {
+                await CanvasErd.AnimateLayoutTransitionAsync();
+                e.Handled = true;
+            }
+            else if (isCtrlOrCmd && e.KeyModifiers.HasFlag(KeyModifiers.Shift) && e.Key == Key.E)
+            {
+                OpenExportDialog();
+                e.Handled = true;
+            }
         };
 
         // Modal triggers: Nova Tabela
@@ -61,6 +92,32 @@ public partial class ErdTabControl : UserControl
         {
             DialogTableEditor.SetModeNewTable(_databaseService.Config.Type);
             OverlayTableEditor.IsVisible = true;
+        };
+
+        // Modal triggers: Nova Área de Domínio (Subject Area)
+        BtnNewSubjectArea.Click += (s, e) =>
+        {
+            double defaultX = 80;
+            double defaultY = 80;
+
+            if (_graph.Nodes.Count > 0)
+            {
+                var minX = _graph.Nodes.Min(n => n.X);
+                var minY = _graph.Nodes.Min(n => n.Y);
+                defaultX = Math.Max(40, minX - 40);
+                defaultY = Math.Max(40, minY - 40);
+            }
+
+            DialogCreateSubjectArea.Reset(defaultX, defaultY);
+            OverlaySubjectArea.IsVisible = true;
+        };
+
+        // CreateSubjectAreaDialog callbacks
+        DialogCreateSubjectArea.CancelRequested += () => OverlaySubjectArea.IsVisible = false;
+        DialogCreateSubjectArea.ConfirmRequested += area =>
+        {
+            OverlaySubjectArea.IsVisible = false;
+            CanvasErd.AddSubjectArea(area);
         };
 
         // Canvas Events: Editar Tabela
@@ -114,27 +171,48 @@ public partial class ErdTabControl : UserControl
             }
         };
 
-        // Export Actions
-        BtnExportPng.Click += async (s, e) => await OnExportPngAsync();
-        BtnExportSql.Click += async (s, e) => await OnExportSqlAsync();
+        // Export Modal Action
+        BtnExportDiagram.Click += (s, e) => OpenExportDialog();
+        DialogExport.CancelRequested += () => OverlayExport.IsVisible = false;
+        DialogExport.ExportConfirmed += async opt => await HandleExportAsync(opt);
+
+        // Retry Action
+        BtnRetryLoad.Click += async (s, e) => await ReloadGraphAsync();
     }
 
     public async Task ReloadGraphAsync()
     {
+        BannerError.IsVisible = false;
         ProgressLoading.IsVisible = true;
-        try
+        const int maxRetries = 3;
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
-            _graph = await _databaseService.GetErdGraphAsync();
-            CanvasErd.SetGraph(_graph);
+            try
+            {
+                _graph = await _databaseService.GetErdGraphAsync();
+                CanvasErd.SetGraph(_graph);
+                OverlaySearch.SetGraph(_graph);
+                BannerError.IsVisible = false;
+                break;
+            }
+            catch (Exception ex) when (attempt < maxRetries && (ex.Message.Contains("progress", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("busy", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("locked", StringComparison.OrdinalIgnoreCase)))
+            {
+                Console.WriteLine($"[ErdTabControl] Retrying graph reload (attempt {attempt}/{maxRetries}): {ex.Message}");
+                await Task.Delay(250 * attempt);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[ErdTabControl] Error loading graph: {ex.Message}");
+                if (attempt == maxRetries)
+                {
+                    TxtErrorMessage.Text = $"Falha ao carregar diagrama: {ex.Message}";
+                    BannerError.IsVisible = true;
+                }
+            }
         }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"[ErdTabControl] Error loading graph: {ex.Message}");
-        }
-        finally
-        {
-            ProgressLoading.IsVisible = false;
-        }
+
+        ProgressLoading.IsVisible = false;
     }
 
     private async Task OnExportPngAsync()
@@ -152,7 +230,13 @@ public partial class ErdTabControl : UserControl
                     DefaultExtension = "png",
                     SuggestedFileName = $"erd_{_databaseService.Config.Name}_{DateTime.Now:yyyyMMdd_HHmm}.png"
                 });
-                destinationPath = file?.Path.LocalPath;
+
+                if (file == null)
+                {
+                    return;
+                }
+
+                destinationPath = file.Path.LocalPath;
             }
 
             if (string.IsNullOrEmpty(destinationPath))
@@ -229,5 +313,88 @@ public partial class ErdTabControl : UserControl
         var plan = _migrationEngine.CreatePlan(diff, _databaseService.Config.Type);
         DialogMigrationPreview.SetPlan(plan);
         OverlayMigrationPreview.IsVisible = true;
+    }
+
+    public void EmulateSearchOverlayForTesting(string? query = null)
+    {
+        OverlaySearch.OpenAndFocus();
+        if (!string.IsNullOrEmpty(query))
+        {
+            OverlaySearch.TxtSearch.Text = query;
+        }
+    }
+
+    public void OpenExportDialog()
+    {
+        DialogExport.Setup(_graph);
+        OverlayExport.IsVisible = true;
+    }
+
+    public void CloseExportDialog()
+    {
+        OverlayExport.IsVisible = false;
+    }
+
+    public void EmulateExportDialogForTesting()
+    {
+        OpenExportDialog();
+    }
+
+    private async Task HandleExportAsync(ErdExportOptions options)
+    {
+        try
+        {
+            if (options.Format == ErdExportFormat.Sql)
+            {
+                await OnExportSqlAsync();
+                return;
+            }
+
+            if (options.Format == ErdExportFormat.Png)
+            {
+                await OnExportPngAsync();
+                return;
+            }
+
+            var topLevel = TopLevel.GetTopLevel(this);
+            string ext = options.Format == ErdExportFormat.Svg ? "svg" : "pdf";
+
+            string? destinationPath = null;
+            if (topLevel?.StorageProvider != null && topLevel.StorageProvider.CanSave)
+            {
+                var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+                {
+                    Title = $"Export ERD Diagram as {ext.ToUpperInvariant()}",
+                    DefaultExtension = ext,
+                    SuggestedFileName = $"erd_{_databaseService.Config.Name}_{DateTime.Now:yyyyMMdd_HHmm}.{ext}"
+                });
+
+                if (file == null)
+                {
+                    // User canceled the file picker dialog
+                    return;
+                }
+
+                destinationPath = file.Path.LocalPath;
+            }
+
+            if (string.IsNullOrEmpty(destinationPath))
+            {
+                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Desktop");
+                destinationPath = Path.Combine(dir, $"erd_{_databaseService.Config.Name}.{ext}");
+            }
+
+            await _exportService.ExportToFileAsync(destinationPath, _graph, options);
+            Console.WriteLine($"[ErdTabControl] Diagram successfully exported to {destinationPath}");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[ErdTabControl] Export error: {ex.Message}");
+        }
+        finally
+        {
+            // The export dialog is automatically closed after export completes (or is dismissed)
+            CloseExportDialog();
+        }
     }
 }

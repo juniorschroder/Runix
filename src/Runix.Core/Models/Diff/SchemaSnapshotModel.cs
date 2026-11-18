@@ -12,7 +12,13 @@ public class SchemaSnapshotModel
     public string DatabaseName { get; set; } = string.Empty;
     public string EngineType { get; set; } = "PostgreSQL";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public string? Label { get; set; }
+    public string? Notes { get; set; }
+    public bool IsIntegrityCompromised { get; set; }
+
     public List<TableSnapshot> Tables { get; set; } = new();
+    public List<ViewSnapshot> Views { get; set; } = new();
+    public List<TriggerSnapshot> Triggers { get; set; } = new();
 }
 
 public class TableSnapshot
@@ -23,6 +29,7 @@ public class TableSnapshot
     public List<ColumnSnapshot> Columns { get; set; } = new();
     public List<IndexSnapshot> Indexes { get; set; } = new();
     public List<ForeignKeySnapshot> ForeignKeys { get; set; } = new();
+    public List<CheckConstraintSnapshot> CheckConstraints { get; set; } = new();
 
     public string FullName => string.IsNullOrEmpty(Schema) ? Name : $"{Schema}.{Name}";
 }

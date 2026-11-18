@@ -112,6 +112,20 @@ public class ConnectionStorageServiceTests : IDisposable
     }
 
     [Fact]
+    public void GetDefaultConnections_HasZeroPreRegisteredCategories_AllEmptyForGeneralSection()
+    {
+        var defaults = ConnectionStorageService.GetDefaultConnections();
+        defaults.Should().NotBeNull();
+        defaults.Should().NotBeEmpty();
+
+        // Application must NOT have any pre-registered categories
+        foreach (var conn in defaults)
+        {
+            conn.Category.Should().BeNullOrWhiteSpace("all default connections must have empty category to belong to 'Geral'");
+        }
+    }
+
+    [Fact]
     public void SetLastUsedConnectionId_And_GetLastUsedConnectionId_RoundTripsCorrectly()
     {
         var tempLastUsed = Path.Combine(Path.GetTempPath(), $"runix_last_conn_{Guid.NewGuid():N}.txt");
