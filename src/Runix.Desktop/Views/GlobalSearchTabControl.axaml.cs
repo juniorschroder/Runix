@@ -14,7 +14,7 @@ using Runix.Infrastructure.Database;
 
 namespace Runix.Desktop.Views;
 
-public partial class GlobalSearchTabControl : UserControl
+public partial class GlobalSearchTabControl : UserControl, IDisposable
 {
     private readonly IDatabaseService _databaseService;
     private readonly IGlobalDataSearchService _searchService;
@@ -216,5 +216,16 @@ public partial class GlobalSearchTabControl : UserControl
         {
             DrawerInspector.LoadRow(Array.Empty<string>(), Array.Empty<object?>());
         }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
+        ListMatchedTables.ItemsSource = null;
+        _matches.Clear();
+        GridSampleRows.ItemsSource = null;
+        GridSampleRows.Columns.Clear();
     }
 }

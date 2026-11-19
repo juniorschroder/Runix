@@ -19,7 +19,7 @@ using Runix.Desktop.Models;
 using Runix.Desktop.Services;
 using Runix.Infrastructure.Data;
 
-public partial class TableDataTabControl : UserControl
+public partial class TableDataTabControl : UserControl, IDisposable
 {
     private readonly IDatabaseService _databaseService;
     private readonly string _tableName;
@@ -1077,5 +1077,19 @@ public partial class TableDataTabControl : UserControl
                 await topLevel.Clipboard.SetTextAsync(text);
             }
         }
+    }
+
+    public void Dispose()
+    {
+        GridTableRows.ItemsSource = null;
+        GridTableRows.Columns.Clear();
+        _rows.Clear();
+        _lastResult?.Rows.Clear();
+        _lastResult = null;
+        _columns.Clear();
+        _primaryKeys.Clear();
+        _foreignKeys.Clear();
+        _columnFilterInputs.Clear();
+        _changeset.Clear();
     }
 }

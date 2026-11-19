@@ -29,7 +29,7 @@ public class CompareEndpointItem
     public override string ToString() => Label;
 }
 
-public partial class SchemaCompareTabControl : UserControl
+public partial class SchemaCompareTabControl : UserControl, IDisposable
 {
     private readonly IDatabaseService _sourceDb;
     private readonly ISchemaDiffService _diffService;
@@ -712,5 +712,15 @@ public partial class SchemaCompareTabControl : UserControl
         {
             GridTableDiffs.SelectedItem = ordersItem;
         }
+    }
+
+    public void Dispose()
+    {
+        GridTableDiffs.ItemsSource = null;
+        GridColumnDiffs.ItemsSource = null;
+        _allTableDiffs.Clear();
+        _sourceSnapshot = null;
+        _targetSnapshot = null;
+        _diffResult = null;
     }
 }

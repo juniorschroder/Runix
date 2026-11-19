@@ -184,4 +184,31 @@ public class SqliteDatabaseServiceTests : IDisposable
         res4.Should().HaveCount(3);
         res5.Should().HaveCount(1);
     }
+
+    [Fact]
+    public async Task ExecuteQueryAsync_RepeatedStringValues_SharesStringReferencesInPool()
+    {
+        await _service.ConnectAsync();
+        await _service.ExecuteQueryAsync(@"
+            CREATE TABLE orders (id INTEGER PRIMARY KEY, status TEXT);
+            INSERT INTO orders VALUES (1, 'ACTIVE');
+            INSERT INTO orders VALUES (2, 'ACTIVE');
+            INSERT INTO orders VALUES (3, 'ACTIVE');");
+
+        var result = await _service.ExecuteQueryAsync("SELECT status FROM orders;");
+        result.Success.Should().BeTrue();
+        result.Rows.Should().HaveCount(3);
+
+        var s1 = result.Rows[0][0];
+        var s2 = result.Rows[1][0];
+        var s3 = result.Rows[2][0];
+
+        s1.Should().Be("ACTIVE");
+        s2.Should().Be("ACTIVE");
+        s3.Should().Be("ACTIVE");
+
+        // Reference equality ensures the string pool deduplicated allocations
+        object.ReferenceEquals(s1, s2).Should().BeTrue();
+        object.ReferenceEquals(s2, s3).Should().BeTrue();
+    }
 }

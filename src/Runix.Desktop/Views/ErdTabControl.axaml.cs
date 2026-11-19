@@ -16,7 +16,7 @@ using Runix.Infrastructure.Migrations;
 
 namespace Runix.Desktop.Views;
 
-public partial class ErdTabControl : UserControl
+public partial class ErdTabControl : UserControl, IDisposable
 {
     private readonly IDatabaseService _databaseService;
     private readonly ISchemaMigrationEngine _migrationEngine = new SchemaMigrationEngine();
@@ -396,5 +396,13 @@ public partial class ErdTabControl : UserControl
             // The export dialog is automatically closed after export completes (or is dismissed)
             CloseExportDialog();
         }
+    }
+
+    public void Dispose()
+    {
+        _graph.Nodes.Clear();
+        _graph.Relationships.Clear();
+        _graph.SubjectAreas.Clear();
+        CanvasErd.Clear();
     }
 }

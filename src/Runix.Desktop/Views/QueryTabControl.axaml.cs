@@ -20,7 +20,7 @@ using Runix.Infrastructure.Data;
 using Runix.Infrastructure.Explain;
 using Runix.Infrastructure.Storage;
 
-public partial class QueryTabControl : UserControl
+public partial class QueryTabControl : UserControl, IDisposable
 {
     private readonly IDatabaseService _databaseService;
     private readonly IAppStorageService _appStorage;
@@ -108,6 +108,10 @@ public partial class QueryTabControl : UserControl
 
         // Configure modern AvaloniaEdit SQL editor with syntax highlighting & dark theme
         SqlSyntaxHighlighting.ConfigureSqlEditor(TxtSqlEditor);
+        if (TxtSqlEditor?.Document?.UndoStack != null)
+        {
+            TxtSqlEditor.Document.UndoStack.SizeLimit = 100;
+        }
 
         if (!string.IsNullOrWhiteSpace(initialSql))
         {
@@ -609,6 +613,11 @@ public partial class QueryTabControl : UserControl
 
     private void DisplayQueryResult(QueryResult result, int? autoLimit = null)
     {
+        if (_currentActiveResult != null && !ReferenceEquals(_currentActiveResult, result))
+        {
+            _currentActiveResult.Rows.Clear();
+        }
+
         if (!result.Success)
         {
             BarSubResults.IsVisible = false;
@@ -1147,6 +1156,50 @@ public partial class QueryTabControl : UserControl
             {
                 await topLevel.Clipboard.SetTextAsync(text);
             }
+        }
+    }
+
+    public void Dispose()
+    {
+        _queryCts?.Cancel();
+        _queryCts?.Dispose();
+        _queryCts = null;
+
+        GridResults.ItemsSource = null;
+        GridResults.Columns.Clear();
+
+        if (PanelSplitGridsHost != null)
+        {
+            foreach (var child in PanelSplitGridsHost.Children)
+            {
+                if (child is Border b && b.Child is StackPanel sp)
+                {
+                    foreach (var sc in sp.Children)
+                    {
+                        if (sc is DataGrid dg)
+                        {
+                            dg.ItemsSource = null;
+                            dg.Columns.Clear();
+                        }
+                    }
+                }
+            }
+            PanelSplitGridsHost.Children.Clear();
+        }
+
+        _currentActiveResult?.Rows.Clear();
+        _currentActiveResult = null;
+        _lastResult?.Rows.Clear();
+        _lastResult = null;
+
+        _cachedTables.Clear();
+        _cachedColumns.Clear();
+        _cachedSnippets.Clear();
+        _queryColumnFilterInputs.Clear();
+
+        if (TxtSqlEditor?.Document?.UndoStack != null)
+        {
+            TxtSqlEditor.Document.UndoStack.ClearAll();
         }
     }
 }

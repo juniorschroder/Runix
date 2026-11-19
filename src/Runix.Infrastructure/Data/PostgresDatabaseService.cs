@@ -41,7 +41,10 @@ public class PostgresDatabaseService : IDatabaseService
             Username = string.IsNullOrWhiteSpace(Config.Username) ? "postgres" : Config.Username,
             Password = Config.Password,
             Timeout = 10,
-            CommandTimeout = 30
+            CommandTimeout = 30,
+            ConnectionLifetime = 300,
+            MaxPoolSize = 10,
+            Pooling = true
         };
 
         if (Config.SslMode.Equals("Disable", StringComparison.OrdinalIgnoreCase))
@@ -136,6 +139,7 @@ public class PostgresDatabaseService : IDatabaseService
     {
         if (_connection != null)
         {
+            try { NpgsqlConnection.ClearPool(_connection); } catch { }
             await _connection.CloseAsync();
             await _connection.DisposeAsync();
             _connection = null;
@@ -250,6 +254,9 @@ public class PostgresDatabaseService : IDatabaseService
                         result.Columns.Add(reader.GetName(i));
                     }
 
+                    var stringPool = new Dictionary<string, string>(StringComparer.Ordinal);
+                    const string NullLiteral = "NULL";
+
                     while (await reader.ReadAsync(cancellationToken))
                     {
                         if (result.Rows.Count >= limit)
@@ -259,7 +266,33 @@ public class PostgresDatabaseService : IDatabaseService
                         for (int i = 0; i < reader.FieldCount; i++)
                         {
                             var val = reader.GetValue(i);
-                            row.Add((val == DBNull.Value) ? "NULL" : val);
+                            if (val == DBNull.Value)
+                            {
+                                row.Add(NullLiteral);
+                            }
+                            else if (val is string str)
+                            {
+                                if (str.Length <= 64)
+                                {
+                                    if (!stringPool.TryGetValue(str, out var pooled))
+                                    {
+                                        if (stringPool.Count < 2048)
+                                        {
+                                            stringPool[str] = str;
+                                        }
+                                        pooled = str;
+                                    }
+                                    row.Add(pooled);
+                                }
+                                else
+                                {
+                                    row.Add(str);
+                                }
+                            }
+                            else
+                            {
+                                row.Add(val);
+                            }
                         }
                         result.Rows.Add(row);
                     }

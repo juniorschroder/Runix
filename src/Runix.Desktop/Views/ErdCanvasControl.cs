@@ -89,6 +89,12 @@ public class ErdCanvasControl : Panel
         ConnectionRequested?.Invoke(sourceNode, sourceCol, targetNode, targetCol);
     }
 
+    public void Clear()
+    {
+        _graph = new ErdGraphModel();
+        _surface.LoadGraph(_graph);
+    }
+
     public void SetGraph(ErdGraphModel graph)
     {
         _graph = graph;

@@ -9,7 +9,7 @@ using Runix.Infrastructure.Data;
 
 namespace Runix.Desktop.Views;
 
-public partial class TableStructureTabControl : UserControl
+public partial class TableStructureTabControl : UserControl, IDisposable
 {
     private readonly IDatabaseService _databaseService;
     private readonly string _tableName;
@@ -74,6 +74,17 @@ public partial class TableStructureTabControl : UserControl
         catch (Exception ex)
         {
             TxtDdl.Text = $"-- Error loading DDL: {ex.Message}";
+        }
+    }
+
+    public void Dispose()
+    {
+        GridColumns.ItemsSource = null;
+        GridIndexes.ItemsSource = null;
+        GridForeignKeys.ItemsSource = null;
+        if (TxtDdl?.Document?.UndoStack != null)
+        {
+            TxtDdl.Document.UndoStack.ClearAll();
         }
     }
 }

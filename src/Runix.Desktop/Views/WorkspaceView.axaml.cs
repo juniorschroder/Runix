@@ -182,6 +182,7 @@ public partial class WorkspaceView : UserControl
         BtnDisconnect.Click += async (s, e) =>
         {
             await SaveCurrentSessionAsync();
+            DisposeAllTabs();
             await _databaseService.DisconnectAsync();
             DisconnectRequested?.Invoke();
         };
@@ -216,6 +217,7 @@ public partial class WorkspaceView : UserControl
         MenuAbout.Click += (s, e) => AboutRequested?.Invoke();
         MenuDisconnect.Click += async (s, e) =>
         {
+            DisposeAllTabs();
             await _databaseService.DisconnectAsync();
             DisconnectRequested?.Invoke();
         };
@@ -1042,6 +1044,7 @@ public partial class WorkspaceView : UserControl
                         CheckUpdatesRequested?.Invoke();
                         break;
                     case "disconnect":
+                        DisposeAllTabs();
                         await _databaseService.DisconnectAsync();
                         DisconnectRequested?.Invoke();
                         break;
@@ -1428,12 +1431,7 @@ public partial class WorkspaceView : UserControl
 
         closeBtn.Click += (s, e) =>
         {
-            WorkspaceTabs.Items.Remove(tab);
-            if (WorkspaceTabs.Items.Count == 0)
-            {
-                OpenNewQueryTab();
-            }
-            ScheduleSessionSave();
+            CloseTabItem(tab);
         };
 
         headerPanel.Children.Add(iconBlock);
@@ -1443,6 +1441,41 @@ public partial class WorkspaceView : UserControl
         tab.Header = headerPanel;
         tab.Content = content;
         return tab;
+    }
+
+    private void CloseTabItem(TabItem tab)
+    {
+        if (tab.Content is IDisposable disposable)
+        {
+            try { disposable.Dispose(); } catch { }
+        }
+        tab.Content = null;
+        tab.Header = null;
+        WorkspaceTabs.Items.Remove(tab);
+        if (WorkspaceTabs.Items.Count == 0)
+        {
+            OpenNewQueryTab();
+        }
+        ScheduleSessionSave();
+        MemoryTrimService.TrimIdleMemory();
+    }
+
+    private void DisposeAllTabs()
+    {
+        foreach (var item in WorkspaceTabs.Items)
+        {
+            if (item is TabItem tab)
+            {
+                if (tab.Content is IDisposable disposable)
+                {
+                    try { disposable.Dispose(); } catch { }
+                }
+                tab.Content = null;
+                tab.Header = null;
+            }
+        }
+        WorkspaceTabs.Items.Clear();
+        MemoryTrimService.TrimIdleMemory(forceLoh: true);
     }
 
     // ==========================================
@@ -1604,7 +1637,7 @@ public partial class WorkspaceView : UserControl
         _isRestoringSession = true;
         try
         {
-            WorkspaceTabs.Items.Clear();
+            DisposeAllTabs();
 
             foreach (var tabState in session.Tabs)
             {

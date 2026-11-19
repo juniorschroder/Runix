@@ -13,7 +13,7 @@ using Runix.Infrastructure.Database;
 
 namespace Runix.Desktop.Views;
 
-public partial class ObjectEditorTabControl : UserControl
+public partial class ObjectEditorTabControl : UserControl, IDisposable
 {
     private readonly IDatabaseService _databaseService;
     private readonly IProgrammabilityService _programmabilityService;
@@ -252,5 +252,15 @@ public partial class ObjectEditorTabControl : UserControl
         TxtDiagnosticMessage.Text = message;
         TxtDiagnosticMessage.Foreground = Brush.Parse(isError ? "#f87171" : "#34d399");
         TxtPreviewHeader.Text = isError ? "⚠️ Diagnóstico de Erro (Rollback Atômico)" : "✓ Operação Concluída";
+    }
+
+    public void Dispose()
+    {
+        GridPreview.ItemsSource = null;
+        GridPreview.Columns.Clear();
+        if (TxtDdlEditor?.Document?.UndoStack != null)
+        {
+            TxtDdlEditor.Document.UndoStack.ClearAll();
+        }
     }
 }

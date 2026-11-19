@@ -10,7 +10,7 @@ using Runix.Infrastructure.Dba;
 
 namespace Runix.Desktop.Views.Dba;
 
-public partial class PostgresAdminTabControl : UserControl
+public partial class PostgresAdminTabControl : UserControl, IDisposable
 {
     private readonly IDatabaseService _databaseService;
     private readonly List<PostgresRoleInfo> _allRoles = new();
@@ -320,5 +320,11 @@ public partial class PostgresAdminTabControl : UserControl
         });
 
         SetStatus("✓ Painel de Administração PostgreSQL carregado (4 roles, conexões ativas monitoradas).");
+    }
+
+    public void Dispose()
+    {
+        GridRoles.ItemsSource = null;
+        _allRoles.Clear();
     }
 }

@@ -32,11 +32,11 @@ public static class CsvExporter
             await WriteRowAsync(writer, columns, delimiter);
         }
 
+        var stringValues = new string[columns.Count];
         foreach (var row in rows)
         {
             ct.ThrowIfCancellationRequested();
 
-            var stringValues = new string[columns.Count];
             for (int i = 0; i < columns.Count; i++)
             {
                 var val = i < row.Count ? row[i] : null;

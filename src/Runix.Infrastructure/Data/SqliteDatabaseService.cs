@@ -78,6 +78,17 @@ public class SqliteDatabaseService : IDatabaseService
 
             _connection = new SqliteConnection(BuildConnectionString());
             await _connection.OpenAsync();
+
+            try
+            {
+                using var pragmaCmd = _connection.CreateCommand();
+                pragmaCmd.CommandText = "PRAGMA cache_size = -2000;";
+                await pragmaCmd.ExecuteNonQueryAsync();
+            }
+            catch
+            {
+                // Ignore pragma failure
+            }
         }
         finally
         {
@@ -206,6 +217,9 @@ public class SqliteDatabaseService : IDatabaseService
                         result.Columns.Add(reader.GetName(i));
                     }
 
+                    var stringPool = new Dictionary<string, string>(StringComparer.Ordinal);
+                    const string NullLiteral = "NULL";
+
                     while (await reader.ReadAsync(cancellationToken))
                     {
                         if (result.Rows.Count >= limit)
@@ -215,7 +229,33 @@ public class SqliteDatabaseService : IDatabaseService
                         for (int i = 0; i < reader.FieldCount; i++)
                         {
                             var val = reader.GetValue(i);
-                            row.Add((val == DBNull.Value) ? "NULL" : val);
+                            if (val == DBNull.Value)
+                            {
+                                row.Add(NullLiteral);
+                            }
+                            else if (val is string str)
+                            {
+                                if (str.Length <= 64)
+                                {
+                                    if (!stringPool.TryGetValue(str, out var pooled))
+                                    {
+                                        if (stringPool.Count < 2048)
+                                        {
+                                            stringPool[str] = str;
+                                        }
+                                        pooled = str;
+                                    }
+                                    row.Add(pooled);
+                                }
+                                else
+                                {
+                                    row.Add(str);
+                                }
+                            }
+                            else
+                            {
+                                row.Add(val);
+                            }
                         }
                         result.Rows.Add(row);
                     }

@@ -15,7 +15,7 @@ using Runix.Infrastructure.Data;
 
 namespace Runix.Desktop.Views;
 
-public partial class VisualQueryBuilderTabControl : UserControl
+public partial class VisualQueryBuilderTabControl : UserControl, IDisposable
 {
     private readonly IDatabaseService _databaseService;
     private readonly IVisualQueryBuilderService _builderService = new VisualQueryBuilderService();
@@ -336,5 +336,22 @@ public partial class VisualQueryBuilderTabControl : UserControl
             return (entry[..dot], entry[(dot + 1)..]);
         }
         return (string.Empty, entry);
+    }
+
+    public void Dispose()
+    {
+        GridResults.ItemsSource = null;
+        GridResults.Columns.Clear();
+        _selectColumns.Clear();
+        _joins.Clear();
+        _filters.Clear();
+        _sorts.Clear();
+        _availableColumns.Clear();
+        _tables.Clear();
+        _foreignKeys.Clear();
+        if (TxtGeneratedSql?.Document?.UndoStack != null)
+        {
+            TxtGeneratedSql.Document.UndoStack.ClearAll();
+        }
     }
 }

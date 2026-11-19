@@ -12,7 +12,7 @@ using Runix.Infrastructure.Database;
 
 namespace Runix.Desktop.Views;
 
-public partial class DatabaseHealthTabControl : UserControl
+public partial class DatabaseHealthTabControl : UserControl, IDisposable
 {
     private readonly IDatabaseService _databaseService;
     private readonly IDatabaseHealthService _healthService;
@@ -250,5 +250,16 @@ public partial class DatabaseHealthTabControl : UserControl
         }
 
         await RefreshTelemetryAsync(includeIntegrity: false);
+    }
+
+    public void Dispose()
+    {
+        ListTableMetrics.ItemsSource = null;
+        ListIndexFindings.ItemsSource = null;
+        ListIntegrityIssues.ItemsSource = null;
+        _tableMetrics.Clear();
+        _indexFindings.Clear();
+        _integrityIssues.Clear();
+        _lastReport = null;
     }
 }
