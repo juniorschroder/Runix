@@ -155,7 +155,7 @@ public class ResilientDatabaseService : IDatabaseService
             CancellationToken.None);
     }
 
-    public async Task<List<QueryResult>> ExecuteMultipleQueriesAsync(string sql, int limit = 50000)
+    public async Task<List<QueryResult>> ExecuteMultipleQueriesAsync(string sql, int limit = 50000, CancellationToken cancellationToken = default)
     {
         // Safety & Read-Only / Production Validation Safeguard
         var safety = _safetyService.ValidateQuery(sql, Config);
@@ -174,15 +174,26 @@ public class ResilientDatabaseService : IDatabaseService
             if (IsIdempotentQuery(sql))
             {
                 return await _idempotentPipeline.ExecuteAsync(
-                    async ct => await _inner.ExecuteMultipleQueriesAsync(sql, limit),
-                    CancellationToken.None);
+                    async ct => await _inner.ExecuteMultipleQueriesAsync(sql, limit, ct),
+                    cancellationToken);
             }
             else
             {
                 return await _circuitBreakerPolicy.ExecuteAsync(
-                    async ct => await _inner.ExecuteMultipleQueriesAsync(sql, limit),
-                    CancellationToken.None);
+                    async ct => await _inner.ExecuteMultipleQueriesAsync(sql, limit, ct),
+                    cancellationToken);
             }
+        }
+        catch (OperationCanceledException)
+        {
+            return new List<QueryResult>
+            {
+                new()
+                {
+                    Success = false,
+                    ErrorMessage = "Consulta cancelada pelo usuário."
+                }
+            };
         }
         catch (CircuitBreakerOpenException cbEx)
         {
@@ -194,7 +205,7 @@ public class ResilientDatabaseService : IDatabaseService
         }
     }
 
-    public async Task<QueryResult> ExecuteQueryAsync(string sql, int limit = 50000)
+    public async Task<QueryResult> ExecuteQueryAsync(string sql, int limit = 50000, CancellationToken cancellationToken = default)
     {
         // Safety & Read-Only / Production Validation Safeguard
         var safety = _safetyService.ValidateQuery(sql, Config);
@@ -214,16 +225,24 @@ public class ResilientDatabaseService : IDatabaseService
             {
                 // Idempotent queries (SELECT, introspections) receive full Retry + Circuit Breaker
                 return await _idempotentPipeline.ExecuteAsync(
-                    async ct => await _inner.ExecuteQueryAsync(sql, limit),
-                    CancellationToken.None);
+                    async ct => await _inner.ExecuteQueryAsync(sql, limit, ct),
+                    cancellationToken);
             }
             else
             {
                 // Mutation commands (INSERT, UPDATE, DELETE, DDL) receive Circuit Breaker ONLY, never automatic Retry
                 return await _circuitBreakerPolicy.ExecuteAsync(
-                    async ct => await _inner.ExecuteQueryAsync(sql, limit),
-                    CancellationToken.None);
+                    async ct => await _inner.ExecuteQueryAsync(sql, limit, ct),
+                    cancellationToken);
             }
+        }
+        catch (OperationCanceledException)
+        {
+            return new QueryResult
+            {
+                Success = false,
+                ErrorMessage = "Consulta cancelada pelo usuário."
+            };
         }
         catch (CircuitBreakerOpenException cbEx)
         {

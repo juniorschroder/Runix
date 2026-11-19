@@ -25,7 +25,7 @@ public class ResilientDatabaseServiceTests
         public int ExecutionCount { get; private set; }
         public Func<int, Task<QueryResult>>? QueryHandler { get; set; }
 
-        public Task<QueryResult> ExecuteQueryAsync(string sql, int limit = 50000)
+        public Task<QueryResult> ExecuteQueryAsync(string sql, int limit = 50000, System.Threading.CancellationToken cancellationToken = default)
         {
             ExecutionCount++;
             if (QueryHandler != null)
@@ -38,9 +38,9 @@ public class ResilientDatabaseServiceTests
                 1.0));
         }
 
-        public async Task<List<QueryResult>> ExecuteMultipleQueriesAsync(string sql, int limit = 50000)
+        public async Task<List<QueryResult>> ExecuteMultipleQueriesAsync(string sql, int limit = 50000, System.Threading.CancellationToken cancellationToken = default)
         {
-            var res = await ExecuteQueryAsync(sql, limit);
+            var res = await ExecuteQueryAsync(sql, limit, cancellationToken);
             return new List<QueryResult> { res };
         }
 

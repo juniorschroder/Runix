@@ -32,6 +32,7 @@ public partial class QueryTabControl : UserControl
     private readonly ISqlLexerService _lexerService = new SqlLexerService();
     private readonly ISqlCompletionService _completionService = new SqlCompletionService();
     private readonly ISqlFormatterService _formatterService = new SqlFormatterService();
+    private readonly ISqlAutoLimitService _autoLimitService = SqlAutoLimitService.Instance;
     private readonly IQueryParameterService _parameterService = QueryParameterService.Instance;
     private readonly Dictionary<string, TextBox> _queryColumnFilterInputs = new(StringComparer.OrdinalIgnoreCase);
     private readonly IColumnFilterService _columnFilterService = ColumnFilterService.Instance;
@@ -45,6 +46,7 @@ public partial class QueryTabControl : UserControl
     private bool _isSplitLayoutMode = false;
 
     private AvaloniaEdit.CodeCompletion.CompletionWindow? _completionWindow;
+    private System.Threading.CancellationTokenSource? _queryCts;
 
     public event Action? SqlTextChanged;
 
@@ -113,6 +115,7 @@ public partial class QueryTabControl : UserControl
         }
 
         BtnRun.Click += (s, e) => ExecuteSql();
+        BtnCancelQuery.Click += (s, e) => CancelQuery();
         BtnExplainPlan.Click += (s, e) => _ = RunExplainAsync(analyze: false);
         MenuExplainQuick.Click += (s, e) => _ = RunExplainAsync(analyze: false);
         MenuExplainAnalyze.Click += (s, e) => _ = RunExplainAsync(analyze: true);
@@ -473,12 +476,70 @@ public partial class QueryTabControl : UserControl
         PanelModalOverlay.IsVisible = true;
     }
 
+    public void CancelQuery()
+    {
+        if (_queryCts != null && !_queryCts.IsCancellationRequested)
+        {
+            TxtExecutionStatus.Text = "🛑 Cancelando consulta...";
+            TxtExecutionStatus.Foreground = Avalonia.Media.Brush.Parse("#f87171");
+            BtnCancelQuery.IsEnabled = false;
+            try
+            {
+                _queryCts.Cancel();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[QueryTab] Error canceling query: {ex.Message}");
+            }
+        }
+    }
+
+    public int? GetSelectedAutoLimit()
+    {
+        if (ComboAutoLimit?.SelectedItem is ComboBoxItem item)
+        {
+            var text = item.Content?.ToString()?.Trim() ?? string.Empty;
+            return text switch
+            {
+                "100" => 100,
+                "500" => 500,
+                "1.000" => 1000,
+                "5.000" => 5000,
+                "Sem Limite" => null,
+                _ => 1000
+            };
+        }
+        return 1000;
+    }
+
     public async void ExecuteSqlInternal(string sql, string? originalTemplateSql = null)
     {
         if (string.IsNullOrWhiteSpace(sql)) return;
 
+        var selectedLimit = GetSelectedAutoLimit();
+        var executableSql = sql;
+        bool autoLimitApplied = false;
+        int appliedLimit = 0;
+
+        if (selectedLimit.HasValue)
+        {
+            var (limitedSql, applied) = _autoLimitService.ApplyAutoLimit(sql, selectedLimit.Value);
+            if (applied)
+            {
+                executableSql = limitedSql;
+                autoLimitApplied = true;
+                appliedLimit = selectedLimit.Value;
+            }
+        }
+
+        _queryCts?.Cancel();
+        _queryCts?.Dispose();
+        _queryCts = new System.Threading.CancellationTokenSource();
+
         ProgressExecuting.IsVisible = true;
-        BtnRun.IsEnabled = false;
+        BtnRun.IsVisible = false;
+        BtnCancelQuery.IsVisible = true;
+        BtnCancelQuery.IsEnabled = true;
 
         TxtExecutionStatus.Text = LocalizationManager.GetString("Query.Running", "Executing query...");
         TxtExecutionStatus.Foreground = Avalonia.Media.Brush.Parse("#008bb9");
@@ -487,12 +548,29 @@ public partial class QueryTabControl : UserControl
         QueryResult result;
         try
         {
-            result = await _databaseService.ExecuteQueryAsync(sql);
+            result = await _databaseService.ExecuteQueryAsync(executableSql, cancellationToken: _queryCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            result = new QueryResult
+            {
+                Success = false,
+                ErrorMessage = "Consulta cancelada pelo usuário."
+            };
+        }
+        catch (Exception ex)
+        {
+            result = new QueryResult
+            {
+                Success = false,
+                ErrorMessage = ex.Message
+            };
         }
         finally
         {
             ProgressExecuting.IsVisible = false;
-            BtnRun.IsEnabled = true;
+            BtnRun.IsVisible = true;
+            BtnCancelQuery.IsVisible = false;
         }
 
         _lastResult = result;
@@ -526,10 +604,10 @@ public partial class QueryTabControl : UserControl
             System.Diagnostics.Debug.WriteLine($"[QueryTab] Error logging history to app storage: {ex.Message}");
         }
 
-        DisplayQueryResult(result);
+        DisplayQueryResult(result, autoLimitApplied ? appliedLimit : null);
     }
 
-    private void DisplayQueryResult(QueryResult result)
+    private void DisplayQueryResult(QueryResult result, int? autoLimit = null)
     {
         if (!result.Success)
         {
@@ -540,7 +618,9 @@ public partial class QueryTabControl : UserControl
             TxtExecutionStatus.Foreground = Avalonia.Media.Brush.Parse("#f87171");
             GridResults.Columns.Clear();
             GridResults.ItemsSource = null;
-            TxtRowStats.Text = LocalizationManager.GetString("Query.ErrorBanner", "Query execution failed");
+            TxtRowStats.Text = result.ErrorMessage?.Contains("cancelada", StringComparison.OrdinalIgnoreCase) == true
+                ? "Consulta cancelada"
+                : LocalizationManager.GetString("Query.ErrorBanner", "Query execution failed");
             TxtTimeStats.Text = $"{result.ElapsedMilliseconds:F1} ms";
             return;
         }
@@ -568,7 +648,14 @@ public partial class QueryTabControl : UserControl
             TxtExecutionStatus.Text = $"✓ {string.Format(successPattern, result.Rows.Count, result.ElapsedMilliseconds.ToString("F1"))}";
             TxtExecutionStatus.Foreground = Avalonia.Media.Brush.Parse("#34d399");
 
-            TxtRowStats.Text = $"{result.Rows.Count:N0} rows";
+            if (autoLimit.HasValue)
+            {
+                TxtRowStats.Text = $"{result.Rows.Count:N0} linhas (Auto-Limit: {autoLimit.Value:N0})";
+            }
+            else
+            {
+                TxtRowStats.Text = $"{result.Rows.Count:N0} rows";
+            }
             TxtTimeStats.Text = $"{result.ElapsedMilliseconds:F1} ms";
         }
     }

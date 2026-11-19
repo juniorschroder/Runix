@@ -68,6 +68,14 @@ public class ErdCanvasControl : Panel
         PointerPressed += OnPanelPointerPressed;
         PointerMoved += OnPanelPointerMoved;
         PointerReleased += OnPanelPointerReleased;
+        PointerCaptureLost += (s, e) =>
+        {
+            if (_isPanning)
+            {
+                _isPanning = false;
+                Cursor = Cursor.Default;
+            }
+        };
     }
 
     internal void OnNodeDoubleClicked(ErdTableNode node)
@@ -424,13 +432,28 @@ public class ErdCanvasControl : Panel
     private void OnPanelPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         var prop = e.GetCurrentPoint(this).Properties;
-        if (prop.IsMiddleButtonPressed || (prop.IsLeftButtonPressed && e.Source == this))
+        if (prop.IsMiddleButtonPressed || (prop.IsLeftButtonPressed && IsCanvasBackground(e.Source)))
         {
             _isPanning = true;
             _panStart = e.GetPosition(this);
             Cursor = new Cursor(StandardCursorType.Hand);
+            e.Pointer.Capture(this);
             e.Handled = true;
         }
+    }
+
+    private bool IsCanvasBackground(object? source)
+    {
+        if (source == null || source == this || source == _surface || source.GetType().Name == "ConnectorOverlayControl")
+            return true;
+
+        if (source is Control ctrl)
+        {
+            if (_surface.IsInsideTableCard(ctrl))
+                return false;
+        }
+
+        return true;
     }
 
     private void OnPanelPointerMoved(object? sender, PointerEventArgs e)
@@ -452,6 +475,7 @@ public class ErdCanvasControl : Panel
         {
             _isPanning = false;
             Cursor = Cursor.Default;
+            e.Pointer.Capture(null);
             e.Handled = true;
         }
     }
@@ -466,6 +490,72 @@ public class ErdCanvasControl : Panel
         private readonly Dictionary<string, Border> _nodeCards = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, Border> _areaCards = new(StringComparer.OrdinalIgnoreCase);
         private readonly ConnectorOverlayControl _connectorLayer;
+
+        private static readonly IBrush TableCardBgBrush = Brush.Parse("#141d2b");
+        private static readonly IBrush TableCardBorderBrush = Brush.Parse("#1e2d42");
+        private static readonly IBrush TableHeaderBgBrush = Brush.Parse("#0e141f");
+        private static readonly IBrush TableTitleFgBrush = Brush.Parse("#f0f6fc");
+        private static readonly IBrush TableBadgeBgBrush = Brush.Parse("#1a3a5c");
+        private static readonly IBrush TableBadgeFgBrush = Brush.Parse("#38bdf8");
+        private static readonly IBrush PkIconBrush = Brush.Parse("#eab308");
+        private static readonly IBrush FkIconBrush = Brush.Parse("#008bb9");
+        private static readonly IBrush NormalColIconBrush = Brush.Parse("#5a6f87");
+        private static readonly IBrush ColNamePkBrush = Brush.Parse("#f0f6fc");
+        private static readonly IBrush ColNameNormalBrush = Brush.Parse("#d1d5db");
+        private static readonly IBrush ColTypeBrush = Brush.Parse("#8b9cb3");
+        private static readonly IBrush AnchorHandleBgBrush = Brush.Parse("#1a3a5c");
+        private static readonly IBrush AnchorHandleBorderBrush = Brush.Parse("#38bdf8");
+        private static readonly IBrush AnchorHandleFgBrush = Brush.Parse("#38bdf8");
+        private static readonly IBrush BadgeBgBrush = Brush.Parse("#0e141f");
+        private static readonly IBrush BadgeTextBrush = Brush.Parse("#38bdf8");
+        private static readonly Pen BadgeBorderPen = new(Brush.Parse("#0064a5"), 1.0);
+        private static readonly Pen ConnectorLinePen = new(Brush.Parse("#008bb9"), 2.0);
+        private static readonly Pen RubberLinePen = new(Brush.Parse("#38bdf8"), 2.0, DashStyle.Dash);
+        private static readonly Pen GridLinePen = new(Brush.Parse("#101726"), 1.0);
+        private static readonly FontFamily CodeFontFamily = new("Consolas,Menlo,Monaco,monospace");
+        private static readonly Typeface BadgeTypeface = new("Inter", FontStyle.Normal, FontWeight.Bold);
+        private static readonly Cursor CrossCursor = new(StandardCursorType.Cross);
+        private static readonly Cursor SizeAllCursor = new(StandardCursorType.SizeAll);
+        private static readonly Cursor ResizeCursor = new(StandardCursorType.BottomRightCorner);
+
+        private static readonly StreamGeometry GridGeometry = CreateGridGeometry();
+
+        private static StreamGeometry CreateGridGeometry()
+        {
+            var geom = new StreamGeometry();
+            using var ctx = geom.Open();
+            for (double x = 0; x <= 10000; x += 40)
+            {
+                ctx.BeginFigure(new Point(x, 0), false);
+                ctx.LineTo(new Point(x, 10000));
+            }
+            for (double y = 0; y <= 10000; y += 40)
+            {
+                ctx.BeginFigure(new Point(0, y), false);
+                ctx.LineTo(new Point(10000, y));
+            }
+            return geom;
+        }
+
+        private readonly Dictionary<string, ErdTableNode> _nodeLookup = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<(string Table, string Column), int> _colIndexLookup = new();
+        private readonly Dictionary<string, FormattedText> _badgeTextCache = new();
+
+        private FormattedText GetCachedBadgeText(string text)
+        {
+            if (!_badgeTextCache.TryGetValue(text, out var ft))
+            {
+                ft = new FormattedText(
+                    text,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight,
+                    BadgeTypeface,
+                    10,
+                    BadgeTextBrush);
+                _badgeTextCache[text] = ft;
+            }
+            return ft;
+        }
 
         private ErdTableNode? _draggedNode;
         private Border? _draggedCard;
@@ -504,37 +594,73 @@ public class ErdCanvasControl : Panel
             Children.Add(_connectorLayer);
         }
 
+        public bool IsInsideTableCard(Control control)
+        {
+            Control? current = control;
+            while (current != null && current != this)
+            {
+                if (current is Border border && _nodeCards.ContainsValue(border))
+                {
+                    return true;
+                }
+                current = current.Parent as Control;
+            }
+            return false;
+        }
+
         public void LoadGraph(ErdGraphModel graph)
         {
             _graph = graph;
             Children.Clear();
             _nodeCards.Clear();
             _areaCards.Clear();
+            _nodeLookup.Clear();
+            _colIndexLookup.Clear();
+
+            // Pré-indexar nós e colunas para lookup O(1)
+            foreach (var node in graph.Nodes)
+            {
+                _nodeLookup[node.TableName] = node;
+                for (int i = 0; i < node.Columns.Count; i++)
+                {
+                    _colIndexLookup[(node.TableName.ToLowerInvariant(), node.Columns[i].Name.ToLowerInvariant())] = i;
+                }
+            }
+
+            // Pré-indexar chaves estrangeiras para lookup O(1) na montagem dos cards
+            var fkSet = new HashSet<(string Table, string Column)>();
+            foreach (var rel in graph.Relationships)
+            {
+                fkSet.Add((rel.SourceTable.ToLowerInvariant(), rel.SourceColumn.ToLowerInvariant()));
+            }
+
+            var elementsToAdd = new List<Control>(graph.SubjectAreas.Count + graph.Nodes.Count + 1);
 
             // 1. Camada de Subject Areas (Fundo)
             foreach (var area in graph.SubjectAreas)
             {
                 var areaCard = CreateSubjectAreaCard(area);
                 _areaCards[area.Id] = areaCard;
-                Children.Add(areaCard);
-
                 SetLeft(areaCard, area.X);
                 SetTop(areaCard, area.Y);
+                elementsToAdd.Add(areaCard);
             }
 
             // 2. Camada de Conectores (Meio)
-            Children.Add(_connectorLayer);
+            elementsToAdd.Add(_connectorLayer);
 
             // 3. Camada de Cards de Tabelas (Frente)
             foreach (var node in graph.Nodes)
             {
-                var card = CreateTableCard(node);
+                var card = CreateTableCard(node, fkSet);
                 _nodeCards[node.TableName] = card;
-                Children.Add(card);
-
                 SetLeft(card, node.X);
                 SetTop(card, node.Y);
+                elementsToAdd.Add(card);
             }
+
+            // Inserção em lote único no Canvas (evita reflows intermediários repetidos)
+            Children.AddRange(elementsToAdd);
 
             _connectorLayer.InvalidateVisual();
         }
@@ -622,7 +748,7 @@ public class ErdCanvasControl : Panel
             {
                 Background = new SolidColorBrush(headerColor),
                 Padding = new Thickness(12, 6),
-                Cursor = new Cursor(StandardCursorType.SizeAll)
+                Cursor = SizeAllCursor
             };
 
             var headerGrid = new Grid
@@ -689,7 +815,7 @@ public class ErdCanvasControl : Panel
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Bottom,
                 Background = Brushes.Transparent,
-                Cursor = new Cursor(StandardCursorType.BottomRightCorner),
+                Cursor = ResizeCursor,
                 Margin = new Thickness(0, 0, 4, 4),
                 Child = new TextBlock
                 {
@@ -754,14 +880,16 @@ public class ErdCanvasControl : Panel
             return areaCard;
         }
 
-        private Border CreateTableCard(ErdTableNode node)
+        private const int MaxInitialColumns = 30;
+
+        private Border CreateTableCard(ErdTableNode node, HashSet<(string Table, string Column)> fkSet)
         {
             var card = new Border
             {
                 Width = node.Width,
                 CornerRadius = new CornerRadius(8),
-                Background = Brush.Parse("#141d2b"),
-                BorderBrush = Brush.Parse("#1e2d42"),
+                Background = TableCardBgBrush,
+                BorderBrush = TableCardBorderBrush,
                 BorderThickness = new Thickness(1.5),
                 ClipToBounds = true
             };
@@ -771,11 +899,11 @@ public class ErdCanvasControl : Panel
             // HEADER
             var header = new Border
             {
-                Background = Brush.Parse("#0e141f"),
+                Background = TableHeaderBgBrush,
                 Padding = new Thickness(12, 8),
-                BorderBrush = Brush.Parse("#1e2d42"),
+                BorderBrush = TableCardBorderBrush,
                 BorderThickness = new Thickness(0, 0, 0, 1),
-                Cursor = new Cursor(StandardCursorType.SizeAll)
+                Cursor = SizeAllCursor
             };
 
             var headerGrid = new Grid
@@ -797,7 +925,7 @@ public class ErdCanvasControl : Panel
                 Text = node.TableName,
                 FontWeight = FontWeight.Bold,
                 FontSize = 13,
-                Foreground = Brush.Parse("#f0f6fc"),
+                Foreground = TableTitleFgBrush,
                 VerticalAlignment = VerticalAlignment.Center,
                 TextTrimming = TextTrimming.CharacterEllipsis
             };
@@ -805,14 +933,14 @@ public class ErdCanvasControl : Panel
 
             var countBadge = new Border
             {
-                Background = Brush.Parse("#1a3a5c"),
+                Background = TableBadgeBgBrush,
                 CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(6, 2),
                 Child = new TextBlock
                 {
                     Text = node.Columns.Count.ToString(),
                     FontSize = 10,
-                    Foreground = Brush.Parse("#38bdf8"),
+                    Foreground = TableBadgeFgBrush,
                     FontWeight = FontWeight.Bold
                 }
             };
@@ -832,7 +960,7 @@ public class ErdCanvasControl : Panel
                     _draggedCard = card;
                     _dragStartPos = e.GetPosition(this);
                     _nodeOrigPos = new Point(node.X, node.Y);
-                    card.BorderBrush = Brush.Parse("#008bb9");
+                    card.BorderBrush = AnchorHandleBorderBrush;
                     card.ZIndex = 50;
                     e.Handled = true;
                 }
@@ -848,107 +976,140 @@ public class ErdCanvasControl : Panel
 
             // COLUMNS LIST
             var colPanel = new StackPanel { Spacing = 1, Margin = new Thickness(0, 4) };
-            for (int colIdx = 0; colIdx < node.Columns.Count; colIdx++)
+
+            int initialCount = Math.Min(node.Columns.Count, MaxInitialColumns);
+            for (int colIdx = 0; colIdx < initialCount; colIdx++)
             {
-                var col = node.Columns[colIdx];
-                var capturedCol = col;
-                var capturedIdx = colIdx;
+                colPanel.Children.Add(CreateColumnRow(node, colIdx, fkSet));
+            }
 
-                var isFk = _graph.Relationships.Any(r =>
-                    string.Equals(r.SourceTable, node.TableName, StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(r.SourceColumn, col.Name, StringComparison.OrdinalIgnoreCase));
-
-                var colRow = new Border
+            // Para tabelas muito extensas (> 30 colunas), permitir expandir sob demanda
+            if (node.Columns.Count > MaxInitialColumns)
+            {
+                var remaining = node.Columns.Count - MaxInitialColumns;
+                var expandBtn = new Button
                 {
-                    Padding = new Thickness(10, 4),
-                    Background = Brushes.Transparent
-                };
-
-                var colGrid = new Grid
-                {
-                    ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto")
-                };
-
-                var colIcon = new TextBlock
-                {
-                    Text = col.IsPrimaryKey ? "🔑" : (isFk ? "🔗" : "•"),
-                    FontSize = 11,
-                    Foreground = col.IsPrimaryKey ? Brush.Parse("#eab308") : (isFk ? Brush.Parse("#008bb9") : Brush.Parse("#5a6f87")),
-                    Margin = new Thickness(0, 0, 8, 0),
-                    VerticalAlignment = VerticalAlignment.Center
-                };
-                Grid.SetColumn(colIcon, 0);
-
-                var colName = new TextBlock
-                {
-                    Text = col.Name,
-                    FontSize = 12,
-                    Foreground = col.IsPrimaryKey ? Brush.Parse("#f0f6fc") : Brush.Parse("#d1d5db"),
-                    FontWeight = col.IsPrimaryKey ? FontWeight.Bold : FontWeight.Normal,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    TextTrimming = TextTrimming.CharacterEllipsis
-                };
-                Grid.SetColumn(colName, 1);
-
-                var colType = new TextBlock
-                {
-                    Text = col.DataType,
+                    Content = $"▾ Exibir mais {remaining} colunas",
+                    Classes = { "btn-ghost" },
                     FontSize = 10,
-                    Foreground = Brush.Parse("#8b9cb3"),
-                    FontFamily = new FontFamily("Consolas,Menlo,Monaco,monospace"),
-                    VerticalAlignment = VerticalAlignment.Center
+                    Foreground = TableBadgeFgBrush,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Margin = new Thickness(0, 2, 0, 4),
+                    Padding = new Thickness(8, 2)
                 };
-                Grid.SetColumn(colType, 2);
 
-                // INTERACTIVE FK ANCHOR HANDLE
-                var anchorHandle = new Border
+                expandBtn.Click += (s, e) =>
                 {
-                    Width = 16,
-                    Height = 16,
-                    CornerRadius = new CornerRadius(8),
-                    Background = Brush.Parse("#1a3a5c"),
-                    BorderBrush = Brush.Parse("#38bdf8"),
-                    BorderThickness = new Thickness(1),
-                    Margin = new Thickness(6, 0, 0, 0),
-                    Cursor = new Cursor(StandardCursorType.Cross),
-                    Child = new TextBlock
+                    expandBtn.IsVisible = false;
+                    for (int colIdx = MaxInitialColumns; colIdx < node.Columns.Count; colIdx++)
                     {
-                        Text = "○",
-                        FontSize = 10,
-                        Foreground = Brush.Parse("#38bdf8"),
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                        VerticalAlignment = VerticalAlignment.Center
+                        colPanel.Children.Add(CreateColumnRow(node, colIdx, fkSet));
                     }
-                };
-                ToolTip.SetTip(anchorHandle, "Arrastar para criar relacionamento (FK)");
-                Grid.SetColumn(anchorHandle, 3);
-
-                anchorHandle.PointerPressed += (s, e) =>
-                {
-                    if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-                    {
-                        _isConnecting = true;
-                        _connectingSourceNode = node;
-                        _connectingSourceCol = capturedCol;
-                        _connectingStartPos = new Point(node.X + node.Width, node.Y + 40 + (capturedIdx * 25) + 12);
-                        _connectingCurrentPos = e.GetPosition(this);
-                        _connectorLayer.InvalidateVisual();
-                        e.Handled = true;
-                    }
+                    _connectorLayer.InvalidateVisual();
                 };
 
-                colGrid.Children.Add(colIcon);
-                colGrid.Children.Add(colName);
-                colGrid.Children.Add(colType);
-                colGrid.Children.Add(anchorHandle);
-                colRow.Child = colGrid;
-
-                colPanel.Children.Add(colRow);
+                colPanel.Children.Add(expandBtn);
             }
 
             mainStack.Children.Add(colPanel);
             card.Child = mainStack;
             return card;
+        }
+
+        private Border CreateColumnRow(ErdTableNode node, int colIdx, HashSet<(string Table, string Column)> fkSet)
+        {
+            var col = node.Columns[colIdx];
+            var capturedCol = col;
+            var capturedIdx = colIdx;
+
+            var isFk = fkSet.Contains((node.TableName.ToLowerInvariant(), col.Name.ToLowerInvariant()));
+
+            var colRow = new Border
+            {
+                Padding = new Thickness(10, 4),
+                Background = Brushes.Transparent
+            };
+
+            var colGrid = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto")
+            };
+
+            var colIcon = new TextBlock
+            {
+                Text = col.IsPrimaryKey ? "🔑" : (isFk ? "🔗" : "•"),
+                FontSize = 11,
+                Foreground = col.IsPrimaryKey ? PkIconBrush : (isFk ? FkIconBrush : NormalColIconBrush),
+                Margin = new Thickness(0, 0, 8, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            Grid.SetColumn(colIcon, 0);
+
+            var colName = new TextBlock
+            {
+                Text = col.Name,
+                FontSize = 12,
+                Foreground = col.IsPrimaryKey ? ColNamePkBrush : ColNameNormalBrush,
+                FontWeight = col.IsPrimaryKey ? FontWeight.Bold : FontWeight.Normal,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            Grid.SetColumn(colName, 1);
+
+            var colType = new TextBlock
+            {
+                Text = col.DataType,
+                FontSize = 10,
+                Foreground = ColTypeBrush,
+                FontFamily = CodeFontFamily,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            Grid.SetColumn(colType, 2);
+
+            // INTERACTIVE FK ANCHOR HANDLE
+            var anchorHandle = new Border
+            {
+                Width = 16,
+                Height = 16,
+                CornerRadius = new CornerRadius(8),
+                Background = AnchorHandleBgBrush,
+                BorderBrush = AnchorHandleBorderBrush,
+                BorderThickness = new Thickness(1),
+                Margin = new Thickness(6, 0, 0, 0),
+                Cursor = CrossCursor,
+                Child = new TextBlock
+                {
+                    Text = "○",
+                    FontSize = 10,
+                    Foreground = AnchorHandleFgBrush,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
+            ToolTip.SetTip(anchorHandle, "Arrastar para criar relacionamento (FK)");
+            Grid.SetColumn(anchorHandle, 3);
+
+            anchorHandle.PointerPressed += (s, e) =>
+            {
+                if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+                {
+                    _isConnecting = true;
+                    _connectingSourceNode = node;
+                    _connectingSourceCol = capturedCol;
+                    _connectingStartPos = new Point(node.X + node.Width, node.Y + 40 + (capturedIdx * 25) + 12);
+                    _connectingCurrentPos = e.GetPosition(this);
+                    _connectorLayer.InvalidateVisual();
+                    e.Handled = true;
+                }
+            };
+
+            colGrid.Children.Add(colIcon);
+            colGrid.Children.Add(colName);
+            colGrid.Children.Add(colType);
+            colGrid.Children.Add(anchorHandle);
+            colRow.Child = colGrid;
+
+            return colRow;
         }
 
         protected override void OnPointerMoved(PointerEventArgs e)
@@ -1134,21 +1295,12 @@ public class ErdCanvasControl : Panel
 
         public void RenderConnectors(DrawingContext context)
         {
-            // 1. GRID BACKGROUND PATTERN
-            var gridPen = new Pen(Brush.Parse("#101726"), 1.0);
-            for (double x = 0; x < 10000; x += 40)
-            {
-                context.DrawLine(gridPen, new Point(x, 0), new Point(x, 10000));
-            }
-            for (double y = 0; y < 10000; y += 40)
-            {
-                context.DrawLine(gridPen, new Point(0, y), new Point(10000, y));
-            }
+            // 1. GRID BACKGROUND PATTERN (1 DRAW CALL COM GEOMETRIA PRÉ-COMPILADA)
+            context.DrawGeometry(null, GridLinePen, GridGeometry);
 
             // 2. ACTIVE INTERACTIVE RUBBERBAND BEZIER CONNECTION
             if (_isConnecting && _connectingSourceNode != null)
             {
-                var rubberPen = new Pen(Brush.Parse("#38bdf8"), 2.0, DashStyle.Dash);
                 var startPt = _connectingStartPos;
                 var endPt = _connectingCurrentPos;
                 var dx = Math.Max(50, Math.Abs(endPt.X - startPt.X) * 0.5);
@@ -1162,25 +1314,30 @@ public class ErdCanvasControl : Panel
                     ctx.BeginFigure(startPt, false);
                     ctx.CubicBezierTo(cp1, cp2, endPt);
                 }
-                context.DrawGeometry(null, rubberPen, geomRubber);
-                context.DrawEllipse(Brush.Parse("#38bdf8"), null, endPt, 4, 4);
+                context.DrawGeometry(null, RubberLinePen, geomRubber);
+                context.DrawEllipse(AnchorHandleFgBrush, null, endPt, 4, 4);
             }
 
-            // 3. BEZIER CONNECTOR LINES & CARDINALITY BADGES
+            // 3. BEZIER CONNECTOR LINES & CARDINALITY BADGES (O(1) LOOKUPS & ZERO ALOCAÇÕES)
             if (_graph.Relationships == null || _graph.Relationships.Count == 0) return;
-
-            var linePen = new Pen(Brush.Parse("#008bb9"), 2.0);
-            var badgeBg = Brush.Parse("#0e141f");
-            var badgeBorder = new Pen(Brush.Parse("#0064a5"), 1.0);
 
             foreach (var rel in _graph.Relationships)
             {
-                var sourceNode = _graph.FindNode(rel.SourceTable);
-                var targetNode = _graph.FindNode(rel.TargetTable);
-                if (sourceNode == null || targetNode == null) continue;
+                if (!_nodeLookup.TryGetValue(rel.SourceTable, out var sourceNode) ||
+                    !_nodeLookup.TryGetValue(rel.TargetTable, out var targetNode))
+                {
+                    continue;
+                }
 
-                var srcColIdx = Math.Max(0, sourceNode.Columns.FindIndex(c => string.Equals(c.Name, rel.SourceColumn, StringComparison.OrdinalIgnoreCase)));
-                var tgtColIdx = Math.Max(0, targetNode.Columns.FindIndex(c => string.Equals(c.Name, rel.TargetColumn, StringComparison.OrdinalIgnoreCase)));
+                if (!_colIndexLookup.TryGetValue((rel.SourceTable.ToLowerInvariant(), rel.SourceColumn.ToLowerInvariant()), out var srcColIdx))
+                {
+                    srcColIdx = 0;
+                }
+
+                if (!_colIndexLookup.TryGetValue((rel.TargetTable.ToLowerInvariant(), rel.TargetColumn.ToLowerInvariant()), out var tgtColIdx))
+                {
+                    tgtColIdx = 0;
+                }
 
                 var srcY = sourceNode.Y + 40 + (srcColIdx * 25) + 12;
                 var tgtY = targetNode.Y + 40 + (tgtColIdx * 25) + 12;
@@ -1217,27 +1374,20 @@ public class ErdCanvasControl : Panel
                     ctx.BeginFigure(srcPt, false);
                     ctx.CubicBezierTo(cp1, cp2, tgtPt);
                 }
-                context.DrawGeometry(null, linePen, geom);
+                context.DrawGeometry(null, ConnectorLinePen, geom);
 
                 var srcLabel = rel.Cardinality == ErdCardinality.OneToOne ? "1" : (rel.Cardinality == ErdCardinality.ManyToMany ? "M" : "N");
-                DrawCardinalityBadge(context, srcPt, srcLabel, badgeBg, badgeBorder);
-                DrawCardinalityBadge(context, tgtPt, "1", badgeBg, badgeBorder);
+                DrawCardinalityBadge(context, srcPt, srcLabel);
+                DrawCardinalityBadge(context, tgtPt, "1");
             }
         }
 
-        private static void DrawCardinalityBadge(DrawingContext context, Point pt, string text, IBrush bg, Pen border)
+        private void DrawCardinalityBadge(DrawingContext context, Point pt, string text)
         {
             var badgeRect = new Rect(pt.X - 9, pt.Y - 9, 18, 18);
-            context.DrawRectangle(bg, border, badgeRect, 4, 4);
+            context.DrawRectangle(BadgeBgBrush, BadgeBorderPen, badgeRect, 4, 4);
 
-            var ft = new FormattedText(
-                text,
-                CultureInfo.InvariantCulture,
-                FlowDirection.LeftToRight,
-                new Typeface("Inter", FontStyle.Normal, FontWeight.Bold),
-                10,
-                Brush.Parse("#38bdf8"));
-
+            var ft = GetCachedBadgeText(text);
             var textPt = new Point(badgeRect.Center.X - (ft.Width / 2), badgeRect.Center.Y - (ft.Height / 2));
             context.DrawText(ft, textPt);
         }

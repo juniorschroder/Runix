@@ -19,8 +19,8 @@ public interface IDatabaseService : IDisposable
     Task DisconnectAsync();
 
     Task<List<TableInfo>> GetTablesAsync();
-    Task<QueryResult> ExecuteQueryAsync(string sql, int limit = 50000);
-    Task<List<QueryResult>> ExecuteMultipleQueriesAsync(string sql, int limit = 50000);
+    Task<QueryResult> ExecuteQueryAsync(string sql, int limit = 50000, System.Threading.CancellationToken cancellationToken = default);
+    Task<List<QueryResult>> ExecuteMultipleQueriesAsync(string sql, int limit = 50000, System.Threading.CancellationToken cancellationToken = default);
     Task<QueryResult> GetTableDataAsync(string tableName, int offset = 0, int limit = 100, string? filter = null, string? sortColumn = null, bool sortAsc = true);
     Task<List<ColumnInfo>> GetTableColumnsAsync(string tableName);
     Task<List<TableIndexInfo>> GetTableIndexesAsync(string tableName);

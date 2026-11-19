@@ -168,7 +168,7 @@ public class SqliteDatabaseService : IDatabaseService
         }
     }
 
-    public async Task<List<QueryResult>> ExecuteMultipleQueriesAsync(string sql, int limit = 50000)
+    public async Task<List<QueryResult>> ExecuteMultipleQueriesAsync(string sql, int limit = 50000, CancellationToken cancellationToken = default)
     {
         var resultSets = new List<QueryResult>();
         if (_connection == null)
@@ -180,13 +180,18 @@ public class SqliteDatabaseService : IDatabaseService
         }
 
         var sw = Stopwatch.StartNew();
-        await _connectionLock.WaitAsync();
+        await _connectionLock.WaitAsync(cancellationToken);
         try
         {
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = sql;
 
-            using var reader = await cmd.ExecuteReaderAsync();
+            using var reg = cancellationToken.Register(() =>
+            {
+                try { cmd.Cancel(); } catch { }
+            });
+
+            using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 
             int setIndex = 1;
             do
@@ -201,7 +206,7 @@ public class SqliteDatabaseService : IDatabaseService
                         result.Columns.Add(reader.GetName(i));
                     }
 
-                    while (await reader.ReadAsync())
+                    while (await reader.ReadAsync(cancellationToken))
                     {
                         if (result.Rows.Count >= limit)
                             break;
@@ -223,7 +228,18 @@ public class SqliteDatabaseService : IDatabaseService
                 result.Success = true;
                 resultSets.Add(result);
                 setIndex++;
-            } while (await reader.NextResultAsync());
+            } while (await reader.NextResultAsync(cancellationToken));
+        }
+        catch (OperationCanceledException)
+        {
+            return new List<QueryResult>
+            {
+                new()
+                {
+                    Success = false,
+                    ErrorMessage = "Consulta cancelada pelo usuário."
+                }
+            };
         }
         catch (Exception ex)
         {
@@ -270,9 +286,9 @@ public class SqliteDatabaseService : IDatabaseService
         return resultSets.Count > 0 ? resultSets : new List<QueryResult> { new() { Success = true } };
     }
 
-    public async Task<QueryResult> ExecuteQueryAsync(string sql, int limit = 50000)
+    public async Task<QueryResult> ExecuteQueryAsync(string sql, int limit = 50000, CancellationToken cancellationToken = default)
     {
-        var list = await ExecuteMultipleQueriesAsync(sql, limit);
+        var list = await ExecuteMultipleQueriesAsync(sql, limit, cancellationToken);
         if (list.Count > 0)
         {
             var primary = list[0];
@@ -548,68 +564,142 @@ public class SqliteDatabaseService : IDatabaseService
 
         var tables = await GetTablesAsync();
         var tablesOnly = tables.Where(t => !t.IsView).ToList();
+        if (tablesOnly.Count == 0) return graph;
 
         var tableColumns = new Dictionary<string, List<ColumnInfo>>(StringComparer.OrdinalIgnoreCase);
         var tableFks = new Dictionary<string, List<ForeignKeyInfo>>(StringComparer.OrdinalIgnoreCase);
         var uniqueColumns = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var table in tablesOnly)
+        await _connectionLock.WaitAsync();
+        try
         {
-            var cols = await GetTableColumnsAsync(table.Name);
-            tableColumns[table.Name] = cols;
-            var fks = await GetForeignKeysAsync(table.Name);
-            tableFks[table.Name] = fks;
-
-            // Inspecionar colunas UNIQUE
-            var uniqueCols = new List<string>();
-            try
+            foreach (var table in tablesOnly)
             {
-                using var cmd = _connection.CreateCommand();
-                cmd.CommandText = $"PRAGMA index_list(\"{table.Name.Replace("\"", "\"\"")}\");";
-                using var reader = await cmd.ExecuteReaderAsync();
-                var uniqueIndexes = new List<string>();
-                while (await reader.ReadAsync())
+                var escapedName = table.Name.Replace("\"", "\"\"");
+
+                // 1. Colunas e PKs diretamente sob o mesmo lock
+                var cols = new List<ColumnInfo>();
+                using (var cmd = _connection.CreateCommand())
                 {
-                    var isUnique = reader.GetInt32(2) == 1;
-                    if (isUnique)
+                    cmd.CommandText = $"PRAGMA table_info(\"{escapedName}\");";
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
                     {
-                        uniqueIndexes.Add(reader.GetString(1));
+                        var cid = reader.GetInt32(0);
+                        var colName = reader.GetString(1);
+                        var type = reader.IsDBNull(2) ? "TEXT" : reader.GetString(2);
+                        var notNull = reader.GetInt32(3) == 1;
+                        var dfltVal = reader.IsDBNull(4) ? null : reader.GetString(4);
+                        var isPk = reader.GetInt32(5) > 0;
+
+                        cols.Add(new ColumnInfo
+                        {
+                            OrdinalPosition = cid,
+                            Name = colName,
+                            DataType = type,
+                            IsNullable = !notNull,
+                            IsPrimaryKey = isPk,
+                            DefaultValue = dfltVal
+                        });
+                    }
+                }
+                tableColumns[table.Name] = cols;
+
+                // 2. Foreign keys diretamente sob o mesmo lock
+                var fks = new List<ForeignKeyInfo>();
+                using (var fkCmd = _connection.CreateCommand())
+                {
+                    fkCmd.CommandText = $"PRAGMA foreign_key_list(\"{escapedName}\");";
+                    using var fkReader = await fkCmd.ExecuteReaderAsync();
+                    while (await fkReader.ReadAsync())
+                    {
+                        var targetTable = fkReader.GetString(2);
+                        var sourceCol = fkReader.GetString(3);
+                        var targetCol = fkReader.GetString(4);
+                        var onUpdate = fkReader.GetString(5);
+                        var onDelete = fkReader.GetString(6);
+
+                        fks.Add(new ForeignKeyInfo
+                        {
+                            SourceTable = table.Name,
+                            SourceColumn = sourceCol,
+                            TargetTable = targetTable,
+                            TargetColumn = targetCol,
+                            OnUpdate = onUpdate,
+                            OnDelete = onDelete
+                        });
+                    }
+                }
+                tableFks[table.Name] = fks;
+
+                // Correlacionar FKs nas colunas
+                foreach (var col in cols)
+                {
+                    var fk = fks.FirstOrDefault(f => string.Equals(f.SourceColumn, col.Name, StringComparison.OrdinalIgnoreCase));
+                    if (fk != null)
+                    {
+                        col.IsForeignKey = true;
+                        col.ForeignKeyReference = $"{fk.TargetTable}({fk.TargetColumn})";
                     }
                 }
 
-                foreach (var idx in uniqueIndexes)
+                // 3. Colunas UNIQUE apenas se houver FKs envolvendo a tabela (otimização de I/O)
+                var uniqueCols = new List<string>();
+                if (fks.Count > 0)
                 {
-                    using var idxCmd = _connection.CreateCommand();
-                    idxCmd.CommandText = $"PRAGMA index_info(\"{idx.Replace("\"", "\"\"")}\");";
-                    using var idxReader = await idxCmd.ExecuteReaderAsync();
-                    while (await idxReader.ReadAsync())
+                    try
                     {
-                        uniqueCols.Add(idxReader.GetString(2));
+                        using var idxListCmd = _connection.CreateCommand();
+                        idxListCmd.CommandText = $"PRAGMA index_list(\"{escapedName}\");";
+                        using var idxReader = await idxListCmd.ExecuteReaderAsync();
+                        var uniqueIndexNames = new List<string>();
+                        while (await idxReader.ReadAsync())
+                        {
+                            if (idxReader.GetInt32(2) == 1) // is_unique
+                            {
+                                uniqueIndexNames.Add(idxReader.GetString(1));
+                            }
+                        }
+
+                        foreach (var idxName in uniqueIndexNames)
+                        {
+                            using var infoCmd = _connection.CreateCommand();
+                            infoCmd.CommandText = $"PRAGMA index_info(\"{idxName.Replace("\"", "\"\"")}\");";
+                            using var infoReader = await infoCmd.ExecuteReaderAsync();
+                            while (await infoReader.ReadAsync())
+                            {
+                                uniqueCols.Add(infoReader.GetString(2));
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Silencioso em SQLite restrito
                     }
                 }
-            }
-            catch
-            {
-                // Ignora erro em SQLite restrito
-            }
-            uniqueColumns[table.Name] = uniqueCols;
+                uniqueColumns[table.Name] = uniqueCols;
 
-            graph.Nodes.Add(new ErdTableNode
-            {
-                Table = table,
-                Columns = cols
-            });
+                graph.Nodes.Add(new ErdTableNode
+                {
+                    Table = table,
+                    Columns = cols
+                });
+            }
+        }
+        finally
+        {
+            _connectionLock.Release();
         }
 
         foreach (var table in tablesOnly)
         {
             var fks = tableFks[table.Name];
             var cols = tableColumns[table.Name];
-            var uniqueCols = uniqueColumns[table.Name];
+            uniqueColumns.TryGetValue(table.Name, out var uniqueCols);
 
             foreach (var fk in fks)
             {
-                var card = ErdLayoutService.InferCardinality(fk, cols, fks, uniqueCols);
+                var card = ErdLayoutService.InferCardinality(fk, cols, fks, uniqueCols ?? new List<string>());
                 graph.Relationships.Add(new ErdRelationshipLink
                 {
                     SourceTable = fk.SourceTable,

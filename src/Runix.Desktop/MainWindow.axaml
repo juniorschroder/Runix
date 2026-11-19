@@ -5,7 +5,7 @@
         mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="820"
         x:Class="Runix.Desktop.MainWindow"
         Icon="avares://Runix.Desktop/Assets/runix.ico"
-        Title="RUNIX v1.4.0 - Modern Cross-Platform Database Studio"
+        Title="RUNIX v1.5.0 - Modern Cross-Platform Database Studio"
         Width="1200" Height="800"
         MinWidth="800" MinHeight="600"
         WindowStartupLocation="CenterScreen"
@@ -32,7 +32,7 @@
                             VerticalAlignment="Center" ToolTip.Tip="{DynamicResource About.Title}"
                             AutomationProperties.Name="{DynamicResource A11y.AboutApp}">
                         <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                            <TextBlock Text="v1.4.0" FontSize="10" FontWeight="Bold" Foreground="#38bdf8" VerticalAlignment="Center"/>
+                            <TextBlock Text="v1.5.0" FontSize="10" FontWeight="Bold" Foreground="#38bdf8" VerticalAlignment="Center"/>
                             <TextBlock Text="ℹ" FontSize="10" Foreground="#7dd3fc" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>

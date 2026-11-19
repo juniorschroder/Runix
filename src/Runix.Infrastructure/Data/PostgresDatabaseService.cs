@@ -212,7 +212,7 @@ public class PostgresDatabaseService : IDatabaseService
         }
     }
 
-    public async Task<List<QueryResult>> ExecuteMultipleQueriesAsync(string sql, int limit = 50000)
+    public async Task<List<QueryResult>> ExecuteMultipleQueriesAsync(string sql, int limit = 50000, CancellationToken cancellationToken = default)
     {
         var resultSets = new List<QueryResult>();
         if (_connection == null)
@@ -224,13 +224,18 @@ public class PostgresDatabaseService : IDatabaseService
         }
 
         var sw = Stopwatch.StartNew();
-        await _connectionLock.WaitAsync();
+        await _connectionLock.WaitAsync(cancellationToken);
         try
         {
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = sql;
 
-            using var reader = await cmd.ExecuteReaderAsync();
+            using var reg = cancellationToken.Register(() =>
+            {
+                try { cmd.Cancel(); } catch { }
+            });
+
+            using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 
             int setIndex = 1;
             do
@@ -245,7 +250,7 @@ public class PostgresDatabaseService : IDatabaseService
                         result.Columns.Add(reader.GetName(i));
                     }
 
-                    while (await reader.ReadAsync())
+                    while (await reader.ReadAsync(cancellationToken))
                     {
                         if (result.Rows.Count >= limit)
                             break;
@@ -267,7 +272,18 @@ public class PostgresDatabaseService : IDatabaseService
                 result.Success = true;
                 resultSets.Add(result);
                 setIndex++;
-            } while (await reader.NextResultAsync());
+            } while (await reader.NextResultAsync(cancellationToken));
+        }
+        catch (OperationCanceledException)
+        {
+            return new List<QueryResult>
+            {
+                new()
+                {
+                    Success = false,
+                    ErrorMessage = "Consulta cancelada pelo usuário."
+                }
+            };
         }
         catch (Exception ex)
         {
@@ -313,9 +329,9 @@ public class PostgresDatabaseService : IDatabaseService
         return resultSets.Count > 0 ? resultSets : new List<QueryResult> { new() { Success = true } };
     }
 
-    public async Task<QueryResult> ExecuteQueryAsync(string sql, int limit = 50000)
+    public async Task<QueryResult> ExecuteQueryAsync(string sql, int limit = 50000, CancellationToken cancellationToken = default)
     {
-        var list = await ExecuteMultipleQueriesAsync(sql, limit);
+        var list = await ExecuteMultipleQueriesAsync(sql, limit, cancellationToken);
         if (list.Count > 0)
         {
             var primary = list[0];
@@ -813,6 +829,96 @@ public class PostgresDatabaseService : IDatabaseService
         return fks;
     }
 
+    public async Task<Dictionary<string, List<ColumnInfo>>> GetAllTableColumnsBatchAsync()
+    {
+        var result = new Dictionary<string, List<ColumnInfo>>(StringComparer.OrdinalIgnoreCase);
+        if (_connection == null) return result;
+
+        const string catalogBatchSql = @"
+            SELECT
+                n.nspname AS schema_name,
+                c.relname AS table_name,
+                a.attnum AS ordinal_position,
+                a.attname AS column_name,
+                format_type(a.atttypid, a.atttypmod) AS data_type,
+                NOT a.attnotnull AS is_nullable,
+                pg_get_expr(d.adbin, d.adrelid) AS column_default,
+                COALESCE(pk.is_pk, false) AS is_primary_key
+            FROM pg_attribute a
+            JOIN pg_class c ON a.attrelid = c.oid
+            JOIN pg_namespace n ON c.relnamespace = n.oid
+            LEFT JOIN pg_attrdef d ON d.adrelid = c.oid AND d.adnum = a.attnum
+            LEFT JOIN (
+                SELECT conrelid, unnest(conkey) AS attnum, true AS is_pk
+                FROM pg_constraint
+                WHERE contype = 'p'
+            ) pk ON pk.conrelid = c.oid AND pk.attnum = a.attnum
+            WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+              AND c.relkind IN ('r', 'p')
+              AND a.attnum > 0
+              AND NOT a.attisdropped
+            ORDER BY n.nspname, c.relname, a.attnum;";
+
+        await _connectionLock.WaitAsync();
+        try
+        {
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = catalogBatchSql;
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var schema = reader.GetString(0);
+                var tblName = reader.GetString(1);
+                var pos = reader.GetInt32(2);
+                var colName = reader.GetString(3);
+                var type = reader.GetString(4);
+                var isNullable = reader.GetBoolean(5);
+                var defVal = reader.IsDBNull(6) ? null : reader.GetString(6);
+                var isPk = reader.GetBoolean(7);
+
+                var colInfo = new ColumnInfo
+                {
+                    OrdinalPosition = pos,
+                    Name = colName,
+                    DataType = type,
+                    IsNullable = isNullable,
+                    IsPrimaryKey = isPk,
+                    DefaultValue = defVal
+                };
+
+                // Index by raw table name
+                if (!result.TryGetValue(tblName, out var list))
+                {
+                    list = new List<ColumnInfo>();
+                    result[tblName] = list;
+                }
+                list.Add(colInfo);
+
+                // Index by schema-qualified name if not public
+                if (schema != "public")
+                {
+                    var qualName = $"{schema}.{tblName}";
+                    if (!result.TryGetValue(qualName, out var qualList))
+                    {
+                        qualList = new List<ColumnInfo>();
+                        result[qualName] = qualList;
+                    }
+                    qualList.Add(colInfo);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[PostgresDatabaseService] Error in GetAllTableColumnsBatchAsync: {ex.Message}");
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
+
+        return result;
+    }
+
     public async Task<ErdGraphModel> GetErdGraphAsync()
     {
         var graph = new ErdGraphModel();
@@ -820,16 +926,70 @@ public class PostgresDatabaseService : IDatabaseService
 
         var tables = await GetTablesAsync();
         var tablesOnly = tables.Where(t => !t.IsView).ToList();
+        if (tablesOnly.Count == 0) return graph;
 
+        // 1. Batch fetch all columns and primary keys for all tables in a single query
+        var allColumnsMap = await GetAllTableColumnsBatchAsync();
+
+        // 2. Batch fetch all foreign keys for the entire database in a single query
+        var allFks = await GetForeignKeysAsync(null);
+        var fksByTable = allFks
+            .GroupBy(f => f.SourceTable, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+
+        // Fallback to sequential fetching if batch returned empty (e.g. restrictive permissions)
+        if (allColumnsMap.Count == 0 && tablesOnly.Count > 0)
+        {
+            foreach (var table in tablesOnly)
+            {
+                var cols = await GetTableColumnsAsync(table.Name);
+                allColumnsMap[table.Name] = cols;
+            }
+        }
+
+        // 3. Assemble nodes and correlate foreign keys
         var tableColumns = new Dictionary<string, List<ColumnInfo>>(StringComparer.OrdinalIgnoreCase);
-        var tableFks = new Dictionary<string, List<ForeignKeyInfo>>(StringComparer.OrdinalIgnoreCase);
-
         foreach (var table in tablesOnly)
         {
-            var cols = await GetTableColumnsAsync(table.Name);
+            List<ColumnInfo> cols;
+            if (allColumnsMap.TryGetValue(table.Name, out var foundCols))
+            {
+                cols = foundCols;
+            }
+            else
+            {
+                var rawName = table.Name.Contains('.') ? table.Name.Split('.', 2)[1] : table.Name;
+                if (!allColumnsMap.TryGetValue(rawName, out cols!))
+                {
+                    cols = new List<ColumnInfo>();
+                }
+            }
             tableColumns[table.Name] = cols;
-            var fks = await GetForeignKeysAsync(table.Name);
-            tableFks[table.Name] = fks;
+
+            // Correlate foreign key flags in columns
+            List<ForeignKeyInfo>? tableFks = null;
+            if (fksByTable.TryGetValue(table.Name, out var foundFks))
+            {
+                tableFks = foundFks;
+            }
+            else
+            {
+                var rawName = table.Name.Contains('.') ? table.Name.Split('.', 2)[1] : table.Name;
+                fksByTable.TryGetValue(rawName, out tableFks);
+            }
+
+            if (tableFks != null)
+            {
+                foreach (var col in cols)
+                {
+                    var fk = tableFks.FirstOrDefault(f => string.Equals(f.SourceColumn, col.Name, StringComparison.OrdinalIgnoreCase));
+                    if (fk != null)
+                    {
+                        col.IsForeignKey = true;
+                        col.ForeignKeyReference = $"{fk.TargetTable}({fk.TargetColumn})";
+                    }
+                }
+            }
 
             graph.Nodes.Add(new ErdTableNode
             {
@@ -838,14 +998,15 @@ public class PostgresDatabaseService : IDatabaseService
             });
         }
 
-        foreach (var table in tablesOnly)
+        // 4. Create relationship links with inferred cardinality
+        foreach (var fk in allFks)
         {
-            var fks = tableFks[table.Name];
-            var cols = tableColumns[table.Name];
-
-            foreach (var fk in fks)
+            if (tableColumns.TryGetValue(fk.SourceTable, out var cols))
             {
-                var card = ErdLayoutService.InferCardinality(fk, cols, fks);
+                List<ForeignKeyInfo>? tableFks = null;
+                fksByTable.TryGetValue(fk.SourceTable, out tableFks);
+                var card = ErdLayoutService.InferCardinality(fk, cols, tableFks ?? new List<ForeignKeyInfo>());
+
                 graph.Relationships.Add(new ErdRelationshipLink
                 {
                     SourceTable = fk.SourceTable,

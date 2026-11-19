@@ -29,7 +29,7 @@ public class AppConstantsTests
     public void AppConstants_VersionAndCreatorMetadata_ShouldBeCorrect()
     {
         AppConstants.AppName.Should().Be("RUNIX Database Studio");
-        AppConstants.AppVersion.Should().Be("1.4.0");
+        AppConstants.AppVersion.Should().Be("1.5.0");
         AppConstants.AppAuthor.Should().Be("José Carlos Schröder Júnior");
         AppConstants.AppCopyright.Should().Contain("José Carlos Schröder Júnior");
         AppConstants.AppLicense.Should().Be("GPL-3.0 License");

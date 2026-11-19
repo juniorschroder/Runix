@@ -56,7 +56,7 @@
     <sys:String x:Key="Connection.Testing">Testando...</sys:String>
     <sys:String x:Key="Connection.Connect">Conectar ➔</sys:String>
     <sys:String x:Key="Connection.Connecting">Conectando...</sys:String>
-    <sys:String x:Key="Connection.QuickConnect">⚡ Conectar Agora</sys:String>
+    <sys:String x:Key="Connection.QuickConnect">Conectar Agora</sys:String>
     <sys:String x:Key="Connection.SavedTip">Dica: Clique em ⚡ Conectar ou dê duplo-clique para abrir.</sys:String>
     <sys:String x:Key="Connection.QuickDemo">🧀 Abrir Banco Demo de Queijos</sys:String>
 

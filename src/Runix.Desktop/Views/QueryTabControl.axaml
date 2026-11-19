@@ -11,52 +11,66 @@
              x:Class="Runix.Desktop.Views.QueryTabControl"
              Background="#090d14">
 
-    <Grid RowDefinitions="180,5,*,32">
+    <Grid RowDefinitions="220,5,*,32">
         <!-- TOP SQL EDITOR AREA -->
         <Grid Grid.Row="0" RowDefinitions="Auto,*" Background="#0e141f">
             <!-- Toolbar -->
-            <Border Grid.Row="0" Background="#141d2b" Padding="12,6" BorderBrush="#1e2d42" BorderThickness="0,0,0,1">
-                <Grid ColumnDefinitions="*,Auto,Auto">
-                    <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                            <Button Name="BtnRun" Content="{DynamicResource Query.Run}" 
-                                    Classes="btn-primary" Padding="14,5" FontSize="11"
-                                    AutomationProperties.Name="{DynamicResource A11y.ExecuteSql}"/>
-                            <Button Name="BtnExplainPlan" Content="🔍 Explain" 
-                                    Classes="btn-secondary" Padding="10,5" FontSize="11"
-                                    AutomationProperties.Name="{DynamicResource A11y.ExplainSql}">
-                                <Button.ContextMenu>
-                                    <ContextMenu>
-                                        <MenuItem Name="MenuExplainQuick" Header="🔍 Explain (Estimado) - Ctrl+E"/>
-                                        <MenuItem Name="MenuExplainAnalyze" Header="⚡ Explain &amp; Analyze (Métricas Reais)"/>
-                                    </ContextMenu>
-                                </Button.ContextMenu>
-                            </Button>
-                            <Button Name="BtnClear" Content="{DynamicResource Query.Clear}" 
-                                    Classes="btn-outline" Padding="8,5" FontSize="11"
-                                    AutomationProperties.Name="Limpar consulta"/>
-                            <Button Name="BtnSaveQuery" Content="💾 Salvar" 
-                                    Classes="btn-secondary" Padding="10,5" FontSize="11"
-                                    AutomationProperties.Name="{DynamicResource A11y.SaveFavoriteSql}"/>
-                            <Button Name="BtnFormatSql" Content="✨ Formatar" 
-                                    Classes="btn-secondary" Padding="10,5" FontSize="11"
-                                    AutomationProperties.Name="{DynamicResource A11y.FormatSql}"
-                                    ToolTip.Tip="Formatar SQL (Ctrl+Shift+F)"/>
-                            <Button Name="BtnManageSnippets" Content="✂ Snippets" 
-                                    Classes="btn-secondary" Padding="10,5" FontSize="11"
-                                    AutomationProperties.Name="Gerenciar Snippets de código"/>
-                        </StackPanel>
-                    </ScrollViewer>
+            <Border Grid.Row="0" Background="#141d2b" Padding="10,4" BorderBrush="#1e2d42" BorderThickness="0,0,0,1">
+                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Name="BtnRun" Content="{DynamicResource Query.Run}" 
+                            Classes="btn-primary" Padding="14,5" FontSize="11" Margin="0,2,6,2"
+                            AutomationProperties.Name="{DynamicResource A11y.ExecuteSql}"/>
+                    <Button Name="BtnCancelQuery" Content="🛑 Cancelar" 
+                            Padding="12,5" FontSize="11" Margin="0,2,6,2"
+                            Background="#dc2626" Foreground="White"
+                            IsVisible="False"
+                            AutomationProperties.Name="Cancelar execução da query"/>
+                    <Button Name="BtnExplainPlan" Content="🔍 Explain" 
+                            Classes="btn-secondary" Padding="10,5" FontSize="11" Margin="0,2,6,2"
+                            AutomationProperties.Name="{DynamicResource A11y.ExplainSql}">
+                        <Button.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Name="MenuExplainQuick" Header="🔍 Explain (Estimado) - Ctrl+E"/>
+                                <MenuItem Name="MenuExplainAnalyze" Header="⚡ Explain &amp; Analyze (Métricas Reais)"/>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
+                    <Button Name="BtnClear" Content="{DynamicResource Query.Clear}" 
+                            Classes="btn-outline" Padding="8,5" FontSize="11" Margin="0,2,6,2"
+                            AutomationProperties.Name="Limpar consulta"/>
+                    <Button Name="BtnSaveQuery" Content="💾 Salvar" 
+                            Classes="btn-secondary" Padding="10,5" FontSize="11" Margin="0,2,6,2"
+                            AutomationProperties.Name="{DynamicResource A11y.SaveFavoriteSql}"/>
+                    <Button Name="BtnFormatSql" Content="✨ Formatar" 
+                            Classes="btn-secondary" Padding="10,5" FontSize="11" Margin="0,2,6,2"
+                            AutomationProperties.Name="{DynamicResource A11y.FormatSql}"
+                            ToolTip.Tip="Formatar SQL (Ctrl+Shift+F)"/>
+                    <Button Name="BtnManageSnippets" Content="✂ Snippets" 
+                            Classes="btn-secondary" Padding="10,5" FontSize="11" Margin="0,2,6,2"
+                            AutomationProperties.Name="Gerenciar Snippets de código"/>
 
-                    <TextBlock Name="TxtExecutionStatus" Grid.Column="1" Text="" 
-                               VerticalAlignment="Center" Margin="12,0" Foreground="#8b9cb3" FontSize="11"
-                               MaxWidth="200" TextTrimming="CharacterEllipsis"
-                               AutomationProperties.LiveSetting="Polite"/>
+                    <Border Width="1" Height="18" Background="#1e2d42" Margin="2,2,8,2" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" Margin="0,2,8,2">
+                        <TextBlock Text="⚡ Limit:" VerticalAlignment="Center" Foreground="#8b9cb3" FontSize="11"/>
+                        <ComboBox Name="ComboAutoLimit" SelectedIndex="2" FontSize="11" Height="26" VerticalAlignment="Center"
+                                  Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42">
+                            <ComboBoxItem Content="100"/>
+                            <ComboBoxItem Content="500"/>
+                            <ComboBoxItem Content="1.000"/>
+                            <ComboBoxItem Content="5.000"/>
+                            <ComboBoxItem Content="Sem Limite"/>
+                        </ComboBox>
+                    </StackPanel>
 
-                    <Button Name="BtnExportData" Grid.Column="2" Content="{DynamicResource Query.Export}" 
-                            Classes="btn-secondary" Padding="10,5" FontSize="11"
+                    <Button Name="BtnExportData" Content="{DynamicResource Query.Export}" 
+                            Classes="btn-secondary" Padding="10,5" FontSize="11" Margin="0,2,6,2"
                             AutomationProperties.Name="{DynamicResource A11y.ExportResults}"/>
-                </Grid>
+
+                    <TextBlock Name="TxtExecutionStatus" Text="" 
+                               VerticalAlignment="Center" Margin="8,2" Foreground="#8b9cb3" FontSize="11"
+                               MaxWidth="320" TextTrimming="CharacterEllipsis"
+                               AutomationProperties.LiveSetting="Polite"/>
+                </WrapPanel>
             </Border>
 
             <!-- Modern AvaloniaEdit SQL Text Editor with line numbers and syntax highlighting -->
@@ -79,24 +93,20 @@
         <Grid Grid.Row="2" RowDefinitions="Auto,*" Background="#090d14">
             <!-- Result Tabs Header -->
             <Border Grid.Row="0" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="10,4">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
-                        <Button Name="BtnTabResults" Content="📊 Resultados" Classes="btn-secondary" Padding="12,4" FontSize="11"
-                                AutomationProperties.Name="Exibir Resultados em Tabela"/>
-                        <Button Name="BtnTabChart" Content="📈 Gráfico" Classes="btn-outline" Padding="12,4" FontSize="11"
-                                AutomationProperties.Name="Exibir Gráfico"/>
-                        <Button Name="BtnTabExplain" Content="⚡ Plano de Execução (Explain)" Classes="btn-outline" Padding="12,4" FontSize="11"
-                                AutomationProperties.Name="Exibir Plano de Execução Explain"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-                        <Button Name="BtnToggleQueryFilters" Content="🔍 Filtros por Coluna" Classes="btn-outline" Padding="10,4" FontSize="11"
-                                AutomationProperties.Name="Alternar Barra de Filtros por Coluna"
-                                ToolTip.Tip="Exibir ou ocultar a barra de filtros rápidos por coluna dos resultados"/>
-                        <Button Name="BtnToggleInspector" Content="🔬 Inspetor de Linha" Classes="btn-outline" Padding="10,4" FontSize="11"
-                                AutomationProperties.Name="Alternar Inspetor de Linha"
-                                ToolTip.Tip="Inspecionar valores JSON, TEXT longos e BLOB da linha selecionada"/>
-                    </StackPanel>
-                </Grid>
+                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Name="BtnTabResults" Content="📊 Resultados" Classes="btn-secondary" Padding="12,4" FontSize="11" Margin="0,2,6,2"
+                            AutomationProperties.Name="Exibir Resultados em Tabela"/>
+                    <Button Name="BtnTabChart" Content="📈 Gráfico" Classes="btn-outline" Padding="12,4" FontSize="11" Margin="0,2,6,2"
+                            AutomationProperties.Name="Exibir Gráfico"/>
+                    <Button Name="BtnTabExplain" Content="⚡ Plano de Execução (Explain)" Classes="btn-outline" Padding="12,4" FontSize="11" Margin="0,2,10,2"
+                            AutomationProperties.Name="Exibir Plano de Execução Explain"/>
+                    <Button Name="BtnToggleQueryFilters" Content="🔍 Filtros por Coluna" Classes="btn-outline" Padding="10,4" FontSize="11" Margin="0,2,6,2"
+                            AutomationProperties.Name="Alternar Barra de Filtros por Coluna"
+                            ToolTip.Tip="Exibir ou ocultar a barra de filtros rápidos por coluna dos resultados"/>
+                    <Button Name="BtnToggleInspector" Content="🔬 Inspetor de Linha" Classes="btn-outline" Padding="10,4" FontSize="11" Margin="0,2,6,2"
+                            AutomationProperties.Name="Alternar Inspetor de Linha"
+                            ToolTip.Tip="Inspecionar valores JSON, TEXT longos e BLOB da linha selecionada"/>
+                </WrapPanel>
             </Border>
 
             <!-- Tab 1: GridResults + Inspector Drawer -->
