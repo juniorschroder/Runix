@@ -243,27 +243,33 @@ public class ErdCanvasControl : Panel
     {
         if (_graph.Nodes.Count == 0) return;
 
-        // Capturar posições iniciais
-        var startNodes = _graph.Nodes.ToDictionary(n => n.TableName, n => (n.X, n.Y), StringComparer.OrdinalIgnoreCase);
-        var startAreas = _graph.SubjectAreas.ToDictionary(a => a.Id, a => (a.X, a.Y, a.Width, a.Height));
+        // Capturar posições iniciais por referência de objeto para evitar colisões
+        var startNodes = new Dictionary<ErdTableNode, (double X, double Y)>(ReferenceEqualityComparer.Instance);
+        foreach (var n in _graph.Nodes) startNodes[n] = (n.X, n.Y);
+
+        var startAreas = new Dictionary<SubjectAreaModel, (double X, double Y, double Width, double Height)>(ReferenceEqualityComparer.Instance);
+        foreach (var a in _graph.SubjectAreas) startAreas[a] = (a.X, a.Y, a.Width, a.Height);
 
         // Calcular layout alvo via Sugiyama
         var engine = new SugiyamaHierarchicalLayoutEngine();
         engine.ArrangeLayout(_graph, options);
 
-        var targetNodes = _graph.Nodes.ToDictionary(n => n.TableName, n => (n.X, n.Y), StringComparer.OrdinalIgnoreCase);
-        var targetAreas = _graph.SubjectAreas.ToDictionary(a => a.Id, a => (a.X, a.Y, a.Width, a.Height));
+        var targetNodes = new Dictionary<ErdTableNode, (double X, double Y)>(ReferenceEqualityComparer.Instance);
+        foreach (var n in _graph.Nodes) targetNodes[n] = (n.X, n.Y);
+
+        var targetAreas = new Dictionary<SubjectAreaModel, (double X, double Y, double Width, double Height)>(ReferenceEqualityComparer.Instance);
+        foreach (var a in _graph.SubjectAreas) targetAreas[a] = (a.X, a.Y, a.Width, a.Height);
 
         // Restaurar posições de partida para animar suavemente
         foreach (var n in _graph.Nodes)
         {
-            var (sx, sy) = startNodes[n.TableName];
+            var (sx, sy) = startNodes[n];
             n.X = sx;
             n.Y = sy;
         }
         foreach (var a in _graph.SubjectAreas)
         {
-            var (sx, sy, sw, sh) = startAreas[a.Id];
+            var (sx, sy, sw, sh) = startAreas[a];
             a.X = sx;
             a.Y = sy;
             a.Width = sw;
@@ -287,16 +293,16 @@ public class ErdCanvasControl : Panel
 
             foreach (var n in _graph.Nodes)
             {
-                var (sx, sy) = startNodes[n.TableName];
-                var (tx, ty) = targetNodes[n.TableName];
+                var (sx, sy) = startNodes[n];
+                var (tx, ty) = targetNodes[n];
                 n.X = sx + ((tx - sx) * ease);
                 n.Y = sy + ((ty - sy) * ease);
             }
 
             foreach (var a in _graph.SubjectAreas)
             {
-                var (sx, sy, sw, sh) = startAreas[a.Id];
-                var (tx, ty, tw, th) = targetAreas[a.Id];
+                var (sx, sy, sw, sh) = startAreas[a];
+                var (tx, ty, tw, th) = targetAreas[a];
                 a.X = sx + ((tx - sx) * ease);
                 a.Y = sy + ((ty - sy) * ease);
                 a.Width = sw + ((tw - sw) * ease);
@@ -310,13 +316,13 @@ public class ErdCanvasControl : Panel
                 timer.Stop();
                 foreach (var n in _graph.Nodes)
                 {
-                    var (tx, ty) = targetNodes[n.TableName];
+                    var (tx, ty) = targetNodes[n];
                     n.X = tx;
                     n.Y = ty;
                 }
                 foreach (var a in _graph.SubjectAreas)
                 {
-                    var (tx, ty, tw, th) = targetAreas[a.Id];
+                    var (tx, ty, tw, th) = targetAreas[a];
                     a.X = tx;
                     a.Y = ty;
                     a.Width = tw;
@@ -620,10 +626,14 @@ public class ErdCanvasControl : Panel
             // Pré-indexar nós e colunas para lookup O(1)
             foreach (var node in graph.Nodes)
             {
-                _nodeLookup[node.TableName] = node;
+                _nodeLookup[node.NodeKey] = node;
+                _nodeLookup.TryAdd(node.TableName, node);
+
                 for (int i = 0; i < node.Columns.Count; i++)
                 {
-                    _colIndexLookup[(node.TableName.ToLowerInvariant(), node.Columns[i].Name.ToLowerInvariant())] = i;
+                    var colLower = node.Columns[i].Name.ToLowerInvariant();
+                    _colIndexLookup[(node.NodeKey.ToLowerInvariant(), colLower)] = i;
+                    _colIndexLookup.TryAdd((node.TableName.ToLowerInvariant(), colLower), i);
                 }
             }
 
@@ -653,7 +663,8 @@ public class ErdCanvasControl : Panel
             foreach (var node in graph.Nodes)
             {
                 var card = CreateTableCard(node, fkSet);
-                _nodeCards[node.TableName] = card;
+                _nodeCards[node.NodeKey] = card;
+                _nodeCards.TryAdd(node.TableName, card);
                 SetLeft(card, node.X);
                 SetTop(card, node.Y);
                 elementsToAdd.Add(card);
@@ -922,7 +933,7 @@ public class ErdCanvasControl : Panel
 
             var titleText = new TextBlock
             {
-                Text = node.TableName,
+                Text = node.DisplayName,
                 FontWeight = FontWeight.Bold,
                 FontSize = 13,
                 Foreground = TableTitleFgBrush,

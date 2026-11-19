@@ -59,7 +59,6 @@ public class SugiyamaHierarchicalLayoutEngine : IGraphLayoutEngine
     /// </summary>
     private void ArrangeClusteredLayout(ErdGraphModel graph, GraphLayoutOptions opt)
     {
-        var nodeMap = graph.Nodes.ToDictionary(n => n.TableName, StringComparer.OrdinalIgnoreCase);
         var assignedNodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         // Agrupar nós por Subject Area
@@ -69,16 +68,16 @@ public class SugiyamaHierarchicalLayoutEngine : IGraphLayoutEngine
             var clusterNodes = new List<ErdTableNode>();
             foreach (var node in graph.Nodes)
             {
-                if (assignedNodes.Contains(node.TableName)) continue;
+                if (assignedNodes.Contains(node.NodeKey)) continue;
 
                 bool belongsToArea = area.TableNames.Count > 0
-                    ? area.TableNames.Contains(node.TableName)
+                    ? area.TableNames.Contains(node.NodeKey) || area.TableNames.Contains(node.TableName)
                     : area.ContainsTableCenter(node);
 
                 if (belongsToArea)
                 {
                     clusterNodes.Add(node);
-                    assignedNodes.Add(node.TableName);
+                    assignedNodes.Add(node.NodeKey);
                 }
             }
 
@@ -89,7 +88,7 @@ public class SugiyamaHierarchicalLayoutEngine : IGraphLayoutEngine
         }
 
         // Tabelas não vinculadas a nenhuma Subject Area
-        var unassignedNodes = graph.Nodes.Where(n => !assignedNodes.Contains(n.TableName)).ToList();
+        var unassignedNodes = graph.Nodes.Where(n => !assignedNodes.Contains(n.NodeKey)).ToList();
 
         double currentX = opt.MarginX;
         double currentY = opt.MarginY;
@@ -100,9 +99,11 @@ public class SugiyamaHierarchicalLayoutEngine : IGraphLayoutEngine
         foreach (var (area, clusterNodes) in areaClusters)
         {
             // Sub-relacionamentos internos deste domínio
+            var clusterKeys = new HashSet<string>(clusterNodes.Select(n => n.NodeKey), StringComparer.OrdinalIgnoreCase);
             var clusterNames = new HashSet<string>(clusterNodes.Select(n => n.TableName), StringComparer.OrdinalIgnoreCase);
             var internalRels = graph.Relationships
-                .Where(r => clusterNames.Contains(r.SourceTable) && clusterNames.Contains(r.TargetTable))
+                .Where(r => (clusterKeys.Contains(r.SourceTable) || clusterNames.Contains(r.SourceTable)) &&
+                            (clusterKeys.Contains(r.TargetTable) || clusterNames.Contains(r.TargetTable)))
                 .ToList();
 
             // Layout local do subgrafo começando em (0, 0)
@@ -134,7 +135,7 @@ public class SugiyamaHierarchicalLayoutEngine : IGraphLayoutEngine
             {
                 node.X += innerOffsetX;
                 node.Y += innerOffsetY;
-                area.AddTable(node.TableName);
+                area.AddTable(node.NodeKey);
             }
 
             currentX += area.Width + opt.DomainSpacing;
@@ -144,9 +145,11 @@ public class SugiyamaHierarchicalLayoutEngine : IGraphLayoutEngine
         // 2. Organizar e posicionar tabelas avulsas (unassigned)
         if (unassignedNodes.Count > 0)
         {
+            var unassignedKeys = new HashSet<string>(unassignedNodes.Select(n => n.NodeKey), StringComparer.OrdinalIgnoreCase);
             var unassignedNames = new HashSet<string>(unassignedNodes.Select(n => n.TableName), StringComparer.OrdinalIgnoreCase);
             var unassignedRels = graph.Relationships
-                .Where(r => unassignedNames.Contains(r.SourceTable) && unassignedNames.Contains(r.TargetTable))
+                .Where(r => (unassignedKeys.Contains(r.SourceTable) || unassignedNames.Contains(r.SourceTable)) &&
+                            (unassignedKeys.Contains(r.TargetTable) || unassignedNames.Contains(r.TargetTable)))
                 .ToList();
 
             // Se já posicionamos áreas, colocar as tabelas avulsas em uma nova linha ou ao lado
@@ -181,18 +184,22 @@ public class SugiyamaHierarchicalLayoutEngine : IGraphLayoutEngine
             return (single.Width, single.Height);
         }
 
-        var nodeNames = nodes.Select(n => n.TableName).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
-        var nodeMap = nodes.ToDictionary(n => n.TableName, StringComparer.OrdinalIgnoreCase);
-        var nodeNameSet = new HashSet<string>(nodeNames, StringComparer.OrdinalIgnoreCase);
+        var nodeKeys = nodes.Select(n => n.NodeKey).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+        var nodeByKey = new Dictionary<string, ErdTableNode>(StringComparer.OrdinalIgnoreCase);
+        foreach (var n in nodes)
+        {
+            nodeByKey[n.NodeKey] = n;
+            nodeByKey.TryAdd(n.TableName, n);
+        }
 
         // FASE 1: Construir grafo de adjacências e quebrar ciclos com 3-Color DFS FAS
         // Na semântica relacional, se SourceTable tem FK apontando para TargetTable,
         // TargetTable é o Pai (independente) e SourceTable é o Filho (dependente).
         // Fluxo top-down: TargetTable -> SourceTable
         var forwardAdj = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
-        foreach (var name in nodeNames)
+        foreach (var key in nodeKeys)
         {
-            forwardAdj[name] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            forwardAdj[key] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         }
 
         foreach (var rel in relationships)
@@ -201,70 +208,88 @@ public class SugiyamaHierarchicalLayoutEngine : IGraphLayoutEngine
             if (string.Equals(rel.SourceTable, rel.TargetTable, StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            if (nodeNameSet.Contains(rel.SourceTable) && nodeNameSet.Contains(rel.TargetTable))
+            if (nodeByKey.TryGetValue(rel.SourceTable, out var srcNode) &&
+                nodeByKey.TryGetValue(rel.TargetTable, out var tgtNode))
             {
-                // Aresta pai -> filho
-                forwardAdj[rel.TargetTable].Add(rel.SourceTable);
+                var srcKey = srcNode.NodeKey;
+                var tgtKey = tgtNode.NodeKey;
+                if (!string.Equals(srcKey, tgtKey, StringComparison.OrdinalIgnoreCase) &&
+                    forwardAdj.TryGetValue(tgtKey, out var adj))
+                {
+                    // Aresta pai -> filho
+                    adj.Add(srcKey);
+                }
             }
         }
 
         // 3-Color DFS: 0 = White (não visitado), 1 = Gray (na pilha de recursão), 2 = Black (finalizado)
         var color = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        foreach (var name in nodeNames) color[name] = 0;
+        foreach (var key in nodeKeys) color[key] = 0;
 
         var dagEdges = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
-        foreach (var name in nodeNames) dagEdges[name] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var key in nodeKeys) dagEdges[key] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         void Dfs(string u)
         {
             color[u] = 1; // Gray
-            foreach (var v in forwardAdj[u].OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+            if (forwardAdj.TryGetValue(u, out var adjSet))
             {
-                if (color[v] == 1)
+                foreach (var v in adjSet.OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
                 {
-                    // Back-edge detectada (ciclo)! Reverter ou ignorar da topologia DAG
-                    // Invertemos temporariamente para manter dependência sem ciclo
-                    dagEdges[v].Add(u);
-                }
-                else
-                {
-                    dagEdges[u].Add(v);
-                    if (color[v] == 0)
+                    if (color.TryGetValue(v, out var vColor) && vColor == 1)
                     {
-                        Dfs(v);
+                        // Back-edge detectada (ciclo)! Reverter ou ignorar da topologia DAG
+                        if (dagEdges.TryGetValue(v, out var revEdges))
+                        {
+                            revEdges.Add(u);
+                        }
+                    }
+                    else
+                    {
+                        if (dagEdges.TryGetValue(u, out var uEdges))
+                        {
+                            uEdges.Add(v);
+                        }
+                        if (vColor == 0)
+                        {
+                            Dfs(v);
+                        }
                     }
                 }
             }
             color[u] = 2; // Black
         }
 
-        foreach (var name in nodeNames)
+        foreach (var key in nodeKeys)
         {
-            if (color[name] == 0)
+            if (color.TryGetValue(key, out var c) && c == 0)
             {
-                Dfs(name);
+                Dfs(key);
             }
         }
 
         // FASE 2: Layering / Rank Assignment (Atribuição de Camadas via Longest Path em DAG)
         var inDegree = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        foreach (var name in nodeNames) inDegree[name] = 0;
+        foreach (var key in nodeKeys) inDegree[key] = 0;
 
         foreach (var kvp in dagEdges)
         {
             foreach (var target in kvp.Value)
             {
-                inDegree[target]++;
+                if (inDegree.ContainsKey(target))
+                {
+                    inDegree[target]++;
+                }
             }
         }
 
         var rankMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        foreach (var name in nodeNames) rankMap[name] = 0;
+        foreach (var key in nodeKeys) rankMap[key] = 0;
 
         var queue = new Queue<string>();
-        foreach (var name in nodeNames.Where(n => inDegree[n] == 0).OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
+        foreach (var key in nodeKeys.Where(k => inDegree.TryGetValue(k, out var d) && d == 0).OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
         {
-            queue.Enqueue(name);
+            queue.Enqueue(key);
         }
 
         int processedCount = 0;
@@ -272,25 +297,34 @@ public class SugiyamaHierarchicalLayoutEngine : IGraphLayoutEngine
         {
             var u = queue.Dequeue();
             processedCount++;
-            int currentRank = rankMap[u];
+            int currentRank = rankMap.TryGetValue(u, out var rk) ? rk : 0;
 
-            foreach (var v in dagEdges[u])
+            if (dagEdges.TryGetValue(u, out var edges))
             {
-                rankMap[v] = Math.Max(rankMap[v], currentRank + 1);
-                inDegree[v]--;
-                if (inDegree[v] == 0)
+                foreach (var v in edges)
                 {
-                    queue.Enqueue(v);
+                    if (rankMap.ContainsKey(v))
+                    {
+                        rankMap[v] = Math.Max(rankMap[v], currentRank + 1);
+                    }
+                    if (inDegree.ContainsKey(v))
+                    {
+                        inDegree[v]--;
+                        if (inDegree[v] == 0)
+                        {
+                            queue.Enqueue(v);
+                        }
+                    }
                 }
             }
         }
 
         // Se sobraram nós (devido a arestas reversas secundárias), garantir rank válido
-        if (processedCount < nodeNames.Count)
+        if (processedCount < nodeKeys.Count)
         {
-            foreach (var name in nodeNames.Where(n => !rankMap.ContainsKey(n)))
+            foreach (var key in nodeKeys.Where(k => !rankMap.ContainsKey(k)))
             {
-                rankMap[name] = 0;
+                rankMap[key] = 0;
             }
         }
 
@@ -298,7 +332,7 @@ public class SugiyamaHierarchicalLayoutEngine : IGraphLayoutEngine
         var layers = new SortedDictionary<int, List<ErdTableNode>>();
         foreach (var node in nodes)
         {
-            int r = rankMap[node.TableName];
+            int r = rankMap.TryGetValue(node.NodeKey, out var val) ? val : 0;
             if (!layers.TryGetValue(r, out var layerList))
             {
                 layerList = new List<ErdTableNode>();
@@ -310,24 +344,31 @@ public class SugiyamaHierarchicalLayoutEngine : IGraphLayoutEngine
         // Ordenar nós inicialmente por nome dentro da camada
         foreach (var layer in layers.Values)
         {
-            layer.Sort((a, b) => string.Compare(a.TableName, b.TableName, StringComparison.OrdinalIgnoreCase));
+            layer.Sort((a, b) => string.Compare(a.DisplayName, b.DisplayName, StringComparison.OrdinalIgnoreCase));
         }
 
         // FASE 3: Crossing Reduction (Heurística Baricêntrica de Cruzamento)
         // Mapear relacionamentos bidirecionais locais para cálculo de vizinhos
         var neighbors = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
-        foreach (var name in nodeNames) neighbors[name] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var key in nodeKeys) neighbors[key] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var rel in relationships)
         {
-            if (nodeNameSet.Contains(rel.SourceTable) && nodeNameSet.Contains(rel.TargetTable) &&
-                !string.Equals(rel.SourceTable, rel.TargetTable, StringComparison.OrdinalIgnoreCase))
+            if (nodeByKey.TryGetValue(rel.SourceTable, out var srcNode) &&
+                nodeByKey.TryGetValue(rel.TargetTable, out var tgtNode))
             {
-                neighbors[rel.SourceTable].Add(rel.TargetTable);
-                neighbors[rel.TargetTable].Add(rel.SourceTable);
+                var srcKey = srcNode.NodeKey;
+                var tgtKey = tgtNode.NodeKey;
+                if (!string.Equals(srcKey, tgtKey, StringComparison.OrdinalIgnoreCase) &&
+                    neighbors.TryGetValue(srcKey, out var srcNbrs) &&
+                    neighbors.TryGetValue(tgtKey, out var tgtNbrs))
+                {
+                    srcNbrs.Add(tgtKey);
+                    tgtNbrs.Add(srcKey);
+                }
             }
         }
 
-        int maxRank = layers.Keys.Max();
+        int maxRank = layers.Keys.Count > 0 ? layers.Keys.Max() : 0;
         // 2 varreduras (downward e upward)
         for (int iter = 0; iter < 2; iter++)
         {
@@ -338,16 +379,18 @@ public class SugiyamaHierarchicalLayoutEngine : IGraphLayoutEngine
 
                 var prevLayer = layers[r - 1];
                 var prevPos = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-                for (int i = 0; i < prevLayer.Count; i++) prevPos[prevLayer[i].TableName] = i;
+                for (int i = 0; i < prevLayer.Count; i++) prevPos[prevLayer[i].NodeKey] = i;
 
                 layers[r] = layers[r]
                     .OrderBy(node =>
                     {
-                        var connected = neighbors[node.TableName].Where(prevPos.ContainsKey).ToList();
+                        var connected = neighbors.TryGetValue(node.NodeKey, out var nbrs)
+                            ? nbrs.Where(prevPos.ContainsKey).ToList()
+                            : new List<string>();
                         if (connected.Count == 0) return 0.0;
                         return connected.Average(c => prevPos[c]);
                     })
-                    .ThenBy(node => node.TableName, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(node => node.DisplayName, StringComparer.OrdinalIgnoreCase)
                     .ToList();
             }
 
@@ -358,16 +401,18 @@ public class SugiyamaHierarchicalLayoutEngine : IGraphLayoutEngine
 
                 var nextLayer = layers[r + 1];
                 var nextPos = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-                for (int i = 0; i < nextLayer.Count; i++) nextPos[nextLayer[i].TableName] = i;
+                for (int i = 0; i < nextLayer.Count; i++) nextPos[nextLayer[i].NodeKey] = i;
 
                 layers[r] = layers[r]
                     .OrderBy(node =>
                     {
-                        var connected = neighbors[node.TableName].Where(nextPos.ContainsKey).ToList();
+                        var connected = neighbors.TryGetValue(node.NodeKey, out var nbrs)
+                            ? nbrs.Where(nextPos.ContainsKey).ToList()
+                            : new List<string>();
                         if (connected.Count == 0) return 0.0;
                         return connected.Average(c => nextPos[c]);
                     })
-                    .ThenBy(node => node.TableName, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(node => node.DisplayName, StringComparer.OrdinalIgnoreCase)
                     .ToList();
             }
         }

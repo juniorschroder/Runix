@@ -28,8 +28,12 @@ public static class SchemaDiffEngine
             TargetSnapshot = tgt
         };
 
-        var srcTables = src.Tables.ToDictionary(t => t.Name, StringComparer.OrdinalIgnoreCase);
-        var tgtTables = tgt.Tables.ToDictionary(t => t.Name, StringComparer.OrdinalIgnoreCase);
+        var srcTables = src.Tables
+            .GroupBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+        var tgtTables = tgt.Tables
+            .GroupBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
         var allTableNames = new HashSet<string>(srcTables.Keys, StringComparer.OrdinalIgnoreCase);
         allTableNames.UnionWith(tgtTables.Keys);

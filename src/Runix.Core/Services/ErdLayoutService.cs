@@ -69,10 +69,17 @@ public static class ErdLayoutService
             var safeName = SanitizeFileName(databaseId) + ".json";
             var filePath = Path.Combine(LayoutsDir, safeName);
 
+            var nodesDict = new Dictionary<string, NodeCoordinates>(StringComparer.OrdinalIgnoreCase);
+            foreach (var n in graph.Nodes)
+            {
+                nodesDict[n.NodeKey] = new NodeCoordinates { X = n.X, Y = n.Y };
+                nodesDict.TryAdd(n.TableName, new NodeCoordinates { X = n.X, Y = n.Y });
+            }
+
             var envelope = new DiagramLayoutEnvelope
             {
                 Version = 2,
-                Nodes = graph.Nodes.ToDictionary(n => n.TableName, n => new NodeCoordinates { X = n.X, Y = n.Y }, StringComparer.OrdinalIgnoreCase),
+                Nodes = nodesDict,
                 SubjectAreas = graph.SubjectAreas ?? new List<SubjectAreaModel>()
             };
 
@@ -110,7 +117,8 @@ public static class ErdLayoutService
                         {
                             foreach (var node in graph.Nodes)
                             {
-                                if (envelope.Nodes.TryGetValue(node.TableName, out var coord))
+                                if (envelope.Nodes.TryGetValue(node.NodeKey, out var coord) ||
+                                    envelope.Nodes.TryGetValue(node.TableName, out coord))
                                 {
                                     node.X = coord.X;
                                     node.Y = coord.Y;
@@ -134,7 +142,8 @@ public static class ErdLayoutService
             {
                 foreach (var node in graph.Nodes)
                 {
-                    if (legacyDict.TryGetValue(node.TableName, out var coord))
+                    if (legacyDict.TryGetValue(node.NodeKey, out var coord) ||
+                        legacyDict.TryGetValue(node.TableName, out coord))
                     {
                         node.X = coord.X;
                         node.Y = coord.Y;

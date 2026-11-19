@@ -73,8 +73,11 @@ public class TableSchemaDiff
         diff.OriginalTableName = original.TableName;
         diff.OriginalColumns = original.Columns.ToList();
 
-        var originalDict = original.Columns.ToDictionary(c => c.Name, StringComparer.OrdinalIgnoreCase);
-        var modifiedDict = modified.Columns.ToDictionary(c => c.Name, StringComparer.OrdinalIgnoreCase);
+        var originalDict = new Dictionary<string, ColumnInfo>(StringComparer.OrdinalIgnoreCase);
+        foreach (var c in original.Columns) originalDict[c.Name] = c;
+
+        var modifiedDict = new Dictionary<string, ColumnInfo>(StringComparer.OrdinalIgnoreCase);
+        foreach (var c in modified.Columns) modifiedDict[c.Name] = c;
 
         // Colunas Adicionadas
         foreach (var modCol in modified.Columns)

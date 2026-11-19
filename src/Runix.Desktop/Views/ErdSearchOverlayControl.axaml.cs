@@ -84,13 +84,15 @@ public partial class ErdSearchOverlayControl : UserControl
         foreach (var node in _graph.Nodes)
         {
             // Table item
-            if (string.IsNullOrEmpty(q) || node.TableName.Contains(q, StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrEmpty(q) ||
+                node.DisplayName.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                node.TableName.Contains(q, StringComparison.OrdinalIgnoreCase))
             {
                 allItems.Add(new ErdSearchItem
                 {
                     Type = ErdSearchItemType.Table,
-                    TableName = node.TableName,
-                    DisplayText = node.TableName,
+                    TableName = node.NodeKey,
+                    DisplayText = node.DisplayName,
                     SecondaryText = $"{node.Columns.Count} colunas"
                 });
             }
@@ -98,15 +100,16 @@ public partial class ErdSearchOverlayControl : UserControl
             // Columns
             foreach (var col in node.Columns)
             {
-                var fullColName = $"{node.TableName}.{col.Name}";
+                var fullColName = $"{node.DisplayName}.{col.Name}";
                 if (string.IsNullOrEmpty(q) ||
                     col.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
-                    fullColName.Contains(q, StringComparison.OrdinalIgnoreCase))
+                    fullColName.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                    $"{node.TableName}.{col.Name}".Contains(q, StringComparison.OrdinalIgnoreCase))
                 {
                     allItems.Add(new ErdSearchItem
                     {
                         Type = ErdSearchItemType.Column,
-                        TableName = node.TableName,
+                        TableName = node.NodeKey,
                         ColumnName = col.Name,
                         DisplayText = fullColName,
                         SecondaryText = col.DataType

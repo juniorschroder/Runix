@@ -248,4 +248,102 @@ public class SugiyamaHierarchicalLayoutEngineTests
 
         Assert.True(parent.Y < child.Y, "ErdLayoutService deve aplicar ordenação hierárquica Sugiyama");
     }
+
+    [Fact]
+    public void ArrangeLayout_DuplicateTableNamesAcrossSchemas_DoesNotThrowAndArrangesBoth()
+    {
+        var graph = new ErdGraphModel();
+        var publicUsers = new ErdTableNode
+        {
+            Table = new TableInfo { Name = "users", Schema = "public" },
+            Width = 240
+        };
+        var auditUsers = new ErdTableNode
+        {
+            Table = new TableInfo { Name = "users", Schema = "audit" },
+            Width = 240
+        };
+
+        graph.Nodes.Add(publicUsers);
+        graph.Nodes.Add(auditUsers);
+
+        graph.Relationships.Add(new ErdRelationshipLink
+        {
+            SourceTable = "audit.users",
+            SourceColumn = "user_id",
+            TargetTable = "users",
+            TargetColumn = "id"
+        });
+
+        // Não deve lançar System.ArgumentException: An item with the same key has already been added
+        var exception = Record.Exception(() => _engine.ArrangeLayout(graph));
+        Assert.Null(exception);
+
+        Assert.True(publicUsers.X >= 0);
+        Assert.True(publicUsers.Y >= 0);
+        Assert.True(auditUsers.X >= 0);
+        Assert.True(auditUsers.Y >= 0);
+    }
+
+    [Fact]
+    public void ArrangeLayout_DuplicateTableNamesSameSchema_DoesNotThrow()
+    {
+        var graph = new ErdGraphModel();
+        var node1 = new ErdTableNode
+        {
+            Table = new TableInfo { Name = "orders", Schema = "public" },
+            Width = 240
+        };
+        var node2 = new ErdTableNode
+        {
+            Table = new TableInfo { Name = "orders", Schema = "public" },
+            Width = 240
+        };
+
+        graph.Nodes.Add(node1);
+        graph.Nodes.Add(node2);
+
+        var exception = Record.Exception(() => _engine.ArrangeLayout(graph));
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void ErdLayoutService_SaveAndLoad_DuplicateTableNamesAcrossSchemas_DoesNotThrow()
+    {
+        var graph = new ErdGraphModel();
+        var publicUsers = new ErdTableNode
+        {
+            Table = new TableInfo { Name = "users", Schema = "public" },
+            X = 120,
+            Y = 150,
+            Width = 240
+        };
+        var auditUsers = new ErdTableNode
+        {
+            Table = new TableInfo { Name = "users", Schema = "audit" },
+            X = 400,
+            Y = 450,
+            Width = 240
+        };
+
+        graph.Nodes.Add(publicUsers);
+        graph.Nodes.Add(auditUsers);
+
+        string dbId = "test_duplicate_keys_" + Guid.NewGuid().ToString("N");
+
+        var saveEx = Record.Exception(() => ErdLayoutService.SaveLayout(dbId, graph));
+        Assert.Null(saveEx);
+
+        // Reset positions
+        publicUsers.X = 0;
+        publicUsers.Y = 0;
+        auditUsers.X = 0;
+        auditUsers.Y = 0;
+
+        var loadEx = Record.Exception(() => ErdLayoutService.LoadLayout(dbId, graph));
+        Assert.Null(loadEx);
+
+        Assert.Equal(120, publicUsers.X);
+        Assert.Equal(150, publicUsers.Y);
+    }
 }

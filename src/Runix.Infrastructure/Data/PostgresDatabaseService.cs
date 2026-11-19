@@ -886,24 +886,23 @@ public class PostgresDatabaseService : IDatabaseService
                     DefaultValue = defVal
                 };
 
-                // Index by raw table name
-                if (!result.TryGetValue(tblName, out var list))
+                var qualName = $"{schema}.{tblName}";
+                if (!result.TryGetValue(qualName, out var qualList))
                 {
-                    list = new List<ColumnInfo>();
-                    result[tblName] = list;
+                    qualList = new List<ColumnInfo>();
+                    result[qualName] = qualList;
                 }
-                list.Add(colInfo);
+                qualList.Add(colInfo);
 
-                // Index by schema-qualified name if not public
-                if (schema != "public")
+                // Index by raw table name if not yet indexed or if public schema
+                if (schema == "public" || !result.ContainsKey(tblName))
                 {
-                    var qualName = $"{schema}.{tblName}";
-                    if (!result.TryGetValue(qualName, out var qualList))
+                    if (!result.TryGetValue(tblName, out var list))
                     {
-                        qualList = new List<ColumnInfo>();
-                        result[qualName] = qualList;
+                        list = new List<ColumnInfo>();
+                        result[tblName] = list;
                     }
-                    qualList.Add(colInfo);
+                    list.Add(colInfo);
                 }
             }
         }
@@ -951,8 +950,11 @@ public class PostgresDatabaseService : IDatabaseService
         var tableColumns = new Dictionary<string, List<ColumnInfo>>(StringComparer.OrdinalIgnoreCase);
         foreach (var table in tablesOnly)
         {
+            var qualName = $"{table.Schema}.{table.Name}";
             List<ColumnInfo> cols;
-            if (allColumnsMap.TryGetValue(table.Name, out var foundCols))
+            if (allColumnsMap.TryGetValue(qualName, out var foundCols) ||
+                allColumnsMap.TryGetValue(table.DisplayName, out foundCols) ||
+                allColumnsMap.TryGetValue(table.Name, out foundCols))
             {
                 cols = foundCols;
             }
@@ -965,10 +967,14 @@ public class PostgresDatabaseService : IDatabaseService
                 }
             }
             tableColumns[table.Name] = cols;
+            tableColumns[qualName] = cols;
+            tableColumns[table.DisplayName] = cols;
 
             // Correlate foreign key flags in columns
             List<ForeignKeyInfo>? tableFks = null;
-            if (fksByTable.TryGetValue(table.Name, out var foundFks))
+            if (fksByTable.TryGetValue(qualName, out var foundFks) ||
+                fksByTable.TryGetValue(table.DisplayName, out foundFks) ||
+                fksByTable.TryGetValue(table.Name, out foundFks))
             {
                 tableFks = foundFks;
             }

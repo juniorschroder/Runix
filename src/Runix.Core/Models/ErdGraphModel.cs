@@ -14,7 +14,9 @@ public class ErdGraphModel
 
     public ErdTableNode? FindNode(string tableName)
     {
-        return Nodes.FirstOrDefault(n => string.Equals(n.TableName, tableName, System.StringComparison.OrdinalIgnoreCase));
+        return Nodes.FirstOrDefault(n => string.Equals(n.NodeKey, tableName, System.StringComparison.OrdinalIgnoreCase)
+                                      || string.Equals(n.TableName, tableName, System.StringComparison.OrdinalIgnoreCase)
+                                      || string.Equals(n.DisplayName, tableName, System.StringComparison.OrdinalIgnoreCase));
     }
 
     public SubjectAreaModel? FindSubjectArea(string id)

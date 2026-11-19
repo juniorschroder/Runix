@@ -389,7 +389,7 @@ public class DatabaseBackupService : IDatabaseBackupService
             return tableNames ?? Array.Empty<string>();
 
         var tableSet = new HashSet<string>(tableNames, StringComparer.OrdinalIgnoreCase);
-        var canonicalName = tableNames.ToDictionary(t => t, t => t, StringComparer.OrdinalIgnoreCase);
+        var canonicalName = tableNames.Distinct(StringComparer.OrdinalIgnoreCase).ToDictionary(t => t, t => t, StringComparer.OrdinalIgnoreCase);
 
         // Graph: parent -> list of children that depend on parent
         var dependents = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);

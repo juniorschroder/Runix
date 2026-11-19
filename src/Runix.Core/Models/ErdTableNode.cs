@@ -14,6 +14,18 @@ public class ErdTableNode
     public string TableName => Table.Name;
     public string Schema => Table.Schema;
 
+    /// <summary>
+    /// Identificador único do nó no diagrama (ex: 'public.users' ou 'users').
+    /// </summary>
+    public string NodeKey => string.IsNullOrEmpty(Schema) || Schema.Equals("public", StringComparison.OrdinalIgnoreCase) || Schema.Equals("main", StringComparison.OrdinalIgnoreCase)
+        ? TableName
+        : $"{Schema}.{TableName}";
+
+    /// <summary>
+    /// Nome de exibição respeitando o schema quando aplicável (ex: 'audit.users' ou 'users').
+    /// </summary>
+    public string DisplayName => Table?.DisplayName ?? TableName;
+
     public double X { get; set; }
     public double Y { get; set; }
     public double Width { get; set; } = 250;
