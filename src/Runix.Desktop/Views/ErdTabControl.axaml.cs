@@ -183,6 +183,7 @@ public partial class ErdTabControl : UserControl, IDisposable
     public async Task ReloadGraphAsync()
     {
         BannerError.IsVisible = false;
+        PanelLoading.IsVisible = true;
         ProgressLoading.IsVisible = true;
         const int maxRetries = 3;
 
@@ -213,6 +214,7 @@ public partial class ErdTabControl : UserControl, IDisposable
         }
 
         ProgressLoading.IsVisible = false;
+        PanelLoading.IsVisible = false;
     }
 
     private async Task OnExportPngAsync()

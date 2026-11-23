@@ -157,6 +157,7 @@
     <sys:String x:Key="Erd.DdlPreview">GENERATED DDL PREVIEW</sys:String>
     <sys:String x:Key="Erd.ExecuteDdl">Execute &amp; Create Table</sys:String>
     <sys:String x:Key="Erd.TableCreatedSuccess">Table created successfully!</sys:String>
+    <sys:String x:Key="Erd.LoadingMessage">Loading diagram, this may take a few seconds...</sys:String>
 
     <!-- Data Import Wizard -->
     <sys:String x:Key="TableData.Import">Import 📥</sys:String>

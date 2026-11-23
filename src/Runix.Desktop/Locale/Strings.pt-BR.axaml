@@ -157,6 +157,7 @@
     <sys:String x:Key="Erd.DdlPreview">PRÉ-VISUALIZAÇÃO DDL GERADA</sys:String>
     <sys:String x:Key="Erd.ExecuteDdl">Executar e Criar Tabela</sys:String>
     <sys:String x:Key="Erd.TableCreatedSuccess">Tabela criada com sucesso!</sys:String>
+    <sys:String x:Key="Erd.LoadingMessage">Carregando diagrama, pode demorar alguns segundos...</sys:String>
 
     <!-- Data Import Wizard -->
     <sys:String x:Key="TableData.Import">Importar 📥</sys:String>
