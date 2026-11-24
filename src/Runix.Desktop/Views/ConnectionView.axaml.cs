@@ -13,6 +13,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
 using Runix.Core.Interfaces;
 using Runix.Core.Models;
+using Runix.Desktop.Models;
 using Runix.Desktop.Services;
 using Runix.Desktop.Views.Dialogs;
 using Runix.Infrastructure.Data;
@@ -26,6 +27,7 @@ public partial class ConnectionView : UserControl
     private List<ConnectionConfig> _savedConnections = new();
     private List<string> _customCategories = new();
     private readonly ObservableCollection<ConnectionCategoryGroup> _categoryGroups = new();
+    private List<DatabaseEngineOption> _engineOptions = new();
     private ConnectionConfig _currentConfig = new();
     private Point _dragStartPoint;
     private ConnectionConfig? _draggedConnection;
@@ -37,6 +39,7 @@ public partial class ConnectionView : UserControl
     {
         InitializeComponent();
         TreeSavedConnections.ItemsSource = _categoryGroups;
+        InitializeEngineOptions();
         SetupEvents();
         LoadSavedConnections();
         UpdateLanguageButton();
@@ -59,16 +62,14 @@ public partial class ConnectionView : UserControl
             UpdateLanguageButton();
             RebuildCategoryTree();
             RebuildCategoryFlyout();
+            RefreshEngineOptions();
         };
 
         CmbDatabaseEngine.SelectionChanged += (s, e) =>
         {
-            if (CmbDatabaseEngine.SelectedItem is ComboBoxItem item && item.Tag is string tag)
+            if (CmbDatabaseEngine.SelectedItem is DatabaseEngineOption option)
             {
-                if (Enum.TryParse<DatabaseType>(tag, true, out var parsedType))
-                {
-                    SwitchEngine(parsedType, fromDropdown: true);
-                }
+                SwitchEngine(option.Type, fromDropdown: true);
             }
         };
         BtnNewConnection.Click += (s, e) => CreateNewConnection();
@@ -457,22 +458,126 @@ public partial class ConnectionView : UserControl
         flyout.Items.Add(newCatItem);
     }
 
+    private void InitializeEngineOptions()
+    {
+        var app = Application.Current;
+        Geometry? getIcon(string key) => app?.FindResource(key) as Geometry;
+
+        _engineOptions = new List<DatabaseEngineOption>
+        {
+            new()
+            {
+                Type = DatabaseType.SQLite,
+                Title = LocalizationManager.GetString("Connection.SqliteTitle", "SQLite"),
+                Subtitle = LocalizationManager.GetString("Connection.SqliteDesc", "Banco de dados leve baseado em arquivo local"),
+                Badge = "FILE",
+                IconData = getIcon("IconSqlite"),
+                IconBackground = SolidColorBrush.Parse("#003b57"),
+                IconForeground = SolidColorBrush.Parse("#38bdf8"),
+                BadgeBackground = SolidColorBrush.Parse("#003b57"),
+                BadgeForeground = SolidColorBrush.Parse("#38bdf8")
+            },
+            new()
+            {
+                Type = DatabaseType.PostgreSQL,
+                Title = LocalizationManager.GetString("Connection.PostgresTitle", "PostgreSQL"),
+                Subtitle = LocalizationManager.GetString("Connection.PostgresDesc", "Objeto-relacional robusto para produção corporativa"),
+                Badge = "5432",
+                IconData = getIcon("IconPostgres"),
+                IconBackground = SolidColorBrush.Parse("#1e3a5f"),
+                IconForeground = SolidColorBrush.Parse("#60a5fa"),
+                BadgeBackground = SolidColorBrush.Parse("#1e3a5f"),
+                BadgeForeground = SolidColorBrush.Parse("#60a5fa")
+            },
+            new()
+            {
+                Type = DatabaseType.MySQL,
+                Title = LocalizationManager.GetString("Connection.MysqlTitle", "MySQL"),
+                Subtitle = LocalizationManager.GetString("Connection.MysqlDesc", "Banco relacional amplamente utilizado na web"),
+                Badge = "3306",
+                IconData = getIcon("IconMySql"),
+                IconBackground = SolidColorBrush.Parse("#00485c"),
+                IconForeground = SolidColorBrush.Parse("#f29111"),
+                BadgeBackground = SolidColorBrush.Parse("#00485c"),
+                BadgeForeground = SolidColorBrush.Parse("#f29111")
+            },
+            new()
+            {
+                Type = DatabaseType.MariaDB,
+                Title = LocalizationManager.GetString("Connection.MariadbTitle", "MariaDB"),
+                Subtitle = LocalizationManager.GetString("Connection.MariadbDesc", "Fork comunitário rápido de alta compatibilidade"),
+                Badge = "3306",
+                IconData = getIcon("IconMariaDb"),
+                IconBackground = SolidColorBrush.Parse("#003545"),
+                IconForeground = SolidColorBrush.Parse("#c084fc"),
+                BadgeBackground = SolidColorBrush.Parse("#003545"),
+                BadgeForeground = SolidColorBrush.Parse("#c084fc")
+            },
+            new()
+            {
+                Type = DatabaseType.SqlServer,
+                Title = LocalizationManager.GetString("Connection.SqlServerTitle", "SQL Server"),
+                Subtitle = LocalizationManager.GetString("Connection.SqlServerDesc", "Microsoft SQL Server relacional corporativo"),
+                Badge = "1433",
+                IconData = getIcon("IconSqlServer"),
+                IconBackground = SolidColorBrush.Parse("#450a0a"),
+                IconForeground = SolidColorBrush.Parse("#f87171"),
+                BadgeBackground = SolidColorBrush.Parse("#450a0a"),
+                BadgeForeground = SolidColorBrush.Parse("#f87171")
+            }
+        };
+
+        CmbDatabaseEngine.ItemsSource = _engineOptions;
+        CmbDatabaseEngine.SelectedItem = _engineOptions[0];
+    }
+
+    private void RefreshEngineOptions()
+    {
+        foreach (var opt in _engineOptions)
+        {
+            switch (opt.Type)
+            {
+                case DatabaseType.SQLite:
+                    opt.Title = LocalizationManager.GetString("Connection.SqliteTitle", "SQLite");
+                    opt.Subtitle = LocalizationManager.GetString("Connection.SqliteDesc", "Banco de dados leve baseado em arquivo local");
+                    break;
+                case DatabaseType.PostgreSQL:
+                    opt.Title = LocalizationManager.GetString("Connection.PostgresTitle", "PostgreSQL");
+                    opt.Subtitle = LocalizationManager.GetString("Connection.PostgresDesc", "Objeto-relacional robusto para produção corporativa");
+                    break;
+                case DatabaseType.MySQL:
+                    opt.Title = LocalizationManager.GetString("Connection.MysqlTitle", "MySQL");
+                    opt.Subtitle = LocalizationManager.GetString("Connection.MysqlDesc", "Banco relacional amplamente utilizado na web");
+                    break;
+                case DatabaseType.MariaDB:
+                    opt.Title = LocalizationManager.GetString("Connection.MariadbTitle", "MariaDB");
+                    opt.Subtitle = LocalizationManager.GetString("Connection.MariadbDesc", "Fork comunitário rápido de alta compatibilidade");
+                    break;
+                case DatabaseType.SqlServer:
+                    opt.Title = LocalizationManager.GetString("Connection.SqlServerTitle", "SQL Server");
+                    opt.Subtitle = LocalizationManager.GetString("Connection.SqlServerDesc", "Microsoft SQL Server relacional corporativo");
+                    break;
+            }
+        }
+        var selected = CmbDatabaseEngine.SelectedItem as DatabaseEngineOption;
+        CmbDatabaseEngine.ItemsSource = null;
+        CmbDatabaseEngine.ItemsSource = _engineOptions;
+        if (selected != null)
+        {
+            CmbDatabaseEngine.SelectedItem = _engineOptions.FirstOrDefault(o => o.Type == selected.Type) ?? _engineOptions[0];
+        }
+    }
+
     private void SwitchEngine(DatabaseType type, bool fromDropdown = false)
     {
         _currentConfig.Type = type;
 
-        if (!fromDropdown && CmbDatabaseEngine != null)
+        if (!fromDropdown && _engineOptions.Count > 0 && CmbDatabaseEngine != null)
         {
-            for (int i = 0; i < CmbDatabaseEngine.Items.Count; i++)
+            var match = _engineOptions.FirstOrDefault(o => o.Type == type);
+            if (match != null && !ReferenceEquals(CmbDatabaseEngine.SelectedItem, match))
             {
-                if (CmbDatabaseEngine.Items[i] is ComboBoxItem item &&
-                    item.Tag is string tag &&
-                    Enum.TryParse<DatabaseType>(tag, true, out var t) &&
-                    t == type)
-                {
-                    CmbDatabaseEngine.SelectedIndex = i;
-                    break;
-                }
+                CmbDatabaseEngine.SelectedItem = match;
             }
         }
 

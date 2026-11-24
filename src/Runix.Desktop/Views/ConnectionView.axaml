@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:models="clr-namespace:Runix.Core.Models;assembly=Runix.Core"
+             xmlns:uiModels="clr-namespace:Runix.Desktop.Models;assembly=Runix.Desktop"
              mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="700"
              x:Class="Runix.Desktop.Views.ConnectionView"
              Background="#090d14">
@@ -51,6 +52,15 @@
         </Style>
         <Style Selector="Border.connection-item.dragging">
             <Setter Property="Opacity" Value="0.35"/>
+        </Style>
+        <Style Selector="ComboBox#CmbDatabaseEngine">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="ComboBox#CmbDatabaseEngine ComboBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="10,6"/>
         </Style>
     </UserControl.Styles>
 
@@ -402,88 +412,28 @@
                     </Grid>
 
                     <ComboBox Name="CmbDatabaseEngine" HorizontalAlignment="Stretch"
+                              HorizontalContentAlignment="Stretch"
+                              VerticalContentAlignment="Center"
+                              MinHeight="46"
                               Background="#0e141f" Foreground="#f0f6fc" BorderBrush="#1e2d42"
-                              CornerRadius="8" Padding="10,6"
+                              CornerRadius="8" Padding="12,4"
                               AutomationProperties.Name="Selecionar motor de banco de dados">
-                        <!-- SQLite Item -->
-                        <ComboBoxItem Tag="SQLite" IsSelected="True">
-                            <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center" Margin="0,2">
-                                <Border Grid.Column="0" Width="32" Height="32" CornerRadius="6" Background="#003b57" VerticalAlignment="Center" Margin="0,0,12,0">
-                                    <PathIcon Data="{DynamicResource IconSqlite}" Width="20" Height="20" Foreground="#38bdf8" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock Text="{DynamicResource Connection.SqliteTitle}" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
-                                    <TextBlock Text="{DynamicResource Connection.SqliteDesc}" FontSize="11" Foreground="#8b9cb3"/>
-                                </StackPanel>
-                                <Border Grid.Column="2" Background="#003b57" CornerRadius="4" Padding="6,2" VerticalAlignment="Center" Margin="10,0,0,0">
-                                    <TextBlock Text="FILE" FontSize="9" FontWeight="Bold" Foreground="#38bdf8"/>
-                                </Border>
-                            </Grid>
-                        </ComboBoxItem>
-
-                        <!-- PostgreSQL Item -->
-                        <ComboBoxItem Tag="PostgreSQL">
-                            <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center" Margin="0,2">
-                                <Border Grid.Column="0" Width="32" Height="32" CornerRadius="6" Background="#1e3a5f" VerticalAlignment="Center" Margin="0,0,12,0">
-                                    <PathIcon Data="{DynamicResource IconPostgres}" Width="20" Height="20" Foreground="#60a5fa" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock Text="{DynamicResource Connection.PostgresTitle}" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
-                                    <TextBlock Text="{DynamicResource Connection.PostgresDesc}" FontSize="11" Foreground="#8b9cb3"/>
-                                </StackPanel>
-                                <Border Grid.Column="2" Background="#1e3a5f" CornerRadius="4" Padding="6,2" VerticalAlignment="Center" Margin="10,0,0,0">
-                                    <TextBlock Text="5432" FontSize="9" FontWeight="Bold" Foreground="#60a5fa"/>
-                                </Border>
-                            </Grid>
-                        </ComboBoxItem>
-
-                        <!-- MySQL Item -->
-                        <ComboBoxItem Tag="MySQL">
-                            <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center" Margin="0,2">
-                                <Border Grid.Column="0" Width="32" Height="32" CornerRadius="6" Background="#00485c" VerticalAlignment="Center" Margin="0,0,12,0">
-                                    <PathIcon Data="{DynamicResource IconMySql}" Width="20" Height="20" Foreground="#f29111" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock Text="{DynamicResource Connection.MysqlTitle}" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
-                                    <TextBlock Text="{DynamicResource Connection.MysqlDesc}" FontSize="11" Foreground="#8b9cb3"/>
-                                </StackPanel>
-                                <Border Grid.Column="2" Background="#00485c" CornerRadius="4" Padding="6,2" VerticalAlignment="Center" Margin="10,0,0,0">
-                                    <TextBlock Text="3306" FontSize="9" FontWeight="Bold" Foreground="#f29111"/>
-                                </Border>
-                            </Grid>
-                        </ComboBoxItem>
-
-                        <!-- MariaDB Item -->
-                        <ComboBoxItem Tag="MariaDB">
-                            <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center" Margin="0,2">
-                                <Border Grid.Column="0" Width="32" Height="32" CornerRadius="6" Background="#003545" VerticalAlignment="Center" Margin="0,0,12,0">
-                                    <PathIcon Data="{DynamicResource IconMariaDb}" Width="20" Height="20" Foreground="#c084fc" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock Text="{DynamicResource Connection.MariadbTitle}" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
-                                    <TextBlock Text="{DynamicResource Connection.MariadbDesc}" FontSize="11" Foreground="#8b9cb3"/>
-                                </StackPanel>
-                                <Border Grid.Column="2" Background="#003545" CornerRadius="4" Padding="6,2" VerticalAlignment="Center" Margin="10,0,0,0">
-                                    <TextBlock Text="3306" FontSize="9" FontWeight="Bold" Foreground="#c084fc"/>
-                                </Border>
-                            </Grid>
-                        </ComboBoxItem>
-
-                        <!-- SQL Server Item -->
-                        <ComboBoxItem Tag="SqlServer">
-                            <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center" Margin="0,2">
-                                <Border Grid.Column="0" Width="32" Height="32" CornerRadius="6" Background="#450a0a" VerticalAlignment="Center" Margin="0,0,12,0">
-                                    <PathIcon Data="{DynamicResource IconSqlServer}" Width="20" Height="20" Foreground="#f87171" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock Text="{DynamicResource Connection.SqlServerTitle}" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
-                                    <TextBlock Text="{DynamicResource Connection.SqlServerDesc}" FontSize="11" Foreground="#8b9cb3"/>
-                                </StackPanel>
-                                <Border Grid.Column="2" Background="#450a0a" CornerRadius="4" Padding="6,2" VerticalAlignment="Center" Margin="10,0,0,0">
-                                    <TextBlock Text="1433" FontSize="9" FontWeight="Bold" Foreground="#f87171"/>
-                                </Border>
-                            </Grid>
-                        </ComboBoxItem>
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="uiModels:DatabaseEngineOption">
+                                <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,2">
+                                    <Border Grid.Column="0" Width="30" Height="30" CornerRadius="6" Background="{Binding IconBackground}" VerticalAlignment="Center" Margin="0,0,12,0">
+                                        <PathIcon Data="{Binding IconData}" Width="18" Height="18" Foreground="{Binding IconForeground}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                        <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="12.5" Foreground="#f0f6fc"/>
+                                        <TextBlock Text="{Binding Subtitle}" FontSize="10.5" Foreground="#8b9cb3"/>
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Background="{Binding BadgeBackground}" CornerRadius="4" Padding="6,2" VerticalAlignment="Center" Margin="10,0,0,0">
+                                        <TextBlock Text="{Binding Badge}" FontSize="9" FontWeight="Bold" Foreground="{Binding BadgeForeground}"/>
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
                     </ComboBox>
                 </StackPanel>
 

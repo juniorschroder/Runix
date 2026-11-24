@@ -28,6 +28,7 @@ public partial class MainWindow : Window
     public bool SuppressStartupUpdatePrompt { get; set; }
 
     public WorkspaceView? CurrentWorkspaceView => _workspaceView;
+    public ConnectionView CurrentConnectionView => _connectionView;
 
     public MainWindow()
     {
