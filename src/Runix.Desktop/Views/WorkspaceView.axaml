@@ -312,6 +312,7 @@
                                 <MenuItem Name="MenuCaptureSnapshot" Header="📸 Capturar Snapshot de Schema (.rschema)..."/>
                                 <MenuItem Name="MenuImportTableData" Header="📥 Importar dados..."/>
                                 <MenuItem Name="MenuExportTableData" Header="⤓ Exportar dados..."/>
+                                <MenuItem Name="MenuGenerateMockData" Header="🎲 Gerar Dados Fictícios (Mock Data)..."/>
                             </ContextMenu>
                         </TreeView.ContextMenu>
                         <TreeView.DataTemplates>

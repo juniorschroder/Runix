@@ -1,0 +1,102 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="820" d:DesignHeight="620"
+             x:Class="Runix.Desktop.Views.Dialogs.MockDataGeneratorDialog">
+
+    <Border Background="#0e141f" BorderBrush="#38bdf8" BorderThickness="1.5" CornerRadius="10" 
+            Width="820" MaxHeight="620" Padding="18">
+        <Grid RowDefinitions="Auto,*,Auto">
+            
+            <!-- 1. Header -->
+            <Grid Grid.Row="0" Margin="0,0,0,12" ColumnDefinitions="Auto,*,Auto,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="🎲" FontSize="20" VerticalAlignment="Center"/>
+                    <StackPanel Spacing="2">
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="{DynamicResource MockData.Title}" FontSize="15" FontWeight="Bold" Foreground="#f0f6fc"/>
+                            <Border Name="BadgeDialect" Background="#1e2d42" CornerRadius="4" Padding="6,2">
+                                <TextBlock Name="TxtDialect" Text="[SQLite]" FontSize="10" FontWeight="Bold" Foreground="#38bdf8"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Name="TxtSubtitle" Text="Tabela: customers" FontSize="11" Foreground="#8b9cb3"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Row Count Picker -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Text="{DynamicResource MockData.RowCount}" FontSize="11" VerticalAlignment="Center" Foreground="#8b9cb3"/>
+                    <ComboBox Name="CmbRowCount" Width="100" Background="#141d2b" Foreground="#f0f6fc" BorderBrush="#1e2d42" CornerRadius="4">
+                        <ComboBoxItem Content="10" Tag="10"/>
+                        <ComboBoxItem Content="25" Tag="25"/>
+                        <ComboBoxItem Content="50" IsSelected="True" Tag="50"/>
+                        <ComboBoxItem Content="100" Tag="100"/>
+                        <ComboBoxItem Content="250" Tag="250"/>
+                        <ComboBoxItem Content="500" Tag="500"/>
+                        <ComboBoxItem Content="1000" Tag="1000"/>
+                    </ComboBox>
+                </StackPanel>
+
+                <!-- Close Button -->
+                <Button Name="BtnClose" Grid.Column="3" Content="✕" Classes="btn-icon" FontSize="13"
+                        AutomationProperties.Name="{DynamicResource A11y.CloseModal}"/>
+            </Grid>
+
+            <!-- 2. Main Content Tabs -->
+            <TabControl Name="TabMockMain" Grid.Row="1" Background="Transparent" Margin="0,0,0,10">
+                <!-- Tab 1: Regras por Coluna -->
+                <TabItem Header="{DynamicResource MockData.ColumnsTab}">
+                    <Border Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="6" Padding="4" Margin="0,8,0,0">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                            <StackPanel Name="PanelColumnRules" Spacing="6" Margin="6"/>
+                        </ScrollViewer>
+                    </Border>
+                </TabItem>
+
+                <!-- Tab 2: Prévia dos Dados -->
+                <TabItem Name="TabPreview" Header="{DynamicResource MockData.PreviewTab}">
+                    <Grid RowDefinitions="Auto,*" Margin="0,8,0,0">
+                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                            <TextBlock Text="Prévia instantânea com 5 linhas fictícias geradas para validação." 
+                                       FontSize="11" Foreground="#8b9cb3" VerticalAlignment="Center"/>
+                            <Button Name="BtnRefreshPreview" Grid.Column="1" Content="{DynamicResource MockData.RefreshPreview}" 
+                                    Classes="btn-outline" Padding="10,4" FontSize="11"/>
+                        </Grid>
+                        <Border Grid.Row="1" Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="6">
+                            <DataGrid Name="DgPreview" AutoGenerateColumns="False" IsReadOnly="True" 
+                                      GridLinesVisibility="All" Background="Transparent" HeadersVisibility="Column"/>
+                        </Border>
+                    </Grid>
+                </TabItem>
+            </TabControl>
+
+            <!-- 3. Footer Bar -->
+            <Grid Grid.Row="2" RowDefinitions="Auto,Auto">
+                <!-- Progress Indicator -->
+                <Grid Grid.Row="0" Margin="0,0,0,8" RowDefinitions="Auto,Auto">
+                    <ProgressBar Name="PbSeeding" Grid.Row="0" Height="4" Background="#141d2b" Foreground="#38bdf8" 
+                                 Minimum="0" Maximum="100" Value="0" IsVisible="False" Margin="0,0,0,4"/>
+                    <TextBlock Name="TxtProgressStatus" Grid.Row="1" Text="" FontSize="11" Foreground="#34d399" IsVisible="False"/>
+                </Grid>
+
+                <!-- Action Buttons -->
+                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto">
+                    <TextBlock Name="TxtSummaryStatus" Grid.Column="0" Text="" FontSize="11" Foreground="#8b9cb3" VerticalAlignment="Center"/>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                        <Button Name="BtnCancelSeeding" Content="{DynamicResource MockData.Cancel}" 
+                                Classes="btn-danger" Padding="12,6" FontSize="11" IsVisible="False"/>
+                        <Button Name="BtnExportSql" Content="{DynamicResource MockData.ExportSql}" 
+                                Classes="btn-secondary" Padding="12,6" FontSize="11"/>
+                        <Button Name="BtnSeedDatabase" Content="{DynamicResource MockData.SeedButton}" 
+                                Classes="btn-primary" Padding="14,6" FontSize="11" FontWeight="SemiBold"/>
+                        <Button Name="BtnCloseFooter" Content="{DynamicResource MockData.Close}" 
+                                Classes="btn-outline" Padding="12,6" FontSize="11"/>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+
+        </Grid>
+    </Border>
+</UserControl>

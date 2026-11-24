@@ -107,6 +107,11 @@
                             Classes="btn-secondary" Padding="10,5" FontSize="11" Margin="0,2,6,4"
                             AutomationProperties.Name="Importar Dados para a Tabela"/>
 
+                    <Button Name="BtnGenerateMockData" Content="🎲 Mock Data" 
+                            Classes="btn-outline" Padding="10,5" FontSize="11" Margin="0,2,6,4"
+                            AutomationProperties.Name="Gerar Dados Fictícios (Mock Data)"
+                            ToolTip.Tip="Gerar dados de teste sintéticos com amostragem de FK"/>
+
                     <Button Name="BtnToggleChart" Content="📈 Gráfico" 
                             Classes="btn-outline" Padding="10,5" FontSize="11" Margin="0,2,6,4"
                             AutomationProperties.Name="Alternar visualização em Gráfico"/>

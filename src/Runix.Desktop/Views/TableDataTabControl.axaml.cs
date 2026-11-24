@@ -96,6 +96,7 @@ public partial class TableDataTabControl : UserControl, IDisposable
         BtnNextPage.Click += (s, e) => { _currentPage++; LoadData(); };
         BtnExportData.Click += (s, e) => OpenExportDialog();
         BtnImportData.Click += (s, e) => OpenImportDialog();
+        BtnGenerateMockData.Click += (s, e) => OpenMockDataGeneratorDialog();
         BtnToggleChart.Click += (s, e) => ToggleChartView();
         BtnToggleInspector.Click += (s, e) => ToggleInspectorDrawer();
         BtnViewStructure.Click += (s, e) => ViewStructureRequested?.Invoke(_tableName);
@@ -637,6 +638,29 @@ public partial class TableDataTabControl : UserControl, IDisposable
         ModalContainer.Content = dialog;
         PanelModalOverlay.IsVisible = true;
         return dialog;
+    }
+
+    public void OpenMockDataGeneratorDialog()
+    {
+        var dialog = new Dialogs.MockDataGeneratorDialog(_databaseService, _tableName);
+        dialog.CloseRequested += () =>
+        {
+            PanelModalOverlay.IsVisible = false;
+            ModalContainer.Content = null;
+        };
+
+        dialog.SeedingCompleted += count =>
+        {
+            PanelModalOverlay.IsVisible = false;
+            ModalContainer.Content = null;
+            TxtStatusBanner.Text = $"✓ Inseridas {count:N0} linhas fictícias com sucesso!";
+            TxtStatusBanner.Foreground = Avalonia.Media.Brush.Parse("#34d399");
+            PanelStagingBar.IsVisible = true;
+            LoadData();
+        };
+
+        ModalContainer.Content = dialog;
+        PanelModalOverlay.IsVisible = true;
     }
 
     public void EmulateStagedEditsForTesting()

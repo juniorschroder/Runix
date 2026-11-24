@@ -403,6 +403,14 @@ public partial class WorkspaceView : UserControl
             }
         };
 
+        MenuGenerateMockData.Click += (s, e) =>
+        {
+            if (GetSelectedTable() is TableInfo table)
+            {
+                OpenTableMockDataDialog(table.Name);
+            }
+        };
+
         // Saved Query Selection
         ListSavedQueries.SelectionChanged += (s, e) =>
         {
@@ -1390,6 +1398,13 @@ public partial class WorkspaceView : UserControl
         OpenTableDataTab(tableName);
         var tableTab = FindTableDataTabControl(tableName);
         tableTab?.OpenExportDialog();
+    }
+
+    public void OpenTableMockDataDialog(string tableName)
+    {
+        OpenTableDataTab(tableName);
+        var tableTab = FindTableDataTabControl(tableName);
+        tableTab?.OpenMockDataGeneratorDialog();
     }
 
     public void OpenTableStructureTab(string tableName)

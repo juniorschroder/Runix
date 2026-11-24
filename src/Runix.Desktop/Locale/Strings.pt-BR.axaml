@@ -410,4 +410,16 @@
     <sys:String x:Key="QueryBuilder.RunQuery">▶ Executar Consulta</sys:String>
     <sys:String x:Key="QueryBuilder.OpenInEditor">📝 Abrir no Editor SQL</sys:String>
 
+    <!-- Phase 38: FK-Aware Mock Data Generator -->
+    <sys:String x:Key="MockData.Title">Gerador de Mock Data</sys:String>
+    <sys:String x:Key="MockData.Subtitle">Gere dados sintéticos com integridade referencial</sys:String>
+    <sys:String x:Key="MockData.ColumnsTab">Configuração de Colunas</sys:String>
+    <sys:String x:Key="MockData.PreviewTab">Prévia dos Dados</sys:String>
+    <sys:String x:Key="MockData.RowCount">Linhas a Gerar:</sys:String>
+    <sys:String x:Key="MockData.SeedButton">▶ Inserir no Banco (Seed)</sys:String>
+    <sys:String x:Key="MockData.ExportSql">📝 Exportar Script SQL</sys:String>
+    <sys:String x:Key="MockData.RefreshPreview">🔄 Atualizar Prévia</sys:String>
+    <sys:String x:Key="MockData.Cancel">Cancelar Inserção</sys:String>
+    <sys:String x:Key="MockData.Close">✕ Fechar</sys:String>
+
 </ResourceDictionary>
