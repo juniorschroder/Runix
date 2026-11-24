@@ -23,13 +23,17 @@ public class ConnectionConfig : INotifyPropertyChanged
     // SQLite specific
     public string FilePath { get; set; } = string.Empty;
 
-    // PostgreSQL specific
+    // Database engine specific (PostgreSQL, MySQL, MariaDB, SQL Server)
     public string Host { get; set; } = "localhost";
     public int Port { get; set; } = 5432;
     public string Database { get; set; } = "postgres";
     public string Username { get; set; } = "postgres";
     public string Password { get; set; } = string.Empty;
     public string SslMode { get; set; } = "Prefer";
+
+    // SQL Server specific
+    public string DefaultSchema { get; set; } = "dbo";
+    public bool TrustServerCertificate { get; set; } = true;
 
     // SSH Tunnel Configuration
     public bool UseSshTunnel { get; set; }
@@ -59,9 +63,12 @@ public class ConnectionConfig : INotifyPropertyChanged
     public string DisplaySubtitle => Type switch
     {
         DatabaseType.SQLite => string.IsNullOrWhiteSpace(FilePath) ? "No file selected" : FilePath,
-        DatabaseType.PostgreSQL => UseSshTunnel && !string.IsNullOrWhiteSpace(SshHost)
+        DatabaseType.PostgreSQL or DatabaseType.MySQL or DatabaseType.MariaDB => UseSshTunnel && !string.IsNullOrWhiteSpace(SshHost)
             ? $"🔒 SSH ({SshHost}) → {Username}@{Host}:{Port}/{Database}"
             : $"{Username}@{Host}:{Port}/{Database}",
+        DatabaseType.SqlServer => UseSshTunnel && !string.IsNullOrWhiteSpace(SshHost)
+            ? $"🔒 SSH ({SshHost}) → {Username}@{Host}:{Port}/{Database} ({DefaultSchema})"
+            : $"{Username}@{Host}:{Port}/{Database} ({DefaultSchema})",
         _ => ""
     };
 
@@ -69,6 +76,9 @@ public class ConnectionConfig : INotifyPropertyChanged
     {
         DatabaseType.SQLite => "📁",
         DatabaseType.PostgreSQL => "🐘",
+        DatabaseType.MySQL => "🐬",
+        DatabaseType.MariaDB => "🦭",
+        DatabaseType.SqlServer => "🏢",
         _ => "🗄"
     };
 
@@ -85,14 +95,21 @@ public class ConnectionConfig : INotifyPropertyChanged
         var host = !string.IsNullOrWhiteSpace(Host) ? Host.Trim().ToLowerInvariant() : "localhost";
         var db = !string.IsNullOrWhiteSpace(Database) ? Database.Trim().ToLowerInvariant() : "postgres";
         var user = !string.IsNullOrWhiteSpace(Username) ? Username.Trim().ToLowerInvariant() : "postgres";
+        var enginePrefix = Type switch
+        {
+            DatabaseType.MySQL => "mysql",
+            DatabaseType.MariaDB => "mariadb",
+            DatabaseType.SqlServer => "sqlserver",
+            _ => "postgres"
+        };
 
         if (UseSshTunnel)
         {
             var sshHost = !string.IsNullOrWhiteSpace(SshHost) ? SshHost.Trim().ToLowerInvariant() : "bastion";
-            return $"postgres:ssh:{sshHost}:{host}:{Port}:{db}:{user}";
+            return $"{enginePrefix}:ssh:{sshHost}:{host}:{Port}:{db}:{user}";
         }
 
-        return $"postgres:{host}:{Port}:{db}:{user}";
+        return $"{enginePrefix}:{host}:{Port}:{db}:{user}";
     }
 
     public ConnectionConfig Clone()
@@ -120,7 +137,9 @@ public class ConnectionConfig : INotifyPropertyChanged
             SshPrivateKeyPassphrase = SshPrivateKeyPassphrase,
             IsReadOnly = IsReadOnly,
             IsProduction = IsProduction,
-            SafeExecutionMode = SafeExecutionMode
+            SafeExecutionMode = SafeExecutionMode,
+            DefaultSchema = DefaultSchema,
+            TrustServerCertificate = TrustServerCertificate
         };
     }
 

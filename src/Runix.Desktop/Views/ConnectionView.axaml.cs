@@ -1162,9 +1162,7 @@ public partial class ConnectionView : UserControl
         SyncConfigFromForm();
         ShowStatus("Testing connection...", isError: false, isLoading: true);
 
-        IDatabaseService baseService = _currentConfig.Type == DatabaseType.SQLite
-            ? new SqliteDatabaseService(_currentConfig)
-            : new PostgresDatabaseService(_currentConfig);
+        IDatabaseService baseService = Runix.Infrastructure.Factories.DatabaseServiceFactory.Create(_currentConfig);
         IDatabaseService service = new ResilientDatabaseService(baseService);
 
         try

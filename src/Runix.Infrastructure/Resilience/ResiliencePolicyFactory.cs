@@ -1,6 +1,8 @@
 using System;
 using System.IO;
+using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
+using MySqlConnector;
 using Npgsql;
 using Runix.Core.Models;
 using Vard.Abstractions;
@@ -35,6 +37,20 @@ public static class ResiliencePolicyFactory
             return sqlEx.SqliteErrorCode == 5 || sqlEx.SqliteErrorCode == 6;
         }
 
+        if (ex is MySqlException mySqlEx)
+        {
+            if (mySqlEx.IsTransient) return true;
+            // 1205: Lock wait timeout, 1213: Deadlock
+            if (mySqlEx.Number == 1205 || mySqlEx.Number == 1213) return true;
+            return false;
+        }
+
+        if (ex is SqlException sqlServEx)
+        {
+            // -2: Timeout, 1205: Deadlock, 4060: Cannot open DB, Azure transient limits
+            return sqlServEx.Number is -2 or 1205 or 4060 or 40197 or 40501 or 40613 or 49918 or 49919 or 49920;
+        }
+
         if (ex is TimeoutException || ex is IOException)
         {
             return true;
@@ -47,7 +63,11 @@ public static class ResiliencePolicyFactory
         DatabaseType dbType,
         Action<Exception, int, TimeSpan>? onRetry = null)
     {
-        var initialDelay = dbType == DatabaseType.SQLite ? SqliteInitialDelay : PostgresInitialDelay;
+        var initialDelay = dbType switch
+        {
+            DatabaseType.SQLite => SqliteInitialDelay,
+            _ => PostgresInitialDelay
+        };
 
         return (RetryPolicy)VardPolicy
             .Handle<Exception>(IsTransientException)

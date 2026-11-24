@@ -3,5 +3,8 @@ namespace Runix.Core.Models;
 public enum DatabaseType
 {
     SQLite,
-    PostgreSQL
+    PostgreSQL,
+    MySQL,
+    MariaDB,
+    SqlServer
 }

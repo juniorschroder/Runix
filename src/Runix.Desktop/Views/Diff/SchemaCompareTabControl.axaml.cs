@@ -341,9 +341,7 @@ public partial class SchemaCompareTabControl : UserControl, IDisposable
 
             case CompareEndpointType.SavedConnection:
                 if (endpoint.SavedConnection == null) return null;
-                var db = endpoint.SavedConnection.Type == DatabaseType.SQLite
-                    ? (IDatabaseService)new SqliteDatabaseService(endpoint.SavedConnection)
-                    : new PostgresDatabaseService(endpoint.SavedConnection);
+                var db = Runix.Infrastructure.Factories.DatabaseServiceFactory.Create(endpoint.SavedConnection);
 
                 if (isSource)
                 {

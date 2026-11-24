@@ -334,9 +334,7 @@ public partial class MainWindow : Window
 
         _currentService?.Dispose();
 
-        IDatabaseService baseService = config.Type == DatabaseType.SQLite
-            ? new SqliteDatabaseService(config)
-            : new PostgresDatabaseService(config);
+        IDatabaseService baseService = Runix.Infrastructure.Factories.DatabaseServiceFactory.Create(config);
 
         IDatabaseService service = new ResilientDatabaseService(baseService);
 
