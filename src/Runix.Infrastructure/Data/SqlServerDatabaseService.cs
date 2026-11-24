@@ -70,6 +70,17 @@ public class SqlServerDatabaseService : IDatabaseService
 
     public async Task<bool> TestConnectionAsync()
     {
+        var result = await TestConnectionDiagnosticsAsync();
+        if (!result.Success && result.ErrorMessage != null)
+        {
+            throw new InvalidOperationException(result.ErrorMessage);
+        }
+        return result.Success;
+    }
+
+    public async Task<ConnectionDiagnosticsResult> TestConnectionDiagnosticsAsync()
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
             string connStr;
@@ -86,9 +97,25 @@ public class SqlServerDatabaseService : IDatabaseService
             await using var conn = new SqlConnection(connStr);
             await conn.OpenAsync();
             await using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT @@VERSION;";
-            await cmd.ExecuteScalarAsync();
-            return true;
+            cmd.CommandText = "SELECT CAST(SERVERPROPERTY('ProductVersion') AS NVARCHAR) + ' (' + CAST(SERVERPROPERTY('ProductLevel') AS NVARCHAR) + ')';";
+            var versionObj = await cmd.ExecuteScalarAsync();
+            sw.Stop();
+            string version = versionObj?.ToString() ?? "Unknown";
+            return new ConnectionDiagnosticsResult(
+                Success: true,
+                LatencyMs: sw.ElapsedMilliseconds,
+                ServerVersion: $"SQL Server {version}",
+                EncryptionDetails: Config.TrustServerCertificate ? "TLS (TrustServerCert)" : "TLS Encrypted"
+            );
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            return new ConnectionDiagnosticsResult(
+                Success: false,
+                ErrorMessage: ex.Message,
+                LatencyMs: sw.ElapsedMilliseconds
+            );
         }
         finally
         {

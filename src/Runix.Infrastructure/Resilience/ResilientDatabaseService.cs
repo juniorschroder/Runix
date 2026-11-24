@@ -90,6 +90,23 @@ public class ResilientDatabaseService : IDatabaseService
         }
     }
 
+    public async Task<ConnectionDiagnosticsResult> TestConnectionDiagnosticsAsync()
+    {
+        try
+        {
+            return await _idempotentPipeline.ExecuteAsync(
+                async ct => await _inner.TestConnectionDiagnosticsAsync(),
+                CancellationToken.None);
+        }
+        catch (CircuitBreakerOpenException ex)
+        {
+            return new ConnectionDiagnosticsResult(
+                Success: false,
+                ErrorMessage: $"Circuit breaker open: {ex.Message}"
+            );
+        }
+    }
+
     public async Task ConnectAsync()
     {
         await _idempotentPipeline.ExecuteAsync(

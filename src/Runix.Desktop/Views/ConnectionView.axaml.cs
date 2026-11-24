@@ -63,6 +63,10 @@ public partial class ConnectionView : UserControl
 
         BtnSelectSQLite.Click += (s, e) => SwitchEngine(DatabaseType.SQLite);
         BtnSelectPostgres.Click += (s, e) => SwitchEngine(DatabaseType.PostgreSQL);
+        BtnSelectMySQL.Click += (s, e) => SwitchEngine(DatabaseType.MySQL);
+        BtnSelectMariaDB.Click += (s, e) => SwitchEngine(DatabaseType.MariaDB);
+        BtnSelectSqlServer.Click += (s, e) => SwitchEngine(DatabaseType.SqlServer);
+        TxtSearchEngine.TextChanged += (s, e) => FilterEngines(TxtSearchEngine.Text);
         BtnNewConnection.Click += (s, e) => CreateNewConnection();
 
         BtnNewCategory.Click += (s, e) =>
@@ -449,33 +453,112 @@ public partial class ConnectionView : UserControl
         flyout.Items.Add(newCatItem);
     }
 
-    private void SwitchEngine(DatabaseType type)
+    private void StyleEngineButton(Button btn, bool isSelected, string activeBg, string activeBorder)
     {
-        _currentConfig.Type = type;
-        if (type == DatabaseType.SQLite)
+        if (isSelected)
         {
-            BtnSelectSQLite.Background = Brush.Parse("#008bb9");
-            BtnSelectSQLite.BorderBrush = Brush.Parse("#38bdf8");
-            BtnSelectSQLite.Foreground = Brushes.White;
-            BtnSelectPostgres.Background = Brush.Parse("#141d2b");
-            BtnSelectPostgres.BorderBrush = Brush.Parse("#1e2d42");
-            BtnSelectPostgres.Foreground = Brush.Parse("#8b9cb3");
-
-            PanelSqliteForm.IsVisible = true;
-            PanelPostgresForm.IsVisible = false;
+            btn.Background = Brush.Parse(activeBg);
+            btn.BorderBrush = Brush.Parse(activeBorder);
+            btn.BorderThickness = new Thickness(1.5);
+            btn.Foreground = Brushes.White;
         }
         else
         {
-            BtnSelectPostgres.Background = Brush.Parse("#008bb9");
-            BtnSelectPostgres.BorderBrush = Brush.Parse("#38bdf8");
-            BtnSelectPostgres.Foreground = Brushes.White;
-            BtnSelectSQLite.Background = Brush.Parse("#141d2b");
-            BtnSelectSQLite.BorderBrush = Brush.Parse("#1e2d42");
-            BtnSelectSQLite.Foreground = Brush.Parse("#8b9cb3");
-
-            PanelSqliteForm.IsVisible = false;
-            PanelPostgresForm.IsVisible = true;
+            btn.Background = Brush.Parse("#141d2b");
+            btn.BorderBrush = Brush.Parse("#1e2d42");
+            btn.BorderThickness = new Thickness(1);
+            btn.Foreground = Brush.Parse("#8b9cb3");
         }
+    }
+
+    private void SwitchEngine(DatabaseType type)
+    {
+        _currentConfig.Type = type;
+
+        StyleEngineButton(BtnSelectSQLite, type == DatabaseType.SQLite, "#0c2338", "#38bdf8");
+        StyleEngineButton(BtnSelectPostgres, type == DatabaseType.PostgreSQL, "#10233b", "#60a5fa");
+        StyleEngineButton(BtnSelectMySQL, type == DatabaseType.MySQL, "#082633", "#f29111");
+        StyleEngineButton(BtnSelectMariaDB, type == DatabaseType.MariaDB, "#191a33", "#c084fc");
+        StyleEngineButton(BtnSelectSqlServer, type == DatabaseType.SqlServer, "#2b0d12", "#f87171");
+
+        PanelSqliteForm.IsVisible = (type == DatabaseType.SQLite);
+        PanelPostgresForm.IsVisible = (type != DatabaseType.SQLite);
+        PanelSqlServerOptions.IsVisible = (type == DatabaseType.SqlServer);
+
+        // Smart Port & Defaults Assignment
+        if (type != DatabaseType.SQLite)
+        {
+            string currentPort = (TxtPgPort.Text ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(currentPort) || currentPort == "5432" || currentPort == "3306" || currentPort == "1433")
+            {
+                TxtPgPort.Text = type switch
+                {
+                    DatabaseType.PostgreSQL => "5432",
+                    DatabaseType.MySQL or DatabaseType.MariaDB => "3306",
+                    DatabaseType.SqlServer => "1433",
+                    _ => "5432"
+                };
+            }
+
+            string currentDb = (TxtPgDatabase.Text ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(currentDb) || currentDb == "postgres" || currentDb == "mysql" || currentDb == "master")
+            {
+                TxtPgDatabase.Text = type switch
+                {
+                    DatabaseType.PostgreSQL => "postgres",
+                    DatabaseType.MySQL or DatabaseType.MariaDB => "mysql",
+                    DatabaseType.SqlServer => "master",
+                    _ => ""
+                };
+            }
+
+            string currentUsr = (TxtPgUser.Text ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(currentUsr) || currentUsr == "postgres" || currentUsr == "root" || currentUsr == "sa")
+            {
+                TxtPgUser.Text = type switch
+                {
+                    DatabaseType.PostgreSQL => "postgres",
+                    DatabaseType.MySQL or DatabaseType.MariaDB => "root",
+                    DatabaseType.SqlServer => "sa",
+                    _ => "root"
+                };
+            }
+        }
+    }
+
+    private void FilterEngines(string? query)
+    {
+        string q = (query ?? string.Empty).Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(q))
+        {
+            BtnSelectSQLite.IsVisible = true;
+            BtnSelectPostgres.IsVisible = true;
+            BtnSelectMySQL.IsVisible = true;
+            BtnSelectMariaDB.IsVisible = true;
+            BtnSelectSqlServer.IsVisible = true;
+            TxtEngineMatchCount.Text = "5 motores disponíveis";
+            return;
+        }
+
+        bool matchSqlite = MatchesEngine(q, "sqlite", "local", "arquivo", "file", "embutido", "embedded", "db");
+        bool matchPostgres = MatchesEngine(q, "postgresql", "postgres", "pg", "relacional", "objeto", "sql");
+        bool matchMysql = MatchesEngine(q, "mysql", "lamp", "innodb", "oracle", "sql");
+        bool matchMariadb = MatchesEngine(q, "mariadb", "maria", "fork", "comunitario", "sql");
+        bool matchSqlServer = MatchesEngine(q, "sqlserver", "sql server", "mssql", "microsoft", "azure", "tsql", "dbo", "sql");
+
+        BtnSelectSQLite.IsVisible = matchSqlite;
+        BtnSelectPostgres.IsVisible = matchPostgres;
+        BtnSelectMySQL.IsVisible = matchMysql;
+        BtnSelectMariaDB.IsVisible = matchMariadb;
+        BtnSelectSqlServer.IsVisible = matchSqlServer;
+
+        int count = (matchSqlite ? 1 : 0) + (matchPostgres ? 1 : 0) + (matchMysql ? 1 : 0) + (matchMariadb ? 1 : 0) + (matchSqlServer ? 1 : 0);
+        TxtEngineMatchCount.Text = $"{count} de 5 motores";
+    }
+
+    private static bool MatchesEngine(string query, params string[] terms)
+    {
+        return terms.Any(t => t.Contains(query, StringComparison.OrdinalIgnoreCase) || query.Contains(t, StringComparison.OrdinalIgnoreCase));
     }
 
     private void SelectConnection(ConnectionConfig cfg)
@@ -491,6 +574,9 @@ public partial class ConnectionView : UserControl
         TxtPgDatabase.Text = cfg.Database;
         TxtPgUser.Text = cfg.Username;
         TxtPgPassword.Text = cfg.Password;
+
+        TxtDefaultSchema.Text = string.IsNullOrWhiteSpace(cfg.DefaultSchema) ? "dbo" : cfg.DefaultSchema;
+        ChkTrustServerCert.IsChecked = cfg.TrustServerCertificate;
 
         for (int i = 0; i < ComboPgSsl.Items.Count; i++)
         {
@@ -1106,6 +1192,12 @@ public partial class ConnectionView : UserControl
             _currentConfig.SshPassword = TxtSshPassword.Text ?? "";
             _currentConfig.SshPrivateKeyPath = TxtSshKeyPath.Text?.Trim() ?? "";
             _currentConfig.SshPrivateKeyPassphrase = TxtSshKeyPassphrase.Text ?? "";
+
+            if (_currentConfig.Type == DatabaseType.SqlServer)
+            {
+                _currentConfig.DefaultSchema = string.IsNullOrWhiteSpace(TxtDefaultSchema.Text) ? "dbo" : TxtDefaultSchema.Text.Trim();
+                _currentConfig.TrustServerCertificate = ChkTrustServerCert.IsChecked == true;
+            }
         }
 
         _currentConfig.IsReadOnly = ChkReadOnly.IsChecked == true;
@@ -1160,31 +1252,67 @@ public partial class ConnectionView : UserControl
     private async void OnTestConnection(object? sender, RoutedEventArgs e)
     {
         SyncConfigFromForm();
-        ShowStatus("Testing connection...", isError: false, isLoading: true);
+        ShowStatus("Testando conexão...", isError: false, isLoading: true);
 
         IDatabaseService baseService = Runix.Infrastructure.Factories.DatabaseServiceFactory.Create(_currentConfig);
         IDatabaseService service = new ResilientDatabaseService(baseService);
 
         try
         {
-            var success = await service.TestConnectionAsync();
-            if (success)
+            var diag = await service.TestConnectionDiagnosticsAsync();
+            if (diag.Success)
             {
-                ShowStatus("✓ Connection successful!", isError: false, isLoading: false);
+                ShowDiagnosticsStatus(diag);
             }
             else
             {
-                ShowStatus("✗ Connection failed. Please verify credentials/path.", isError: true, isLoading: false);
+                string errMsg = string.IsNullOrWhiteSpace(diag.ErrorMessage)
+                    ? "Falha na conexão. Por favor verifique host, porta e credenciais."
+                    : diag.ErrorMessage;
+                ShowStatus($"✗ {errMsg}", isError: true, isLoading: false);
             }
         }
         catch (Exception ex)
         {
-            ShowStatus($"✗ Error: {ex.Message}", isError: true, isLoading: false);
+            ShowStatus($"✗ Erro: {ex.Message}", isError: true, isLoading: false);
         }
         finally
         {
             service.Dispose();
         }
+    }
+
+    private void ShowDiagnosticsStatus(ConnectionDiagnosticsResult diag)
+    {
+        BorderStatus.IsVisible = true;
+        BorderStatus.BorderBrush = Brush.Parse("#34d399");
+        BorderStatus.Background = Brush.Parse("#122a20");
+        TxtStatusMessage.Foreground = Brush.Parse("#6ee7b7");
+        TxtStatusMessage.Text = "✓ Conectado com sucesso!";
+
+        PanelDiagnosticsChips.IsVisible = true;
+        TxtDiagnosticLatency.Text = $"⚡ {diag.LatencyMs} ms";
+        if (diag.LatencyMs < 50)
+        {
+            BadgeLatency.Background = Brush.Parse("#064e3b");
+            BadgeLatency.BorderBrush = Brush.Parse("#34d399");
+            TxtDiagnosticLatency.Foreground = Brush.Parse("#34d399");
+        }
+        else if (diag.LatencyMs < 200)
+        {
+            BadgeLatency.Background = Brush.Parse("#451a03");
+            BadgeLatency.BorderBrush = Brush.Parse("#fbbf24");
+            TxtDiagnosticLatency.Foreground = Brush.Parse("#fbbf24");
+        }
+        else
+        {
+            BadgeLatency.Background = Brush.Parse("#450a0a");
+            BadgeLatency.BorderBrush = Brush.Parse("#f87171");
+            TxtDiagnosticLatency.Foreground = Brush.Parse("#f87171");
+        }
+
+        TxtDiagnosticVersion.Text = string.IsNullOrWhiteSpace(diag.ServerVersion) ? "Database Server" : diag.ServerVersion;
+        TxtDiagnosticEncryption.Text = string.IsNullOrWhiteSpace(diag.EncryptionDetails) ? "Standard Connection" : diag.EncryptionDetails;
     }
 
     private void OnSaveConnection(object? sender, RoutedEventArgs e)
@@ -1243,6 +1371,8 @@ public partial class ConnectionView : UserControl
     {
         BorderStatus.IsVisible = true;
         TxtStatusMessage.Text = message;
+        PanelDiagnosticsChips.IsVisible = false;
+
         if (isLoading)
         {
             BorderStatus.BorderBrush = Brush.Parse("#008bb9");
@@ -1266,6 +1396,7 @@ public partial class ConnectionView : UserControl
     private void HideStatus()
     {
         BorderStatus.IsVisible = false;
+        PanelDiagnosticsChips.IsVisible = false;
     }
 
     public async Task OpenExportBundleDialogAsync()

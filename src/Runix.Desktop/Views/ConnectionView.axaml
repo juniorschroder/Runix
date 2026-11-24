@@ -342,12 +342,28 @@
                 <ProgressBar Name="ProgressConnecting" Height="3" IsIndeterminate="True" IsVisible="False" 
                              Foreground="#008bb9" Background="#0e141f" Margin="0,-10,0,0"/>
 
-                <!-- Status Banner (Hidden by default) -->
+                <!-- Status Banner & Diagnostics Chips (Hidden by default) -->
                 <Border Name="BorderStatus" Background="#141d2b" BorderThickness="1" BorderBrush="#008bb9" 
                         CornerRadius="6" Padding="14,10" IsVisible="False"
                         AutomationProperties.LiveSetting="Polite">
-                    <TextBlock Name="TxtStatusMessage" Text="Status" Foreground="#f0f6fc" FontSize="13" TextWrapping="Wrap"
-                               AutomationProperties.LiveSetting="Polite"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Name="TxtStatusMessage" Grid.Column="0" Text="Status" Foreground="#f0f6fc" FontSize="13" TextWrapping="Wrap"
+                                   VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite"/>
+                        <StackPanel Name="PanelDiagnosticsChips" Grid.Column="1" Orientation="Horizontal" Spacing="6" IsVisible="False" VerticalAlignment="Center">
+                            <!-- Latency Badge -->
+                            <Border Name="BadgeLatency" Background="#064e3b" BorderBrush="#34d399" BorderThickness="1" CornerRadius="4" Padding="6,2">
+                                <TextBlock Name="TxtDiagnosticLatency" Text="⚡ 12 ms" FontSize="10.5" FontWeight="Bold" Foreground="#34d399"/>
+                            </Border>
+                            <!-- Server Version Badge -->
+                            <Border Name="BadgeVersion" Background="#1e293b" BorderBrush="#475569" BorderThickness="1" CornerRadius="4" Padding="6,2">
+                                <TextBlock Name="TxtDiagnosticVersion" Text="Database Server" FontSize="10.5" FontWeight="SemiBold" Foreground="#cbd5e1"/>
+                            </Border>
+                            <!-- Encryption Badge -->
+                            <Border Name="BadgeEncryption" Background="#0c2338" BorderBrush="#1d578c" BorderThickness="1" CornerRadius="4" Padding="6,2">
+                                <TextBlock Name="TxtDiagnosticEncryption" Text="🔒 TLS" FontSize="10.5" FontWeight="SemiBold" Foreground="#7dd3fc"/>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
                 </Border>
 
                 <!-- Connection Name & Category -->
@@ -379,33 +395,124 @@
                 </Grid>
 
                 <!-- Database Engine Selection -->
-                <StackPanel Spacing="8">
-                    <TextBlock Text="{DynamicResource Connection.Engine}" FontSize="12" FontWeight="SemiBold" Foreground="#8b9cb3"/>
-                    <Grid ColumnDefinitions="*,*">
-                        <Button Name="BtnSelectSQLite" Grid.Column="0" Margin="0,0,8,0" Padding="16,14" 
-                                Background="#008bb9" Foreground="White" BorderBrush="#38bdf8" BorderThickness="1" CornerRadius="8" HorizontalAlignment="Stretch"
+                <StackPanel Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="{DynamicResource Connection.Engine}" FontSize="12" FontWeight="SemiBold" Foreground="#8b9cb3" VerticalAlignment="Center"/>
+                        <TextBlock Name="TxtEngineMatchCount" Grid.Column="1" Text="5 motores disponíveis" FontSize="11" Foreground="#64748b" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Real-Time Engine Search Filter -->
+                    <TextBox Name="TxtSearchEngine" Background="#0e141f" Foreground="#f0f6fc" BorderBrush="#1e2d42"
+                             CornerRadius="6" Padding="10,8" Watermark="{DynamicResource Connection.FilterEnginesWatermark}"
+                             AutomationProperties.Name="Filtrar motor de banco de dados"/>
+
+                    <!-- 5 Engine Cards -->
+                    <WrapPanel Name="PanelEngineCards" Orientation="Horizontal">
+                        <!-- SQLite Card -->
+                        <Button Name="BtnSelectSQLite" Margin="0,0,8,8" Width="228" Padding="12,10"
+                                Background="#0c2338" Foreground="White" BorderBrush="#38bdf8" BorderThickness="1.5" CornerRadius="8"
+                                HorizontalContentAlignment="Left" VerticalContentAlignment="Center"
                                 AutomationProperties.Name="Selecionar motor SQLite">
-                            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
-                                <TextBlock Text="📁" FontSize="18"/>
-                                <StackPanel>
-                                    <TextBlock Text="{DynamicResource Connection.SqliteTitle}" FontWeight="Bold" FontSize="14"/>
-                                    <TextBlock Text="{DynamicResource Connection.SqliteDesc}" FontSize="11" Foreground="#d0e2ec"/>
+                            <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Background="#003b57" VerticalAlignment="Center" Margin="0,0,10,0">
+                                    <PathIcon Data="{DynamicResource IconSqlite}" Width="20" Height="20" Foreground="#38bdf8" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{DynamicResource Connection.SqliteTitle}" FontWeight="Bold" FontSize="13" Foreground="White"/>
+                                        <Border Background="#003b57" CornerRadius="4" Padding="4,1" VerticalAlignment="Center">
+                                            <TextBlock Text="FILE" FontSize="9" FontWeight="Bold" Foreground="#38bdf8"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Text="{DynamicResource Connection.SqliteDesc}" FontSize="10.5" Foreground="#94a3b8" TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
-                            </StackPanel>
+                            </Grid>
                         </Button>
 
-                        <Button Name="BtnSelectPostgres" Grid.Column="1" Margin="8,0,0,0" Padding="16,14" 
-                                Background="#141d2b" Foreground="#8b9cb3" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8" HorizontalAlignment="Stretch"
+                        <!-- PostgreSQL Card -->
+                        <Button Name="BtnSelectPostgres" Margin="0,0,8,8" Width="228" Padding="12,10"
+                                Background="#141d2b" Foreground="#8b9cb3" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8"
+                                HorizontalContentAlignment="Left" VerticalContentAlignment="Center"
                                 AutomationProperties.Name="Selecionar motor PostgreSQL">
-                            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
-                                <TextBlock Text="🐘" FontSize="18"/>
-                                <StackPanel>
-                                    <TextBlock Text="{DynamicResource Connection.PostgresTitle}" FontWeight="Bold" FontSize="14"/>
-                                    <TextBlock Text="{DynamicResource Connection.PostgresDesc}" FontSize="11" Foreground="#8b9cb3"/>
+                            <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Background="#1e3a5f" VerticalAlignment="Center" Margin="0,0,10,0">
+                                    <PathIcon Data="{DynamicResource IconPostgres}" Width="20" Height="20" Foreground="#60a5fa" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{DynamicResource Connection.PostgresTitle}" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
+                                        <Border Background="#1e3a5f" CornerRadius="4" Padding="4,1" VerticalAlignment="Center">
+                                            <TextBlock Text="5432" FontSize="9" FontWeight="Bold" Foreground="#60a5fa"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Text="{DynamicResource Connection.PostgresDesc}" FontSize="10.5" Foreground="#8b9cb3" TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
-                            </StackPanel>
+                            </Grid>
                         </Button>
-                    </Grid>
+
+                        <!-- MySQL Card -->
+                        <Button Name="BtnSelectMySQL" Margin="0,0,8,8" Width="228" Padding="12,10"
+                                Background="#141d2b" Foreground="#8b9cb3" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8"
+                                HorizontalContentAlignment="Left" VerticalContentAlignment="Center"
+                                AutomationProperties.Name="Selecionar motor MySQL">
+                            <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Background="#00485c" VerticalAlignment="Center" Margin="0,0,10,0">
+                                    <PathIcon Data="{DynamicResource IconMySql}" Width="20" Height="20" Foreground="#f29111" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{DynamicResource Connection.MysqlTitle}" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
+                                        <Border Background="#00485c" CornerRadius="4" Padding="4,1" VerticalAlignment="Center">
+                                            <TextBlock Text="3306" FontSize="9" FontWeight="Bold" Foreground="#f29111"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Text="{DynamicResource Connection.MysqlDesc}" FontSize="10.5" Foreground="#8b9cb3" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+
+                        <!-- MariaDB Card -->
+                        <Button Name="BtnSelectMariaDB" Margin="0,0,8,8" Width="228" Padding="12,10"
+                                Background="#141d2b" Foreground="#8b9cb3" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8"
+                                HorizontalContentAlignment="Left" VerticalContentAlignment="Center"
+                                AutomationProperties.Name="Selecionar motor MariaDB">
+                            <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Background="#003545" VerticalAlignment="Center" Margin="0,0,10,0">
+                                    <PathIcon Data="{DynamicResource IconMariaDb}" Width="20" Height="20" Foreground="#c084fc" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{DynamicResource Connection.MariadbTitle}" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
+                                        <Border Background="#003545" CornerRadius="4" Padding="4,1" VerticalAlignment="Center">
+                                            <TextBlock Text="3306" FontSize="9" FontWeight="Bold" Foreground="#c084fc"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Text="{DynamicResource Connection.MariadbDesc}" FontSize="10.5" Foreground="#8b9cb3" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+
+                        <!-- SQL Server Card -->
+                        <Button Name="BtnSelectSqlServer" Margin="0,0,8,8" Width="228" Padding="12,10"
+                                Background="#141d2b" Foreground="#8b9cb3" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8"
+                                HorizontalContentAlignment="Left" VerticalContentAlignment="Center"
+                                AutomationProperties.Name="Selecionar motor Microsoft SQL Server">
+                            <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Background="#450a0a" VerticalAlignment="Center" Margin="0,0,10,0">
+                                    <PathIcon Data="{DynamicResource IconSqlServer}" Width="20" Height="20" Foreground="#f87171" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{DynamicResource Connection.SqlServerTitle}" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
+                                        <Border Background="#450a0a" CornerRadius="4" Padding="4,1" VerticalAlignment="Center">
+                                            <TextBlock Text="1433" FontSize="9" FontWeight="Bold" Foreground="#f87171"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Text="{DynamicResource Connection.SqlServerDesc}" FontSize="10.5" Foreground="#8b9cb3" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+                    </WrapPanel>
                 </StackPanel>
 
                 <!-- SQLITE FORM SECTION -->
@@ -495,6 +602,31 @@
                                             <ComboBoxItem Content="Prefer"/>
                                             <ComboBoxItem Content="Require"/>
                                         </ComboBox>
+                                    </StackPanel>
+
+                                    <!-- SQL SERVER SPECIFIC OPTIONS (Visible only when SQL Server is selected) -->
+                                    <StackPanel Name="PanelSqlServerOptions" Spacing="10" IsVisible="False" Margin="0,4,0,0">
+                                        <Border Background="#1f1315" BorderBrush="#7f1d1d" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                                            <StackPanel Spacing="8">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="🏢" FontSize="13" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{DynamicResource Connection.SqlServerOptionsTitle}" FontWeight="SemiBold" FontSize="12" Foreground="#f87171" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                                
+                                                <StackPanel Spacing="4">
+                                                    <TextBlock Text="{DynamicResource Connection.DefaultSchema}" FontSize="11" Foreground="#8b9cb3"/>
+                                                    <TextBox Name="TxtDefaultSchema" Text="dbo" Watermark="dbo" Background="#090d14" Foreground="#f0f6fc"
+                                                             BorderBrush="#1e2d42" CornerRadius="6" Padding="8,6"
+                                                             AutomationProperties.Name="{DynamicResource Connection.DefaultSchema}"/>
+                                                </StackPanel>
+
+                                                <CheckBox Name="ChkTrustServerCert" IsChecked="True"
+                                                          Content="{DynamicResource Connection.TrustServerCertificate}"
+                                                          FontSize="11.5" Foreground="#f0f6fc"
+                                                          ToolTip.Tip="Habilita TrustServerCertificate=True na connection string do SQL Server (recomendado para instâncias locais, Docker ou certificados autoassinados)"
+                                                          AutomationProperties.Name="{DynamicResource Connection.TrustServerCertificate}"/>
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
                                 </StackPanel>
                             </Border>

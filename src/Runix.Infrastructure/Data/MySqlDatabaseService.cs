@@ -69,6 +69,17 @@ public class MySqlDatabaseService : IDatabaseService
 
     public async Task<bool> TestConnectionAsync()
     {
+        var result = await TestConnectionDiagnosticsAsync();
+        if (!result.Success && result.ErrorMessage != null)
+        {
+            throw new InvalidOperationException(result.ErrorMessage);
+        }
+        return result.Success;
+    }
+
+    public async Task<ConnectionDiagnosticsResult> TestConnectionDiagnosticsAsync()
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
             string connStr;
@@ -85,9 +96,30 @@ public class MySqlDatabaseService : IDatabaseService
             await using var conn = new MySqlConnection(connStr);
             await conn.OpenAsync();
             await using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT 1;";
-            await cmd.ExecuteScalarAsync();
-            return true;
+            cmd.CommandText = "SELECT VERSION();";
+            var versionObj = await cmd.ExecuteScalarAsync();
+            sw.Stop();
+            string version = versionObj?.ToString() ?? "Unknown";
+            string enginePrefix = Config.Type == DatabaseType.MariaDB ? "MariaDB" : "MySQL";
+            bool isTls = Config.SslMode != null &&
+                         !Config.SslMode.Equals("None", StringComparison.OrdinalIgnoreCase) &&
+                         !Config.SslMode.Equals("Disable", StringComparison.OrdinalIgnoreCase);
+
+            return new ConnectionDiagnosticsResult(
+                Success: true,
+                LatencyMs: sw.ElapsedMilliseconds,
+                ServerVersion: $"{enginePrefix} {version}",
+                EncryptionDetails: isTls ? "TLS Encrypted" : "Standard Connection"
+            );
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            return new ConnectionDiagnosticsResult(
+                Success: false,
+                ErrorMessage: ex.Message,
+                LatencyMs: sw.ElapsedMilliseconds
+            );
         }
         finally
         {

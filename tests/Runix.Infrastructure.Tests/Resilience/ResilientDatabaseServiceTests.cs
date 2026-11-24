@@ -47,6 +47,7 @@ public class ResilientDatabaseServiceTests
         public Task ConnectAsync() => Task.CompletedTask;
         public Task DisconnectAsync() => Task.CompletedTask;
         public Task<bool> TestConnectionAsync() => Task.FromResult(true);
+        public Task<ConnectionDiagnosticsResult> TestConnectionDiagnosticsAsync() => Task.FromResult(new ConnectionDiagnosticsResult(true, null, 5, "Fake 1.0", "None"));
         public Task<List<TableInfo>> GetTablesAsync() => Task.FromResult(new List<TableInfo>());
         public Task<List<ColumnInfo>> GetTableColumnsAsync(string tableName) => Task.FromResult(new List<ColumnInfo>());
         public Task<List<TableIndexInfo>> GetTableIndexesAsync(string tableName) => Task.FromResult(new List<TableIndexInfo>());

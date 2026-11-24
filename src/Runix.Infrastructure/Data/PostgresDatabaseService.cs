@@ -59,6 +59,17 @@ public class PostgresDatabaseService : IDatabaseService
 
     public async Task<bool> TestConnectionAsync()
     {
+        var result = await TestConnectionDiagnosticsAsync();
+        if (!result.Success && result.ErrorMessage != null)
+        {
+            throw new InvalidOperationException(result.ErrorMessage);
+        }
+        return result.Success;
+    }
+
+    public async Task<ConnectionDiagnosticsResult> TestConnectionDiagnosticsAsync()
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
             string connStr;
@@ -75,13 +86,26 @@ public class PostgresDatabaseService : IDatabaseService
             using var conn = new NpgsqlConnection(connStr);
             await conn.OpenAsync();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT 1;";
-            await cmd.ExecuteScalarAsync();
-            return true;
+            cmd.CommandText = "SHOW server_version;";
+            var versionObj = await cmd.ExecuteScalarAsync();
+            sw.Stop();
+            string version = versionObj?.ToString() ?? "Unknown";
+            string enc = (Config.SslMode ?? "Prefer");
+            return new ConnectionDiagnosticsResult(
+                Success: true,
+                LatencyMs: sw.ElapsedMilliseconds,
+                ServerVersion: $"PostgreSQL {version}",
+                EncryptionDetails: enc
+            );
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            throw;
+            sw.Stop();
+            return new ConnectionDiagnosticsResult(
+                Success: false,
+                ErrorMessage: ex.Message,
+                LatencyMs: sw.ElapsedMilliseconds
+            );
         }
         finally
         {

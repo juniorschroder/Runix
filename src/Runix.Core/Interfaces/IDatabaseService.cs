@@ -15,6 +15,7 @@ public interface IDatabaseService : IDisposable
     event Action<ResilienceEvent>? ResilienceEventOccurred;
 
     Task<bool> TestConnectionAsync();
+    Task<ConnectionDiagnosticsResult> TestConnectionDiagnosticsAsync();
     Task ConnectAsync();
     Task DisconnectAsync();
 

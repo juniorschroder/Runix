@@ -51,18 +51,37 @@ public class SqliteDatabaseService : IDatabaseService
 
     public async Task<bool> TestConnectionAsync()
     {
+        var result = await TestConnectionDiagnosticsAsync();
+        return result.Success;
+    }
+
+    public async Task<ConnectionDiagnosticsResult> TestConnectionDiagnosticsAsync()
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
             using var conn = new SqliteConnection(BuildConnectionString());
             await conn.OpenAsync();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT 1;";
-            await cmd.ExecuteScalarAsync();
-            return true;
+            cmd.CommandText = "SELECT sqlite_version();";
+            var versionObj = await cmd.ExecuteScalarAsync();
+            sw.Stop();
+            string version = versionObj?.ToString() ?? "Unknown";
+            return new ConnectionDiagnosticsResult(
+                Success: true,
+                LatencyMs: sw.ElapsedMilliseconds,
+                ServerVersion: $"SQLite {version}",
+                EncryptionDetails: "Local Embedded Storage"
+            );
         }
-        catch
+        catch (Exception ex)
         {
-            return false;
+            sw.Stop();
+            return new ConnectionDiagnosticsResult(
+                Success: false,
+                ErrorMessage: ex.Message,
+                LatencyMs: sw.ElapsedMilliseconds
+            );
         }
     }
 
