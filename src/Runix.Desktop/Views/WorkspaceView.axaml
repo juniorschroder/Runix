@@ -165,6 +165,13 @@
                         <PathIcon Foreground="#34d399" Data="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z"/>
                     </Button>
 
+                    <!-- 10. Database Migrations Hub (Rocket / Evolution Icon) -->
+                    <Button Name="BtnOpenMigrationsTab" Classes="btn-secondary btn-header-icon"
+                            AutomationProperties.Name="Central de Migrações"
+                            ToolTip.Tip="Central de Migrações (Database Migrations Hub)">
+                        <PathIcon Foreground="#a78bfa" Data="M12,2.5L8.5,9H15.5L12,2.5M12,6.5A1.5,1.5 0 0,1 13.5,8A1.5,1.5 0 0,1 12,9.5A1.5,1.5 0 0,1 10.5,8A1.5,1.5 0 0,1 12,6.5M6.92,10.5L4.5,14.71C4.18,15.26 4.56,16 5.18,16H6.5L8.24,13H15.76L17.5,16H18.82C19.44,16 19.82,15.26 19.5,14.71L17.08,10.5H6.92M12,14A1,1 0 0,1 13,15A1,1 0 0,1 12,16A1,1 0 0,1 11,15A1,1 0 0,1 12,14M9,17L7,21H17L15,17H9Z"/>
+                    </Button>
+
                     <!-- 10. Refresh Schema (Sync / Reload Icon) -->
                     <Button Name="BtnRefreshSchema" Classes="btn-outline btn-header-icon"
                             AutomationProperties.Name="{DynamicResource Common.Refresh}"
@@ -211,6 +218,7 @@
                             <MenuItem Name="MenuCaptureSnapshotHeader" Header="📸 Capturar Snapshot de Schema (.rschema)..."/>
                             <MenuItem Name="MenuSnapshotCatalogHeader" Header="🗂️ Catálogo de Snapshots de Schema..."/>
                             <MenuItem Name="MenuOpenBackup" Header="💾 Backup &amp; Restore"/>
+                            <MenuItem Name="MenuOpenMigrations" Header="🚀 Central de Migrações (Hub)"/>
                             <Separator/>
                             <MenuItem Name="MenuRefreshSchema" Header="{DynamicResource Workspace.Refresh}"/>
                             <MenuItem Name="MenuLanguageToggle" Header="Mudar Idioma (PT / EN)"/>

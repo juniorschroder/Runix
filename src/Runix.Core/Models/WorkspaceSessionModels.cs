@@ -15,7 +15,8 @@ public enum WorkspaceTabType
     Backup,
     Dba,
     Diff,
-    ObjectViewer
+    ObjectViewer,
+    Migrations
 }
 
 public class WorkspaceTabSession

@@ -1,0 +1,164 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:migModels="clr-namespace:Runix.Core.Models.Migrations;assembly=Runix.Core"
+             xmlns:local="clr-namespace:Runix.Desktop.Views.Migrations"
+             mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="700"
+             x:Class="Runix.Desktop.Views.Migrations.MigrationsTabControl">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Background="#090d14">
+        <!-- ROW 0: DIRECTORY SELECTOR TOOLBAR -->
+        <Border Grid.Row="0" Background="#0e141f" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="14,10">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,14,0">
+                    <TextBlock Text="🚀" FontSize="16" VerticalAlignment="Center"/>
+                    <TextBlock Text="{DynamicResource Migrations.HubTitle}" FontSize="14" FontWeight="Bold" Foreground="#f0f6fc" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Directory Input -->
+                <TextBox Name="TxtMigrationsDirectory" Grid.Column="1" Background="#090d14" Foreground="#f0f6fc"
+                         BorderBrush="#1e2d42" CornerRadius="6" Padding="10,7" FontSize="12"
+                         Watermark="{DynamicResource Migrations.DirectoryWatermark}"/>
+
+                <Button Name="BtnBrowseDirectory" Grid.Column="2" Content="{DynamicResource Connection.Browse}"
+                        Classes="btn-secondary" Padding="12,7" Margin="8,0,0,0" FontSize="11"/>
+
+                <Button Name="BtnRefreshDirectory" Grid.Column="3" Content="🔄 Atualizar"
+                        Classes="btn-outline" Padding="12,7" Margin="6,0,0,0" FontSize="11"/>
+
+                <Button Name="BtnOpenInFolder" Grid.Column="4" Content="📂 Abrir Pasta"
+                        Classes="btn-outline" Padding="12,7" Margin="6,0,0,0" FontSize="11"/>
+            </Grid>
+        </Border>
+
+        <!-- ROW 1: SUMMARY METRICS & ACTIONS BAR -->
+        <Border Grid.Row="1" Background="#0a0f17" BorderBrush="#1e2d42" BorderThickness="0,0,0,1" Padding="14,8">
+            <Grid ColumnDefinitions="*,Auto">
+                <!-- Summary Pills -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <Border Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="6" Padding="10,4">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="Total:" FontSize="11" Foreground="#8b9cb3"/>
+                            <TextBlock Name="TxtTotalCount" Text="0" FontSize="11" FontWeight="Bold" Foreground="#f0f6fc"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="#062e26" BorderBrush="#059669" BorderThickness="1" CornerRadius="6" Padding="10,4">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="🟢 Aplicadas:" FontSize="11" Foreground="#34d399"/>
+                            <TextBlock Name="TxtAppliedCount" Text="0" FontSize="11" FontWeight="Bold" Foreground="#34d399"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="#2b1a09" BorderBrush="#d97706" BorderThickness="1" CornerRadius="6" Padding="10,4">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="🟡 Pendentes:" FontSize="11" Foreground="#fbbf24"/>
+                            <TextBlock Name="TxtPendingCount" Text="0" FontSize="11" FontWeight="Bold" Foreground="#fbbf24"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Name="BadgeTamperedWrapper" Background="#331012" BorderBrush="#ef4444" BorderThickness="1" CornerRadius="6" Padding="10,4" IsVisible="False">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="🔴 Adulteradas:" FontSize="11" Foreground="#f87171"/>
+                            <TextBlock Name="TxtTamperedCount" Text="0" FontSize="11" FontWeight="Bold" Foreground="#f87171"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Action Buttons -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Name="BtnDryRun" Content="🔍 Dry Run / Preview" Classes="btn-outline"
+                            Padding="14,6" FontSize="11" FontWeight="SemiBold"/>
+                    <Button Name="BtnApplyPending" Content="⚡ Aplicar Pendentes" Classes="btn-primary"
+                            Padding="16,6" FontSize="11" FontWeight="Bold"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ROW 2: INTEGRITY WARNING BANNER (Hidden unless mismatch detected) -->
+        <Border Name="PanelTamperWarning" Grid.Row="2" Background="#2e1416" BorderBrush="#ef4444" BorderThickness="0,0,0,1"
+                Padding="16,10" IsVisible="False">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Column="0" Text="⚠️" FontSize="18" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                    <TextBlock Text="ALERTA CRÍTICO DE INTEGRIDADE: Adulteração Detectada em Migração Aplicada"
+                               FontWeight="Bold" FontSize="12" Foreground="#f87171"/>
+                    <TextBlock Name="TxtTamperDetails" Text="Um ou mais arquivos de migração foram modificados no disco após terem sido gravados no banco."
+                               FontSize="11" Foreground="#fca5a5" TextWrapping="Wrap"/>
+                </StackPanel>
+                <Border Grid.Column="2" Background="#450a0a" BorderBrush="#f87171" BorderThickness="1" CornerRadius="4" Padding="8,4" VerticalAlignment="Center">
+                    <TextBlock Text="EXECUÇÃO BLOQUEADA" FontSize="10" FontWeight="Bold" Foreground="#f87171"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- ROW 3: MAIN SPLIT VIEW (Left: Table of Migrations, Right: SQL Inspector) -->
+        <Grid Grid.Row="3" ColumnDefinitions="1.3*,*">
+            <!-- LEFT PANEL: DATAGRID OF MIGRATIONS -->
+            <Border Grid.Column="0" Background="#0b1019" BorderBrush="#1e2d42" BorderThickness="0,0,1,0">
+                <DataGrid Name="GridMigrations" AutoGenerateColumns="False" IsReadOnly="True"
+                          x:DataType="migModels:MigrationItem"
+                          Background="Transparent" GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                          SelectionMode="Single" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="Status" Width="130">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate DataType="migModels:MigrationItem">
+                                    <Border CornerRadius="4" Padding="6,2" Margin="4,2" HorizontalAlignment="Center">
+                                        <TextBlock Text="{Binding Status}" FontSize="11" FontWeight="Bold">
+                                            <!-- Dynamically handled in template or binding -->
+                                        </TextBlock>
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Versão" Binding="{Binding Version}" Width="90"/>
+                        <DataGridTextColumn Header="Descrição" Binding="{Binding Description}" Width="160"/>
+                        <DataGridTextColumn Header="Arquivo" Binding="{Binding ScriptFileName}" Width="180"/>
+                        <DataGridTextColumn Header="Duração" Binding="{Binding ExecutionTimeMs, StringFormat='{}{0} ms'}" Width="90"/>
+                        <DataGridTextColumn Header="Instalado Em" Binding="{Binding InstalledOn, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Width="140"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
+
+            <!-- RIGHT PANEL: SCRIPT INSPECTOR -->
+            <Border Grid.Column="1" Background="#090d14" Padding="14">
+                <Grid RowDefinitions="Auto,*,Auto">
+                    <!-- Inspector Header -->
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+                        <StackPanel Grid.Column="0" Spacing="4">
+                            <TextBlock Name="TxtSelectedScriptName" Text="Selecione uma migração" FontSize="13" FontWeight="Bold" Foreground="#f0f6fc"/>
+                            <TextBlock Name="TxtSelectedChecksum" Text="SHA-256: -" FontSize="10.5" FontFamily="Consolas, monospace" Foreground="#64748b"/>
+                        </StackPanel>
+                        <Button Name="BtnCopyScriptSql" Grid.Column="1" Content="📋 Copiar" Classes="btn-secondary" Padding="10,6" FontSize="11"/>
+                    </Grid>
+
+                    <!-- Script Content Text Area -->
+                    <Border Grid.Row="1" Background="#06090e" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="6" Padding="10">
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                            <TextBox Name="TxtSelectedSqlContent" IsReadOnly="True" FontFamily="Consolas, Menlo, Monaco, monospace"
+                                     Background="Transparent" BorderThickness="0" Foreground="#38bdf8" FontSize="11.5" TextWrapping="NoWrap"/>
+                        </ScrollViewer>
+                    </Border>
+
+                    <!-- Inspector Footer Message -->
+                    <TextBlock Name="TxtInspectorStatus" Grid.Row="2" Text="" FontSize="11" Foreground="#34d399" Margin="0,6,0,0"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ROW 4: STATUS BAR -->
+        <Border Grid.Row="4" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="0,1,0,0" Padding="14,6">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Name="TxtStatusMessage" Grid.Column="0" Text="Pronto." FontSize="11" Foreground="#8b9cb3" VerticalAlignment="Center"/>
+                <ProgressBar Name="ProgressBusy" Grid.Column="1" Width="120" Height="4" IsIndeterminate="True" IsVisible="False" Foreground="#008bb9" Background="#0e141f"/>
+            </Grid>
+        </Border>
+
+        <!-- MODAL OVERLAY (Dry Run Preview) -->
+        <Grid Name="PanelModalOverlay" Grid.RowSpan="5" Background="#b0000000" IsVisible="False" ZIndex="100">
+            <local:DryRunPreviewDialog Name="ModalDryRun" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False"/>
+        </Grid>
+    </Grid>
+</UserControl>

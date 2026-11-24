@@ -36,13 +36,15 @@
             </Border>
 
             <!-- FOOTER ACTIONS -->
-            <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" Margin="0,14,0,0">
+            <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="0,14,0,0">
                 <TextBlock Name="TxtExecutionStatus" Grid.Column="0" Text="" FontSize="11" Foreground="#34d399" VerticalAlignment="Center"/>
 
-                <Button Name="BtnCopySql" Grid.Column="2" Content="📋 Copiar SQL" Classes="btn-secondary" Padding="14,7" Margin="0,0,8,0" FontSize="11"/>
-                <Button Name="BtnSaveFile" Grid.Column="3" Content="💾 Salvar .sql" Classes="btn-outline" Padding="14,7" Margin="0,0,8,0" FontSize="11"/>
-                <Button Name="BtnSaveSnapshot" Grid.Column="4" Content="{DynamicResource Diff.Endpoints.SaveUpdatedSnapshot}" Classes="btn-outline" Padding="14,7" Margin="0,0,8,0" FontSize="11" IsVisible="False"/>
-                <Button Name="BtnExecute" Grid.Column="5" Content="⚡ Executar no Destino" Classes="btn-primary" Padding="16,7" FontSize="11"/>
+                <Button Name="BtnExportAsMigration" Grid.Column="2" Content="🚀 Exportar Migração..." Classes="btn-secondary" Padding="14,7" Margin="0,0,8,0" FontSize="11"
+                        ToolTip.Tip="Exporta o script como uma nova migração versionada (V{next}__desc.sql) na pasta de migrações"/>
+                <Button Name="BtnCopySql" Grid.Column="3" Content="📋 Copiar SQL" Classes="btn-secondary" Padding="14,7" Margin="0,0,8,0" FontSize="11"/>
+                <Button Name="BtnSaveFile" Grid.Column="4" Content="💾 Salvar .sql" Classes="btn-outline" Padding="14,7" Margin="0,0,8,0" FontSize="11"/>
+                <Button Name="BtnSaveSnapshot" Grid.Column="5" Content="{DynamicResource Diff.Endpoints.SaveUpdatedSnapshot}" Classes="btn-outline" Padding="14,7" Margin="0,0,8,0" FontSize="11" IsVisible="False"/>
+                <Button Name="BtnExecute" Grid.Column="6" Content="⚡ Executar no Destino" Classes="btn-primary" Padding="16,7" FontSize="11"/>
             </Grid>
         </Grid>
     </Border>

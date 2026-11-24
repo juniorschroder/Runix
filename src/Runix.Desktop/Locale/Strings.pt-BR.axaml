@@ -394,4 +394,11 @@
     <sys:String x:Key="Erd.Export.PageSize">Tamanho da Página (PDF)</sys:String>
     <sys:String x:Key="Erd.Export.Success">Diagrama exportado com sucesso para {0}</sys:String>
 
+    <!-- Phase 36: Database Migrations Hub -->
+    <sys:String x:Key="Migrations.HubTitle">Central de Migrações (Hub)</sys:String>
+    <sys:String x:Key="Migrations.DirectoryWatermark">Selecione o diretório com os arquivos V{version}__{desc}.sql...</sys:String>
+    <sys:String x:Key="Migrations.DryRunTitle">Visualização Dry-Run da Migração</sys:String>
+    <sys:String x:Key="Migrations.TabTitle">Migrações</sys:String>
+    <sys:String x:Key="Diff.Action.ExportMigration">🚀 Exportar como Migração (V{N+1}__...)</sys:String>
+
 </ResourceDictionary>

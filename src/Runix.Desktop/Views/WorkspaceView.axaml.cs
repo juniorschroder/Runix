@@ -177,6 +177,7 @@ public partial class WorkspaceView : UserControl
         BtnOpenDbaTab.Click += (s, e) => OpenDbaTab();
         BtnOpenCompareTab.Click += (s, e) => OpenCompareTab();
         BtnOpenBackupTab.Click += (s, e) => OpenBackupRestoreTab();
+        BtnOpenMigrationsTab.Click += (s, e) => OpenMigrationsTab();
         BtnRefreshSchema.Click += (s, e) => LoadSchema();
         BtnAbout.Click += (s, e) => AboutRequested?.Invoke();
         BtnDisconnect.Click += async (s, e) =>
@@ -207,6 +208,7 @@ public partial class WorkspaceView : UserControl
         MenuCaptureSnapshotHeader.Click += (s, e) => OpenCaptureSnapshotDialog(_databaseService);
         MenuSnapshotCatalogHeader.Click += (s, e) => OpenSnapshotCatalogDialog();
         MenuOpenBackup.Click += (s, e) => OpenBackupRestoreTab();
+        MenuOpenMigrations.Click += (s, e) => OpenMigrationsTab();
         MenuRefreshSchema.Click += (s, e) => LoadSchema();
         MenuLanguageToggle.Click += (s, e) =>
         {
@@ -918,6 +920,25 @@ public partial class WorkspaceView : UserControl
         WorkspaceTabs.SelectedItem = tabItem;
     }
 
+    public void OpenMigrationsTab()
+    {
+        foreach (var item in WorkspaceTabs.Items)
+        {
+            if (item is TabItem t && t.Tag is string tag && tag == "migrations")
+            {
+                WorkspaceTabs.SelectedItem = t;
+                return;
+            }
+        }
+
+        var migrationsControl = new Runix.Desktop.Views.Migrations.MigrationsTabControl(_databaseService);
+
+        var tabItem = CreateTabItem("Migrações", "🚀", migrationsControl);
+        tabItem.Tag = "migrations";
+        WorkspaceTabs.Items.Add(tabItem);
+        WorkspaceTabs.SelectedItem = tabItem;
+    }
+
     public void OpenGlobalSearchTab()
     {
         foreach (var item in WorkspaceTabs.Items)
@@ -982,6 +1003,7 @@ public partial class WorkspaceView : UserControl
             new() { Id = "action:capture-snapshot", Title = "Salvar Snapshot de Schema (.rschema)", Subtitle = "Capturar estrutura compactada com integridade SHA-256", Category = CommandPaletteCategory.Action, Icon = "📸", ShortcutHint = "Snapshot", Payload = "capture-snapshot" },
             new() { Id = "action:snapshot-catalog", Title = "Abrir Catálogo de Snapshots de Schema", Subtitle = "Explorar snapshots salvos em ~/.runix/snapshots/ e comparar", Category = CommandPaletteCategory.Action, Icon = "🗂️", ShortcutHint = "Catalog", Payload = "snapshot-catalog" },
             new() { Id = "action:backup", Title = "Gerenciador de Backup & Restore", Subtitle = "Exportar backup online .db, dump .sql/.sql.gz ou restaurar banco", Category = CommandPaletteCategory.Action, Icon = "💾", ShortcutHint = "Backup", Payload = "backup" },
+            new() { Id = "action:migrations", Title = "Central de Migrações (Database Evolution)", Subtitle = "Executar migrações versionadas V*__*.sql, auditoria e diff export", Category = CommandPaletteCategory.Action, Icon = "🚀", ShortcutHint = "Migrações", Payload = "migrations" },
             new() { Id = "action:new-ddl", Title = "Novo Objeto Programável (View, Trigger, Function, Index)", Subtitle = "Criar objeto a partir de template DDL com transação segura", Category = CommandPaletteCategory.Action, Icon = "➕", ShortcutHint = "DDL", Payload = "new-ddl" },
             new() { Id = "action:refresh", Title = "Atualizar Catálogo de Schema", Subtitle = "Recarregar tabelas, views e objetos programáveis", Category = CommandPaletteCategory.Action, Icon = "🔄", ShortcutHint = "Refresh", Payload = "refresh" },
             new() { Id = "action:language", Title = "Alternar Idioma da Interface (PT-BR / EN-US)", Subtitle = "Mudar idioma dinamicamente", Category = CommandPaletteCategory.Action, Icon = "🌐", ShortcutHint = "i18n", Payload = "language" },
@@ -1030,6 +1052,7 @@ public partial class WorkspaceView : UserControl
                     case "capture-snapshot": OpenCaptureSnapshotDialog(_databaseService); break;
                     case "snapshot-catalog": OpenSnapshotCatalogDialog(); break;
                     case "backup": OpenBackupRestoreTab(); break;
+                    case "migrations": OpenMigrationsTab(); break;
                     case "new-ddl": OpenNewProgrammableObjectTab(); break;
                     case "refresh": await LoadSchemaAsync(); break;
                     case "language":
@@ -1598,6 +1621,11 @@ public partial class WorkspaceView : UserControl
                 tabSession.TabType = WorkspaceTabType.Diff;
                 session.Tabs.Add(tabSession);
             }
+            else if (tab.Content is Runix.Desktop.Views.Migrations.MigrationsTabControl)
+            {
+                tabSession.TabType = WorkspaceTabType.Migrations;
+                session.Tabs.Add(tabSession);
+            }
         }
 
         return session;
@@ -1704,6 +1732,10 @@ public partial class WorkspaceView : UserControl
 
                     case WorkspaceTabType.Diff:
                         OpenCompareTab();
+                        break;
+
+                    case WorkspaceTabType.Migrations:
+                        OpenMigrationsTab();
                         break;
                 }
             }

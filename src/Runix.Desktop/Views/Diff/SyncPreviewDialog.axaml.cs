@@ -31,6 +31,8 @@ public partial class SyncPreviewDialog : UserControl
 
         BtnSaveFile.Click += async (s, e) => await SaveToFileAsync();
 
+        BtnExportAsMigration.Click += async (s, e) => await ExportAsMigrationAsync();
+
         BtnSaveSnapshot.Click += (s, e) => SaveSnapshotRequested?.Invoke();
 
         BtnExecute.Click += (s, e) => ExecuteRequested?.Invoke();
@@ -85,6 +87,26 @@ public partial class SyncPreviewDialog : UserControl
             await using var writer = new StreamWriter(stream);
             await writer.WriteAsync(_currentSql);
             TxtExecutionStatus.Text = $"✓ Salvo em {file.Name}";
+        }
+    }
+
+    private async System.Threading.Tasks.Task ExportAsMigrationAsync()
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null || string.IsNullOrWhiteSpace(_currentSql)) return;
+
+        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Selecionar Pasta de Migrações para Exportar",
+            AllowMultiple = false
+        });
+
+        if (folders.Count > 0)
+        {
+            string targetDir = folders[0].Path.LocalPath;
+            var migrationService = new Runix.Infrastructure.Services.MigrationService();
+            string createdPath = await migrationService.ExportDiffAsMigrationAsync(targetDir, "sync_from_schema_compare", _currentSql);
+            TxtExecutionStatus.Text = $"✓ Migração gerada: {Path.GetFileName(createdPath)}";
         }
     }
 }
