@@ -33,6 +33,11 @@ public partial class MockDataGeneratorDialog : UserControl
         _databaseService = null!;
         _tableName = string.Empty;
         _generatorService = new MockDataGeneratorService();
+
+        if (CmbRowCount.SelectedIndex < 0)
+        {
+            CmbRowCount.SelectedIndex = 2;
+        }
     }
 
     public MockDataGeneratorDialog(
@@ -47,6 +52,11 @@ public partial class MockDataGeneratorDialog : UserControl
 
         TxtDialect.Text = $"[{_databaseService.Config.Type}]";
         TxtSubtitle.Text = $"Tabela: {_tableName}";
+
+        if (CmbRowCount.SelectedIndex < 0)
+        {
+            CmbRowCount.SelectedIndex = 2;
+        }
 
         SetupEvents();
         _ = LoadMetadataAsync();

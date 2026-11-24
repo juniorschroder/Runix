@@ -27,7 +27,7 @@
                 <!-- Row Count Picker -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,16,0">
                     <TextBlock Text="{DynamicResource MockData.RowCount}" FontSize="11" VerticalAlignment="Center" Foreground="#8b9cb3"/>
-                    <ComboBox Name="CmbRowCount" Width="100" Background="#141d2b" Foreground="#f0f6fc" BorderBrush="#1e2d42" CornerRadius="4">
+                    <ComboBox Name="CmbRowCount" SelectedIndex="2" Width="100" Background="#141d2b" Foreground="#f0f6fc" BorderBrush="#1e2d42" CornerRadius="4">
                         <ComboBoxItem Content="10" Tag="10"/>
                         <ComboBoxItem Content="25" Tag="25"/>
                         <ComboBoxItem Content="50" IsSelected="True" Tag="50"/>

@@ -32,6 +32,7 @@ class Program
         bool isAboutDemo = false;
         bool isErdSearch = false;
         bool isErdExportDemo = false;
+        bool isMockDataDemo = false;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -131,12 +132,17 @@ class Program
                 isErdExportDemo = true;
                 isDemo = true;
             }
+            if (args[i] == "--mock-data-demo")
+            {
+                isMockDataDemo = true;
+                isDemo = true;
+            }
         }
 
         if (!string.IsNullOrEmpty(screenshotPath))
         {
             // Headless capture - works in all terminal/CI environments without display server requirements
-            RunHeadlessScreenshot(screenshotPath, isDemo, explicitLang, isErd, isEditDemo, isCompletionDemo, isStructureDemo, isErdModeling, isMigrationPreview, isQueryLibraryDemo, isSnippetManagerDemo, isExportDialogDemo, isImportWizardDemo, isExplainPlanDemo, isDbaDemo, isCompareDemo, isChartDemo, isAboutDemo, isErdSearch, isErdExportDemo);
+            RunHeadlessScreenshot(screenshotPath, isDemo, explicitLang, isErd, isEditDemo, isCompletionDemo, isStructureDemo, isErdModeling, isMigrationPreview, isQueryLibraryDemo, isSnippetManagerDemo, isExportDialogDemo, isImportWizardDemo, isExplainPlanDemo, isDbaDemo, isCompareDemo, isChartDemo, isAboutDemo, isErdSearch, isErdExportDemo, isMockDataDemo);
             return;
         }
 
@@ -177,7 +183,8 @@ class Program
         bool isChartDemo = false,
         bool isAboutDemo = false,
         bool isErdSearch = false,
-        bool isErdExportDemo = false)
+        bool isErdExportDemo = false,
+        bool isMockDataDemo = false)
     {
         var app = BuildHeadlessApp().SetupWithoutStarting();
         Runix.Desktop.Services.LocalizationManager.Initialize(explicitLang);
@@ -231,6 +238,19 @@ class Program
 
             var tableTab = window.CurrentWorkspaceView.FindTableDataTabControl("cheeses");
             tableTab?.OpenExportDialog();
+        }
+        else if (isMockDataDemo && window.CurrentWorkspaceView != null)
+        {
+            window.CurrentWorkspaceView.OpenTableDataTab("cheeses");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            System.Threading.Thread.Sleep(300);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            var tableTab = window.CurrentWorkspaceView.FindTableDataTabControl("cheeses");
+            tableTab?.OpenMockDataGeneratorDialog();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            System.Threading.Thread.Sleep(300);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
         }
         else if (isQueryLibraryDemo && window.CurrentWorkspaceView != null)
         {
