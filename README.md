@@ -5,15 +5,18 @@
 **Modern, Cross-Platform (macOS, Linux & Windows), High-Performance Relational Database Studio**  
 *Built natively with .NET 10, C# 13, Avalonia UI 11 & SkiaSharp — Zero Electron overhead, 100% offline & privacy-first.*
 
-[![Version](https://img.shields.io/badge/Version-1.1.0-008bb9?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-1.6.0-008bb9?style=for-the-badge)](#)
 [![Platforms](https://img.shields.io/badge/Platform-macOS_%7C_Linux_%7C_Windows-0f172a?style=for-the-badge)](#)
 [![.NET 10.0](https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![C# 13](https://img.shields.io/badge/C%23-13.0-239120?style=for-the-badge&logo=csharp&logoColor=white)](https://learn.microsoft.com/en-us/dotnet/csharp/)
 [![Avalonia UI](https://img.shields.io/badge/Avalonia_UI-11.1.0-8B5CF6?style=for-the-badge)](https://avaloniaui.net/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com/)
+[![MariaDB](https://img.shields.io/badge/MariaDB-003545?style=for-the-badge&logo=mariadb&logoColor=white)](https://mariadb.org/)
+[![SQL Server](https://img.shields.io/badge/SQL_Server-CC292B?style=for-the-badge&logo=microsoftsqlserver&logoColor=white)](https://www.microsoft.com/sql-server)
 [![Vard Resilience](https://img.shields.io/badge/Vard-Resilience-F59E0B?style=for-the-badge)](https://github.com/juniorschroder/vard)
-[![Tests](https://img.shields.io/badge/Tests-162_Passing-10B981?style=for-the-badge)](#-testing--headless-verification)
+[![Tests](https://img.shields.io/badge/Tests-487_Passing-10B981?style=for-the-badge)](#-testing--headless-verification)
 
 <p align="center">
   <strong>🇺🇸 English</strong> • <a href="README.pt-BR.md">🇧🇷 Português (Brasil)</a>
@@ -25,20 +28,22 @@
 
 ## 📖 Overview
 
-**RUNIX Database Studio** is a fast, modern, and resilient **cross-platform desktop client (running natively on macOS, Linux, and Windows)** for inspecting, querying, administering, and visually modeling relational databases (**PostgreSQL** and **SQLite**).
+**RUNIX Database Studio** is a fast, modern, and resilient **cross-platform desktop client (running natively on macOS, Linux, and Windows)** for inspecting, querying, administering, generating test data, and visually modeling relational databases (**PostgreSQL**, **SQLite**, **MySQL**, **MariaDB**, and **Microsoft SQL Server**).
 
-Engineered with strict **Clean Architecture** and natively rendered via **Avalonia UI** and **SkiaSharp**, RUNIX delivers instant startup, low memory footprint, transient network fault tolerance powered by [**Vard**](https://github.com/juniorschroder/vard) (Exponential Backoff Retry & Circuit Breaker), military-grade **AES-256-GCM** encryption for credentials and shareable bundles (`.rcf`), and real-time bilingual support (**English `en-US`** and **Portuguese `pt-BR`**).
+Engineered with strict **Clean Architecture** and natively rendered via **Avalonia UI** and **SkiaSharp**, RUNIX delivers instant startup, low memory footprint, transient network fault tolerance powered by [**Vard**](https://github.com/juniorschroder/vard) (Exponential Backoff Retry & Circuit Breaker), military-grade **AES-256-GCM** encryption for credentials and shareable bundles (`.rcf`), drag-and-drop connection categories, and real-time bilingual support (**English `en-US`** and **Portuguese `pt-BR`**).
 
 ---
 
 ## ✨ Key Features
 
-### 🔌 Connectivity, Security & Resilience
-- **Multi-Engine Relational Support:** High-performance native drivers for **PostgreSQL** (`Npgsql`) and **SQLite** (`Microsoft.Data.Sqlite`), including a built-in demonstration database (`demo.db`).
-- **AES-256-GCM Credential Vault:** Database passwords, SSH passwords, and private key passphrases are encrypted at rest (`AesGcm` + `PBKDF2-SHA256` key derivation with 100,000 iterations).
+### 🔌 Multi-Engine Connectivity, Security & Resilience
+- **Multi-Engine Relational Support:** High-performance native drivers for **PostgreSQL** (`Npgsql`), **SQLite** (`Microsoft.Data.Sqlite`), **MySQL** (`MySqlConnector`), **MariaDB** (`MySqlConnector`), and **Microsoft SQL Server** (`Microsoft.Data.SqlClient`), including a built-in demonstration database (`demo.db`).
+- **Modern Engine Dropdown Selector:** Streamlined engine switcher featuring official vector brand logos, automatic default port configuration (`5432`, `3306`, `1433`), dialect-specific options (e.g. *Trust Server Certificate* for SQL Server, *SSL Mode* for PostgreSQL), and local file browser for SQLite.
+- **Hierarchical Connection Categories:** Organize saved profiles in collapsible folders with drag-and-drop reordering, inline category management, and environment badges (Production `🚨 PROD`, Read-Only `🔒 RO`, SSH Tunnel `🔐 SSH`).
+- **AES-256-GCM Credential Vault:** Database passwords, SSH credentials, and private key passphrases are encrypted at rest (`AesGcm` + `PBKDF2-SHA256` key derivation with 100,000 iterations).
 - **Encrypted Shareable Bundles (`.rcf`):** Export and import connections, saved queries, and custom snippets into a master-password-protected `.rcf` bundle for secure team sharing or machine migration.
 - **Built-in SSH Tunneling:** Native SSH port forwarding over ephemeral local ports (`127.0.0.1:0`) supporting both password and private key authentication (`.pem`, `id_rsa`, `id_ed25519`).
-- **Resilience with [Vard](https://github.com/juniorschroder/vard):** Dedicated `ResilientDatabaseService` layer with automatic *Exponential Backoff Retry* and *Circuit Breaker* policies, preventing UI freezes or lost tabs during transient network drops.
+- **Resilience with [Vard](https://github.com/juniorschroder/vard):** Dedicated `ResilientDatabaseService` layer with automatic *Exponential Backoff Retry* and *Circuit Breaker* policies across all network database engines, preventing UI freezes or lost tabs during transient network drops.
 
 ### 💻 Advanced SQL Editor, Autocomplete & Visual Query Builder
 - **Contextual IntelliSense & Autocomplete (`< 2ms`):** In-process lexical analyzer (`SqlLexerService`) suggesting ANSI SQL keywords, tables, views, alias-resolved columns (`FROM cheeses c` -> `c.`), and custom snippets (`[KW]`, `[TBL]`, `[COL]`, `[SNP]`).
@@ -46,10 +51,24 @@ Engineered with strict **Clean Architecture** and natively rendered via **Avalon
 - **Visual Query Builder:** Interactive point-and-click query builder featuring table/column selection, aggregate functions (`SUM`, `COUNT`, `AVG`, `MIN`, `MAX`), automatic Foreign Key `JOIN` suggestions, `WHERE` filters, and `ORDER BY` clauses.
 - **Query Library & Snippet Manager:** Persistent local repository for favorite queries (with tags and search) and reusable SQL snippets.
 
+### 🎲 Mock Data Generator (Test Data Seeding)
+- **Smart Schema-Aware Synthesis:** Intelligently infers generation rules based on column data types and naming conventions (names, emails, phones, addresses, timestamps, integer sequences, random decimals, and custom formats).
+- **Foreign Key Sampling:** Automatically inspects and samples valid parent IDs from related tables to maintain strict referential integrity (`FOREIGN KEY`) without constraint violations.
+- **Configurable Quantities & Nullability:** Select from preset batch sizes (10, 25, **50 default**, 100, 250, 500, 1,000 rows) and adjust per-column null percentages.
+- **Instant Preview & Direct Seeding:** Real-time 5-row preview grid for instant validation, followed by direct transactional seeding into the database or export to atomic `INSERT INTO` SQL scripts.
+
 ### 📐 Bidirectional Visual ERD (Entity-Relationship Diagram) Editor
 - **Visual Modeling & Introspection:** Interactive canvas rendering Bezier relationship curves, cardinality badges (`1:N`), primary (`PK`) and foreign (`FK`) keys, zoom, pan, and auto-layout.
+- **Entity Search (`Ctrl+F`):** Real-time entity search bar to quickly locate and highlight tables in complex database schemas.
 - **DDL Synchronization & Safe Migrations:** Visually create or modify tables, columns, and foreign keys directly on the diagram, preview the generated DDL script (`CREATE TABLE`, `ALTER TABLE`), and apply migrations inside an atomic transaction with automatic rollback on failure.
-- **Export:** Export high-resolution **PNG** diagrams or generate full **SQL DDL** scripts.
+- **Multi-Format Visual Export:** Export diagrams as high-resolution **PNG** (Retina 2x), standalone **PDF** documents (Fit to Diagram, A4 Landscape, A3 Landscape), or raw **SQL DDL** scripts.
+
+### 🗃️ Database Object Inspector & Editor
+- **Dedicated Object Management:** Specialized inspector and DDL editor for non-table schema objects:
+  - **Views:** Definition SQL, column metadata, and recreation scripts.
+  - **Triggers:** Timing (`BEFORE`, `AFTER`, `INSTEAD OF`), events (`INSERT`, `UPDATE`, `DELETE`), and execution bodies.
+  - **Indexes:** Index types (Clustered, Non-Clustered, Unique), column order, and generation DDL.
+  - **Functions & Stored Procedures:** Parameter definitions, return types, language dialect, and routine source code.
 
 ### 📝 In-Grid Data Editing (Stage / Commit) & Record Inspector
 - **Transactional Editing with Dirty Tracking:** Edit cells directly in the `DataGrid`, insert new rows, or mark records for deletion with semantic color coding (Amber for edits, Emerald Green for insertions, Red for deletions).
@@ -75,7 +94,7 @@ Engineered with strict **Clean Architecture** and natively rendered via **Avalon
 ### Main Workspace & Hierarchical Schema Tree
 ![Workspace and SQL Editor](Screenshots/workspace_icons_centered.png)
 
-### Connection Manager (SQLite, PostgreSQL, SSH Tunnel & `.rcf` Bundles)
+### Connection Manager (PostgreSQL, SQLite, MySQL, MariaDB, SQL Server & `.rcf` Bundles)
 ![Connections Screen](Screenshots/connection_wide.png)
 
 ### Interactive Entity-Relationship Diagram (ERD) & Visual Modeling
@@ -115,22 +134,22 @@ RUNIX strictly follows **Clean Architecture** principles, ensuring separation of
 flowchart TD
     subgraph Presentation ["🖥️ Presentation Layer (src/Runix.Desktop)"]
         UI["Views & Controls (Avalonia XAML)\nMainWindow, ConnectionView, WorkspaceView"]
-        Tabs["Specialized Modules\nQueryTab, TableDataTab, ErdTab, ExplainPlan,\nSchemaCompare, DatabaseHealth, PostgresAdmin"]
-        Dialogs["Dialogs & Wizards\nCommandPalette, Export/Import, Backup/Restore, RCF Bundle"]
+        Tabs["Specialized Modules\nQueryTab, TableDataTab, ErdTab, ExplainPlan,\nSchemaCompare, DatabaseHealth, PostgresAdmin, ObjectEditor"]
+        Dialogs["Dialogs & Wizards\nCommandPalette, MockDataGenerator, Export/Import,\nBackup/Restore, RCF Bundle, ErdExport"]
     end
 
     subgraph Infrastructure ["⚙️ Infrastructure Layer (src/Runix.Infrastructure)"]
-        Data["Database Drivers\nSqliteDatabaseService & PostgresDatabaseService"]
+        Data["Database Drivers\nSqlite, Postgres, MySql, MariaDB & SqlServer"]
         Resilience["Resilience (Vard)\nResilientDatabaseService (Retry + Circuit Breaker)"]
         Sec["Security & Networking\nAesCredentialVaultService, ConnectionBundleService, SshTunnelService"]
-        Engines["Specialized Engines\nSkiaChartRenderer, DataExport/Import, DatabaseBackup, DatabaseHealth"]
+        Engines["Specialized Engines\nSkiaChartRenderer, DataExport/Import, DatabaseBackup, DatabaseHealth, MockDataGenerator"]
         Storage["Local Persistence\nConnectionStorageService & AppStorageService"]
     end
 
     subgraph Core ["💎 Domain & Core Layer (src/Runix.Core)"]
-        Interfaces["Contracts & Interfaces\nIDatabaseService, ICommandPaletteService, ISqlFormatterService..."]
+        Interfaces["Contracts & Interfaces\nIDatabaseService, IMockDataGeneratorService, ICommandPaletteService..."]
         CoreServices["Pure Domain Services (Zero External Deps)\nSqlLexerService, SqlCompletionEngine, SqlFormatterService,\nSchemaDiffEngine, ErdLayoutEngine, VisualQueryBuilderService"]
-        Models["Domain Models & Constants\nConnectionConfig, QueryResult, TableInfo, ExplainNode, DiffModels..."]
+        Models["Domain Models & Constants\nConnectionConfig, QueryResult, TableInfo, ExplainNode, DiffModels, MockDataModels..."]
     end
 
     Presentation --> Infrastructure
@@ -143,12 +162,12 @@ flowchart TD
 ```text
 ├── Runix.sln                          # Main Solution (.NET 10)
 ├── src/
-│   ├── Runix.Core/                    # Pure Domain: Models, Interfaces, SQL Lexer, Diff Engine, ERD Layout
-│   ├── Runix.Infrastructure/          # Implementations: SQLite, PostgreSQL, Vard Resilience, AES-256-GCM, SkiaSharp, MiniExcel
+│   ├── Runix.Core/                    # Pure Domain: Models, Interfaces, SQL Lexer, Diff Engine, ERD Layout, Mock Data Models
+│   ├── Runix.Infrastructure/          # Implementations: SQLite, PostgreSQL, MySQL, MariaDB, SQL Server, Vard Resilience, AES-256-GCM, SkiaSharp, MiniExcel
 │   └── Runix.Desktop/                 # Avalonia UI 11.1 Desktop App, XAML Views, Themes & Localization (en-US / pt-BR)
 ├── tests/
-│   ├── Runix.Core.Tests/              # Unit tests for domain models, parsers, formatters, and calculation engines
-│   └── Runix.Infrastructure.Tests/    # Integration tests for SQLite, encryption, backup/restore, import/export, and resilience
+│   ├── Runix.Core.Tests/              # Unit tests for domain models, parsers, formatters, and calculation engines (305 tests)
+│   └── Runix.Infrastructure.Tests/    # Integration tests for drivers, encryption, backup/restore, import/export, and resilience (182 tests)
 └── Screenshots/                       # Screenshots rendered via Headless Skia pipeline
 ```
 
@@ -161,13 +180,15 @@ flowchart TD
 | **Language & Runtime** | **C# 13 / .NET** | `10.0` | Cross-platform runtime (`osx-arm64`, `osx-x64`, `linux-x64`, `win-x64`) |
 | **UI Framework** | **Avalonia UI** | `11.1.0` | Native cross-platform UI toolkit with compiled XAML bindings and Fluent Dark theme |
 | **Code Editor** | **AvaloniaEdit** | `11.1.0` | High-performance text editor with custom SQL syntax highlighting (`.xshd`) |
-| **2D Graphics Engine** | **SkiaSharp** | `2.88.8` | Vector rendering for analytical charts, ERD canvas, and headless frame capture |
+| **2D Graphics & PDF Engine** | **SkiaSharp** | `2.88.8` | Vector rendering for analytical charts, ERD canvas, PDF export, and headless frame capture |
 | **PostgreSQL Driver** | **Npgsql** | `10.0.3` | High-performance asynchronous ADO.NET data provider for PostgreSQL |
 | **SQLite Driver** | **Microsoft.Data.Sqlite** | `11.0.0` | ADO.NET provider for local SQLite databases and internal app storage |
+| **MySQL & MariaDB Driver** | **MySqlConnector** | `2.4.0` | Async ADO.NET data provider supporting MySQL and MariaDB protocol features |
+| **SQL Server Driver** | **Microsoft.Data.SqlClient** | `6.0.2` | Official Microsoft ADO.NET provider for SQL Server and Azure SQL |
 | **Resilience** | [**Vard**](https://github.com/juniorschroder/vard) | `1.0.0` | Transient fault-tolerance policies (*Exponential Backoff Retry* and *Circuit Breaker*) |
 | **Excel Spreadsheets** | **MiniExcel** | `1.47.0` | Low-memory streaming reader and writer for `.xlsx` files |
 | **Cryptography** | **System.Security.Cryptography** | Native | `AesGcm` (256-bit) + `Rfc2898DeriveBytes.Pbkdf2` (SHA-256) for vault and `.rcf` bundles |
-| **Testing** | **xUnit + FluentAssertions** | `2.9.x` | Automated test suite with **158 unit and integration tests** |
+| **Testing** | **xUnit + FluentAssertions** | `2.9.x` | Automated test suite with **487 passing unit and integration tests** |
 
 ---
 
@@ -202,7 +223,7 @@ dotnet publish src/Runix.Desktop/Runix.Desktop.csproj -c Release -o ./publish
 
 ## 🧪 Testing & Headless Verification
 
-RUNIX includes **158 automated tests** (split across `Runix.Core.Tests` and `Runix.Infrastructure.Tests`) validating everything from the SQL lexical analyzer and DDL migration generator to AES-256-GCM encryption and the [Vard](https://github.com/juniorschroder/vard) resilience pipeline:
+RUNIX includes **487 automated tests** (split across `Runix.Core.Tests` and `Runix.Infrastructure.Tests`) validating everything from SQL lexing and DDL migrations to multi-engine drivers, fake data generation, AES-256-GCM encryption, and the [Vard](https://github.com/juniorschroder/vard) resilience pipeline:
 
 ```bash
 dotnet test Runix.sln
@@ -224,6 +245,7 @@ dotnet run --project src/Runix.Desktop/Runix.Desktop.csproj -- --demo --screensh
 | `Ctrl+Enter` / `Cmd+Enter` or `F5` | Execute the SQL query in the active tab |
 | `Ctrl+Shift+F` | Format and indent SQL code automatically (**SQL Beautifier**) |
 | `Ctrl+Space` | Force open the **SQL Autocomplete / IntelliSense** popup |
+| `Ctrl+F` | Find in table data / Filter entities in active ERD diagram |
 | `Esc` | Dismiss autocomplete popups, modal dialogs, or side drawers |
 
 ---
