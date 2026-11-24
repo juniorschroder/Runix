@@ -13,4 +13,11 @@ public interface IVisualQueryBuilderService
         string joinTable,
         string joinAlias,
         IReadOnlyList<ForeignKeyInfo> foreignKeys);
+
+    IReadOnlyList<VisualJoinClause> SuggestJoinOptions(
+        string baseTable,
+        string baseAlias,
+        string joinTable,
+        string joinAlias,
+        IReadOnlyList<ForeignKeyInfo> foreignKeys);
 }

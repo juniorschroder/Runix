@@ -3,18 +3,24 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:models="using:Runix.Core.Models"
+             xmlns:qb="using:Runix.Desktop.Views.QueryBuilder"
              xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
-             mc:Ignorable="d" d:DesignWidth="1020" d:DesignHeight="680"
+             mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="700"
              x:Class="Runix.Desktop.Views.VisualQueryBuilderTabControl"
              Background="#090d14">
 
-    <Grid RowDefinitions="Auto,310,5,*,30">
+    <Grid RowDefinitions="Auto,380,5,*,30">
         <!-- 1. TOP TOOLBAR: BASE TABLE, OPTIONS & ACTIONS -->
         <Border Grid.Row="0" Background="#141d2b" Padding="14,8" BorderBrush="#1e2d42" BorderThickness="0,0,0,1">
             <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="0,3,16,3">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,3,14,3">
                     <Border Background="#008bb9" CornerRadius="4" Padding="7,3" VerticalAlignment="Center">
                         <TextBlock Text="🧩 VISUAL QUERY BUILDER" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                    </Border>
+
+                    <!-- Active Engine Dialect Badge -->
+                    <Border Name="BadgeEngineDialect" Background="#101927" BorderBrush="#38bdf8" BorderThickness="1" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                        <TextBlock Name="TxtEngineDialect" Text="[SQLite Dialect]" FontSize="10" FontWeight="Bold" Foreground="#38bdf8"/>
                     </Border>
 
                     <TextBlock Text="Tabela Base (FROM):" FontSize="11" Foreground="#cbd5e1" VerticalAlignment="Center"/>
@@ -22,8 +28,11 @@
 
                     <CheckBox Name="ChkDistinct" Content="DISTINCT" FontSize="11" Foreground="#cbd5e1" VerticalAlignment="Center"/>
 
-                    <TextBlock Text="LIMIT:" FontSize="11" Foreground="#cbd5e1" VerticalAlignment="Center" Margin="6,0,0,0"/>
-                    <TextBox Name="TxtLimit" Text="100" Width="64" FontSize="11" Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42"/>
+                    <TextBlock Text="LIMIT:" FontSize="11" Foreground="#cbd5e1" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                    <TextBox Name="TxtLimit" Text="100" Width="55" FontSize="11" Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42"/>
+
+                    <TextBlock Text="OFFSET:" FontSize="11" Foreground="#cbd5e1" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                    <TextBox Name="TxtOffset" Text="0" Width="50" FontSize="11" Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42"/>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="0,3,0,3">
@@ -36,152 +45,158 @@
             </WrapPanel>
         </Border>
 
-        <!-- 2. MIDDLE VISUAL CONFIGURATION & LIVE SQL PREVIEW -->
-        <Grid Grid.Row="1" ColumnDefinitions="1.15*,1*,0.95*" Background="#0e141f">
-            <!-- PANE A: COLUMNS & AGGREGATIONS + JOINS -->
-            <Border Grid.Column="0" BorderBrush="#1e2d42" BorderThickness="0,0,1,0" Padding="10,8">
-                <Grid RowDefinitions="Auto,*,Auto,105">
-                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,6">
-                        <TextBlock Grid.Column="0" Text="1. Colunas &amp; Agregações (SELECT / GROUP BY)" FontSize="11" FontWeight="Bold" Foreground="#38bdf8" VerticalAlignment="Center"/>
-                        <Button Grid.Column="1" Name="BtnSelectAllCols" Content="Todas" Classes="btn-outline" Padding="6,2" FontSize="10" Margin="0,0,4,0"/>
-                        <Button Grid.Column="2" Name="BtnClearAllCols" Content="Nenhuma" Classes="btn-outline" Padding="6,2" FontSize="10"/>
-                    </Grid>
+        <!-- 2. MIDDLE CONFIGURATION & LIVE SQL PREVIEW -->
+        <Grid Grid.Row="1" ColumnDefinitions="1.5*,1.1*" Background="#0e141f">
+            <!-- PANE LEFT: 4 WORKSPACE TABS -->
+            <Border Grid.Column="0" BorderBrush="#1e2d42" BorderThickness="0,0,1,0" Padding="8,6">
+                <TabControl Name="TabControlSections">
+                    <!-- TAB 1: COLUMNS & GROUP BY -->
+                    <TabItem Header="📋 Colunas &amp; Agrupamento" FontSize="11.5">
+                        <Grid RowDefinitions="Auto,*" Margin="0,6,0,0">
+                            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,0,0,8">
+                                <TextBlock Text="Selecione as colunas, funções agregadoras e critérios de agrupamento:" FontSize="11" Foreground="#cbd5e1" VerticalAlignment="Center"/>
+                                <Button Grid.Column="2" Name="BtnSelectAllCols" Content="Selecionar Todas" Classes="btn-outline" Padding="8,3" FontSize="10.5" Margin="0,0,4,0"/>
+                                <Button Grid.Column="3" Name="BtnClearAllCols" Content="Desmarcar Todas" Classes="btn-outline" Padding="8,3" FontSize="10.5"/>
+                            </Grid>
+                            <Border Grid.Row="1" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="5" Padding="4">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl Name="ItemsSelectColumns">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="models:VisualSelectColumn">
+                                                <Border Padding="6,3" Margin="0,1" CornerRadius="3" Background="#141d2b">
+                                                    <Grid ColumnDefinitions="Auto,*,125,115,Auto">
+                                                        <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" Margin="2,0,6,0" VerticalAlignment="Center"/>
+                                                        <TextBlock Grid.Column="1" Text="{Binding DisplayExpression}" FontSize="11" Foreground="#f0f6fc" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                        <TextBox Grid.Column="2" Text="{Binding AggregateFunction}" Watermark="COUNT/SUM..." FontSize="10.5" Margin="4,0" Padding="4,2" Background="#090d14" Foreground="#38bdf8"/>
+                                                        <TextBox Grid.Column="3" Text="{Binding OutputAlias}" Watermark="Alias (AS)" FontSize="10.5" Margin="4,0" Padding="4,2" Background="#090d14" Foreground="#cbd5e1"/>
+                                                        <CheckBox Grid.Column="4" Content="Group By" IsChecked="{Binding IsGroupBy}" FontSize="10" Foreground="#a78bfa" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+                        </Grid>
+                    </TabItem>
 
-                    <Border Grid.Row="1" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="5" Padding="4">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto">
-                            <ItemsControl Name="ItemsSelectColumns">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="models:VisualSelectColumn">
-                                        <Border Padding="4,2" Margin="0,1" CornerRadius="3" Background="#141d2b">
-                                            <Grid ColumnDefinitions="Auto,*,95,90">
-                                                <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" Margin="2,0,6,0" VerticalAlignment="Center"/>
-                                                <TextBlock Grid.Column="1" Text="{Binding DisplayExpression}" FontSize="11" Foreground="#f0f6fc" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                                <TextBox Grid.Column="2" Text="{Binding AggregateFunction}" Watermark="SUM/COUNT..." FontSize="10" Margin="4,0" Padding="4,2" Background="#090d14" Foreground="#38bdf8"/>
-                                                <TextBox Grid.Column="3" Text="{Binding OutputAlias}" Watermark="Alias (AS)" FontSize="10" Padding="4,2" Background="#090d14" Foreground="#cbd5e1"/>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                    <!-- TAB 2: JOINS -->
+                    <TabItem Header="🔗 Junções Relacionais" FontSize="11.5">
+                        <Grid RowDefinitions="Auto,*" Margin="0,6,0,0">
+                            <Grid Grid.Row="0" ColumnDefinitions="130,*,Auto,Auto" Margin="0,0,0,8">
+                                <ComboBox Grid.Column="0" Name="CmbJoinType" SelectedIndex="0" FontSize="10.5" Margin="0,0,4,0" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="INNER JOIN"/>
+                                    <ComboBoxItem Content="LEFT JOIN"/>
+                                    <ComboBoxItem Content="RIGHT JOIN"/>
+                                    <ComboBoxItem Content="FULL OUTER JOIN"/>
+                                    <ComboBoxItem Content="CROSS JOIN"/>
+                                </ComboBox>
+                                <ComboBox Grid.Column="1" Name="CmbJoinTable" FontSize="10.5" PlaceholderText="Selecione a tabela para Junção..." Margin="0,0,4,0" HorizontalAlignment="Stretch"/>
+                                <Button Grid.Column="2" Name="BtnAddJoin" Content="+ Adicionar Join" Classes="btn-secondary" Padding="10,4" FontSize="10.5" Margin="0,0,4,0"/>
+                                <Button Grid.Column="3" Name="BtnSuggestFkJoins" Content="🔗 Sugerir FKs" Classes="btn-outline" Padding="8,4" FontSize="10.5"/>
+                            </Grid>
+                            <Border Grid.Row="1" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="5" Padding="4">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl Name="ItemsJoins">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="models:VisualJoinClause">
+                                                <Border Padding="6,4" Margin="0,2" CornerRadius="4" Background="#141d2b">
+                                                    <Grid ColumnDefinitions="Auto,*,Auto,*,Auto,Auto">
+                                                        <Border Grid.Column="0" Background="#008bb9" CornerRadius="3" Padding="6,2" Margin="0,0,6,0">
+                                                            <TextBlock Text="{Binding JoinType}" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                                                        </Border>
+                                                        <TextBox Grid.Column="1" Text="{Binding SourceColumn}" FontSize="10.5" Padding="4,2" Background="#090d14" Foreground="#f0f6fc" ToolTip.Tip="Coluna Origem"/>
+                                                        <TextBlock Grid.Column="2" Text=" = " FontSize="11" Foreground="#8b9cb3" VerticalAlignment="Center" Margin="4,0"/>
+                                                        <TextBox Grid.Column="3" Text="{Binding TargetColumn}" FontSize="10.5" Padding="4,2" Background="#090d14" Foreground="#f0f6fc" ToolTip.Tip="Coluna Destino"/>
+                                                        <Border Grid.Column="4" Background="#1e293b" CornerRadius="3" Padding="6,2" Margin="6,0">
+                                                            <TextBlock Text="{Binding RelationshipDescription}" FontSize="10" Foreground="#38bdf8"/>
+                                                        </Border>
+                                                        <Button Grid.Column="5" Name="BtnRemoveJoin" Content="✕" Classes="btn-icon" Padding="6,2" FontSize="10.5" Foreground="#f87171"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+                        </Grid>
+                    </TabItem>
+
+                    <!-- TAB 3: FILTERS (WHERE & HAVING) -->
+                    <TabItem Header="🌲 Filtros (WHERE &amp; HAVING)" FontSize="11.5">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,6,0,0">
+                            <StackPanel Spacing="10" Margin="0,0,6,0">
+                                <!-- WHERE SECTION -->
+                                <Border Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="6" Padding="10">
+                                    <StackPanel Spacing="6">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="🌲" FontSize="12" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Cláusula WHERE (Árvore de Condições Recursivas)" FontSize="11" FontWeight="Bold" Foreground="#38bdf8" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <TextBlock Text="Grupos aninhados AND / OR e NOT" FontSize="10.5" Foreground="#64748b" VerticalAlignment="Center" Grid.Column="1"/>
+                                        </Grid>
+                                        <qb:FilterGroupView Name="ViewWhereFilterTree"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- HAVING SECTION -->
+                                <Border Background="#141d2b" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="6" Padding="10">
+                                    <StackPanel Spacing="6">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="⚖️" FontSize="12" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Cláusula HAVING (Filtros de Agregação Pós-Agrupamento)" FontSize="11" FontWeight="Bold" Foreground="#fbbf24" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <TextBlock Text="Filtra expressões agregadas (ex: COUNT(*) > 5)" FontSize="10.5" Foreground="#64748b" VerticalAlignment="Center" Grid.Column="1"/>
+                                        </Grid>
+                                        <qb:FilterGroupView Name="ViewHavingFilterTree"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
                         </ScrollViewer>
-                    </Border>
+                    </TabItem>
 
-                    <!-- JOINS BUILDER -->
-                    <Grid Grid.Row="2" ColumnDefinitions="Auto,105,*,Auto" Margin="0,8,0,4">
-                        <TextBlock Grid.Column="0" Text="2. Joins:" FontSize="11" FontWeight="Bold" Foreground="#38bdf8" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <ComboBox Grid.Column="1" Name="CmbJoinType" SelectedIndex="0" FontSize="10" Margin="0,0,4,0">
-                            <ComboBoxItem Content="INNER JOIN"/>
-                            <ComboBoxItem Content="LEFT JOIN"/>
-                            <ComboBoxItem Content="RIGHT JOIN"/>
-                        </ComboBox>
-                        <ComboBox Grid.Column="2" Name="CmbJoinTable" FontSize="10" PlaceholderText="Tabela para Join..." Margin="0,0,4,0" HorizontalAlignment="Stretch"/>
-                        <Button Grid.Column="3" Name="BtnAddJoin" Content="+ Join (Auto-FK)" Classes="btn-secondary" Padding="8,3" FontSize="10"/>
-                    </Grid>
-
-                    <Border Grid.Row="3" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="5" Padding="4">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto">
-                            <ItemsControl Name="ItemsJoins">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="models:VisualJoinClause">
-                                        <Border Padding="5,3" Margin="0,1" CornerRadius="3" Background="#141d2b">
-                                            <Grid ColumnDefinitions="Auto,*,Auto,*,Auto">
-                                                <TextBlock Grid.Column="0" Text="{Binding JoinType}" FontSize="10" FontWeight="Bold" Foreground="#38bdf8" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                                <TextBox Grid.Column="1" Text="{Binding SourceColumn}" FontSize="10" Padding="4,1" Background="#090d14" Foreground="#f0f6fc" ToolTip.Tip="Coluna Origem"/>
-                                                <TextBlock Grid.Column="2" Text=" = " FontSize="10" Foreground="#8b9cb3" VerticalAlignment="Center"/>
-                                                <TextBox Grid.Column="3" Text="{Binding TargetColumn}" FontSize="10" Padding="4,1" Background="#090d14" Foreground="#f0f6fc" ToolTip.Tip="Coluna Destino"/>
-                                                <Button Grid.Column="4" Name="BtnRemoveJoin" Content="✕" Classes="btn-icon" Padding="4,1" FontSize="10" Margin="4,0,0,0"/>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                    </Border>
-                </Grid>
+                    <!-- TAB 4: ORDER BY -->
+                    <TabItem Header="🔀 Ordenação (ORDER BY)" FontSize="11.5">
+                        <Grid RowDefinitions="Auto,*" Margin="0,6,0,0">
+                            <Grid Grid.Row="0" ColumnDefinitions="*,100,Auto" Margin="0,0,0,8">
+                                <ComboBox Grid.Column="0" Name="CmbSortColumn" FontSize="10.5" PlaceholderText="Selecione a coluna para ordenar..." Margin="0,0,4,0" HorizontalAlignment="Stretch"/>
+                                <ComboBox Grid.Column="1" Name="CmbSortDir" SelectedIndex="0" FontSize="10.5" Margin="0,0,4,0" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="ASC"/>
+                                    <ComboBoxItem Content="DESC"/>
+                                </ComboBox>
+                                <Button Grid.Column="2" Name="BtnAddSort" Content="+ Adicionar Ordem" Classes="btn-secondary" Padding="10,4" FontSize="10.5"/>
+                            </Grid>
+                            <Border Grid.Row="1" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="5" Padding="4">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl Name="ItemsSorts">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="models:VisualSortClause">
+                                                <Border Padding="6,3" Margin="0,1" CornerRadius="3" Background="#141d2b">
+                                                    <Grid ColumnDefinitions="*,60,Auto">
+                                                        <TextBlock Grid.Column="0" Text="{Binding ColumnName}" FontSize="11" Foreground="#f0f6fc" VerticalAlignment="Center"/>
+                                                        <TextBlock Grid.Column="1" Text="{Binding Direction}" FontSize="10.5" FontWeight="Bold" Foreground="#38bdf8" VerticalAlignment="Center"/>
+                                                        <Button Grid.Column="2" Name="BtnRemoveSort" Content="✕" Classes="btn-icon" Padding="6,2" FontSize="10.5" Foreground="#f87171"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+                        </Grid>
+                    </TabItem>
+                </TabControl>
             </Border>
 
-            <!-- PANE B: WHERE FILTERS & ORDER BY -->
-            <Border Grid.Column="1" BorderBrush="#1e2d42" BorderThickness="0,0,1,0" Padding="10,8">
-                <Grid RowDefinitions="Auto,Auto,*,Auto,Auto,85">
-                    <TextBlock Grid.Row="0" Text="3. Condições de Filtro (WHERE)" FontSize="11" FontWeight="Bold" Foreground="#38bdf8" Margin="0,0,0,6"/>
-
-                    <Grid Grid.Row="1" ColumnDefinitions="62,*,78,*,Auto" Margin="0,0,0,4">
-                        <ComboBox Grid.Column="0" Name="CmbFilterLogic" SelectedIndex="0" FontSize="10" Margin="0,0,3,0">
-                            <ComboBoxItem Content="AND"/>
-                            <ComboBoxItem Content="OR"/>
-                        </ComboBox>
-                        <ComboBox Grid.Column="1" Name="CmbFilterColumn" FontSize="10" PlaceholderText="Coluna" Margin="0,0,3,0" HorizontalAlignment="Stretch"/>
-                        <ComboBox Grid.Column="2" Name="CmbFilterOperator" SelectedIndex="0" FontSize="10" Margin="0,0,3,0">
-                            <ComboBoxItem Content="="/>
-                            <ComboBoxItem Content="&lt;&gt;"/>
-                            <ComboBoxItem Content="&gt;"/>
-                            <ComboBoxItem Content="&lt;"/>
-                            <ComboBoxItem Content="&gt;="/>
-                            <ComboBoxItem Content="&lt;="/>
-                            <ComboBoxItem Content="LIKE"/>
-                            <ComboBoxItem Content="IN"/>
-                            <ComboBoxItem Content="IS NULL"/>
-                            <ComboBoxItem Content="IS NOT NULL"/>
-                        </ComboBox>
-                        <TextBox Grid.Column="3" Name="TxtFilterValue" Watermark="Valor..." FontSize="10" Padding="5,3" Background="#090d14" Foreground="#f0f6fc" Margin="0,0,3,0"/>
-                        <Button Grid.Column="4" Name="BtnAddFilter" Content="+ Filtro" Classes="btn-secondary" Padding="7,3" FontSize="10"/>
-                    </Grid>
-
-                    <Border Grid.Row="2" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="5" Padding="4">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto">
-                            <ItemsControl Name="ItemsFilters">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="models:VisualFilterCondition">
-                                        <Border Padding="5,3" Margin="0,1" CornerRadius="3" Background="#141d2b">
-                                            <Grid ColumnDefinitions="42,*,56,*,Auto">
-                                                <TextBlock Grid.Column="0" Text="{Binding LogicalOperator}" FontSize="10" FontWeight="Bold" Foreground="#fbbf24" VerticalAlignment="Center"/>
-                                                <TextBlock Grid.Column="1" Text="{Binding ColumnName}" FontSize="10" Foreground="#f0f6fc" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                                <TextBlock Grid.Column="2" Text="{Binding ComparisonOperator}" FontSize="10" Foreground="#38bdf8" VerticalAlignment="Center"/>
-                                                <TextBox Grid.Column="3" Text="{Binding Value}" FontSize="10" Padding="4,1" Background="#090d14" Foreground="#34d399"/>
-                                                <Button Grid.Column="4" Name="BtnRemoveFilter" Content="✕" Classes="btn-icon" Padding="4,1" FontSize="10" Margin="4,0,0,0"/>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                    </Border>
-
-                    <!-- ORDER BY -->
-                    <TextBlock Grid.Row="3" Text="4. Ordenação (ORDER BY)" FontSize="11" FontWeight="Bold" Foreground="#38bdf8" Margin="0,8,0,4"/>
-                    <Grid Grid.Row="4" ColumnDefinitions="*,80,Auto" Margin="0,0,0,4">
-                        <ComboBox Grid.Column="0" Name="CmbSortColumn" FontSize="10" PlaceholderText="Coluna para ordenar..." Margin="0,0,4,0" HorizontalAlignment="Stretch"/>
-                        <ComboBox Grid.Column="1" Name="CmbSortDir" SelectedIndex="0" FontSize="10" Margin="0,0,4,0">
-                            <ComboBoxItem Content="ASC"/>
-                            <ComboBoxItem Content="DESC"/>
-                        </ComboBox>
-                        <Button Grid.Column="2" Name="BtnAddSort" Content="+ Ordem" Classes="btn-secondary" Padding="8,3" FontSize="10"/>
-                    </Grid>
-
-                    <Border Grid.Row="5" Background="#090d14" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="5" Padding="4">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto">
-                            <ItemsControl Name="ItemsSorts">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="models:VisualSortClause">
-                                        <Border Padding="5,2" Margin="0,1" CornerRadius="3" Background="#141d2b">
-                                            <Grid ColumnDefinitions="*,50,Auto">
-                                                <TextBlock Grid.Column="0" Text="{Binding ColumnName}" FontSize="10" Foreground="#f0f6fc" VerticalAlignment="Center"/>
-                                                <TextBlock Grid.Column="1" Text="{Binding Direction}" FontSize="10" FontWeight="Bold" Foreground="#38bdf8" VerticalAlignment="Center"/>
-                                                <Button Grid.Column="2" Name="BtnRemoveSort" Content="✕" Classes="btn-icon" Padding="4,1" FontSize="10"/>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                    </Border>
-                </Grid>
-            </Border>
-
-            <!-- PANE C: LIVE FORMATTED SQL PREVIEW -->
-            <Grid Grid.Column="2" RowDefinitions="Auto,*" Background="#090d14">
+            <!-- PANE RIGHT: LIVE SQL PREVIEW -->
+            <Grid Grid.Column="1" RowDefinitions="Auto,*" Background="#090d14">
                 <Border Grid.Row="0" Background="#141d2b" Padding="10,6" BorderBrush="#1e2d42" BorderThickness="0,0,0,1">
-                    <TextBlock Text="✨ Preview SQL Formatado em Tempo Real" FontSize="11" FontWeight="Bold" Foreground="#34d399"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="✨ Preview SQL Formatado em Tempo Real" FontSize="11" FontWeight="Bold" Foreground="#34d399" VerticalAlignment="Center"/>
+                        <TextBlock Name="TxtDialectIndicator" Grid.Column="1" Text="Dialeto Ativo" FontSize="10" Foreground="#64748b" VerticalAlignment="Center"/>
+                    </Grid>
                 </Border>
                 <AvaloniaEdit:TextEditor Grid.Row="1" Name="TxtGeneratedSql"
                                          Background="#090d14"

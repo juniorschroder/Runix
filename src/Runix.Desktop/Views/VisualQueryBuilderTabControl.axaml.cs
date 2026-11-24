@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Data;
@@ -22,11 +23,15 @@ public partial class VisualQueryBuilderTabControl : UserControl, IDisposable
     private List<TableInfo> _tables = new();
     private List<ForeignKeyInfo> _foreignKeys = new();
 
+    private readonly VisualFilterGroup _whereFilterTree = new() { LogicalOperator = "AND" };
+    private readonly VisualFilterGroup _havingFilterTree = new() { LogicalOperator = "AND" };
+
     private readonly ObservableCollection<VisualSelectColumn> _selectColumns = new();
     private readonly ObservableCollection<VisualJoinClause> _joins = new();
-    private readonly ObservableCollection<VisualFilterCondition> _filters = new();
     private readonly ObservableCollection<VisualSortClause> _sorts = new();
     private readonly ObservableCollection<string> _availableColumns = new();
+
+    private CancellationTokenSource? _queryCts;
 
     public event Action<string>? OpenInQueryEditorRequested;
 
@@ -44,13 +49,34 @@ public partial class VisualQueryBuilderTabControl : UserControl, IDisposable
 
         ItemsSelectColumns.ItemsSource = _selectColumns;
         ItemsJoins.ItemsSource = _joins;
-        ItemsFilters.ItemsSource = _filters;
         ItemsSorts.ItemsSource = _sorts;
-        CmbFilterColumn.ItemsSource = _availableColumns;
         CmbSortColumn.ItemsSource = _availableColumns;
+
+        UpdateEngineDialectBadge();
+
+        ViewWhereFilterTree.Configure(_whereFilterTree, _availableColumns, depth: 0, isRoot: true);
+        ViewHavingFilterTree.Configure(_havingFilterTree, _availableColumns, depth: 0, isRoot: true);
+
+        ViewWhereFilterTree.FilterChanged += RebuildSqlPreview;
+        ViewHavingFilterTree.FilterChanged += RebuildSqlPreview;
 
         SetupEvents();
         _ = LoadMetadataAsync();
+    }
+
+    private void UpdateEngineDialectBadge()
+    {
+        var type = _databaseService?.Config?.Type ?? DatabaseType.SQLite;
+        string engineName = type switch
+        {
+            DatabaseType.PostgreSQL => "PostgreSQL",
+            DatabaseType.MySQL => "MySQL",
+            DatabaseType.MariaDB => "MariaDB",
+            DatabaseType.SqlServer => "SQL Server",
+            _ => "SQLite"
+        };
+        TxtEngineDialect.Text = $"[{engineName} Dialect]";
+        TxtDialectIndicator.Text = $"Dialeto: {engineName}";
     }
 
     private void SetupEvents()
@@ -65,6 +91,7 @@ public partial class VisualQueryBuilderTabControl : UserControl, IDisposable
 
         ChkDistinct.IsCheckedChanged += (s, e) => RebuildSqlPreview();
         TxtLimit.TextChanged += (s, e) => RebuildSqlPreview();
+        TxtOffset.TextChanged += (s, e) => RebuildSqlPreview();
 
         BtnSelectAllCols.Click += (s, e) =>
         {
@@ -95,24 +122,45 @@ public partial class VisualQueryBuilderTabControl : UserControl, IDisposable
             RebuildSqlPreview();
         };
 
-        BtnAddFilter.Click += (s, e) =>
+        BtnSuggestFkJoins.Click += async (s, e) =>
         {
-            var colEntry = CmbFilterColumn.SelectedItem as string ?? _availableColumns.FirstOrDefault() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(colEntry)) return;
+            if (CmbBaseTable.SelectedItem is not string baseTable) return;
+            string? targetTable = CmbJoinTable.SelectedItem as string;
 
-            var (alias, colName) = SplitQualifiedColumn(colEntry);
-            var filter = new VisualFilterCondition
+            if (!string.IsNullOrWhiteSpace(targetTable))
             {
-                LogicalOperator = (CmbFilterLogic.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "AND",
-                TableAlias = alias,
-                ColumnName = colName,
-                ComparisonOperator = (CmbFilterOperator.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "=",
-                Value = TxtFilterValue.Text ?? string.Empty
-            };
-            filter.PropertyChanged += (_, _) => RebuildSqlPreview();
-            _filters.Add(filter);
-            TxtFilterValue.Text = string.Empty;
-            RebuildSqlPreview();
+                var options = _builderService.SuggestJoinOptions(baseTable, baseTable, targetTable, targetTable, _foreignKeys);
+                foreach (var opt in options)
+                {
+                    opt.PropertyChanged += (_, _) => RebuildSqlPreview();
+                    _joins.Add(opt);
+                }
+                await AppendTableColumnsAsync(targetTable);
+                RebuildSqlPreview();
+            }
+            else
+            {
+                // Auto-suggest any table having a direct FK with baseTable
+                var relatedFks = _foreignKeys.Where(fk =>
+                    string.Equals(fk.SourceTable, baseTable, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(fk.TargetTable, baseTable, StringComparison.OrdinalIgnoreCase)).ToList();
+
+                foreach (var fk in relatedFks)
+                {
+                    string otherTable = string.Equals(fk.SourceTable, baseTable, StringComparison.OrdinalIgnoreCase)
+                        ? fk.TargetTable
+                        : fk.SourceTable;
+
+                    if (!_joins.Any(j => string.Equals(j.TargetTable, otherTable, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        var opt = _builderService.SuggestJoinClause(baseTable, baseTable, otherTable, otherTable, _foreignKeys);
+                        opt.PropertyChanged += (_, _) => RebuildSqlPreview();
+                        _joins.Add(opt);
+                        await AppendTableColumnsAsync(otherTable);
+                    }
+                }
+                RebuildSqlPreview();
+            }
         };
 
         BtnAddSort.Click += (s, e) =>
@@ -137,16 +185,6 @@ public partial class VisualQueryBuilderTabControl : UserControl, IDisposable
             if (e.Source is Button btn && btn.Name == "BtnRemoveJoin" && btn.DataContext is VisualJoinClause join)
             {
                 _joins.Remove(join);
-                RebuildSqlPreview();
-                e.Handled = true;
-            }
-        });
-
-        ItemsFilters.AddHandler(Button.ClickEvent, (object? sender, RoutedEventArgs e) =>
-        {
-            if (e.Source is Button btn && btn.Name == "BtnRemoveFilter" && btn.DataContext is VisualFilterCondition filter)
-            {
-                _filters.Remove(filter);
                 RebuildSqlPreview();
                 e.Handled = true;
             }
@@ -185,10 +223,12 @@ public partial class VisualQueryBuilderTabControl : UserControl, IDisposable
         BtnResetBuilder.Click += async (s, e) =>
         {
             _joins.Clear();
-            _filters.Clear();
+            _whereFilterTree.Children.Clear();
+            _havingFilterTree.Children.Clear();
             _sorts.Clear();
             ChkDistinct.IsChecked = false;
             TxtLimit.Text = "100";
+            TxtOffset.Text = "0";
             if (CmbBaseTable.SelectedItem is string tableName)
             {
                 await OnBaseTableSelectedAsync(tableName);
@@ -223,14 +263,14 @@ public partial class VisualQueryBuilderTabControl : UserControl, IDisposable
     {
         _selectColumns.Clear();
         _joins.Clear();
-        _filters.Clear();
+        _whereFilterTree.Children.Clear();
+        _havingFilterTree.Children.Clear();
         _sorts.Clear();
         _availableColumns.Clear();
 
         await AppendTableColumnsAsync(tableName);
         if (_availableColumns.Count > 0)
         {
-            CmbFilterColumn.SelectedIndex = 0;
             CmbSortColumn.SelectedIndex = 0;
         }
 
@@ -239,40 +279,67 @@ public partial class VisualQueryBuilderTabControl : UserControl, IDisposable
 
     private async Task AppendTableColumnsAsync(string tableName)
     {
-        var cols = await _databaseService.GetTableColumnsAsync(tableName);
-        foreach (var c in cols)
+        try
         {
-            var item = new VisualSelectColumn
+            var cols = await _databaseService.GetTableColumnsAsync(tableName);
+            foreach (var col in cols)
             {
-                IsSelected = true,
-                TableAlias = tableName,
-                ColumnName = c.Name,
-                DataType = c.DataType
-            };
-            item.PropertyChanged += (_, _) => RebuildSqlPreview();
-            _selectColumns.Add(item);
-            _availableColumns.Add($"{tableName}.{c.Name}");
+                var qualified = $"{tableName}.{col.Name}";
+                if (!_availableColumns.Contains(qualified))
+                {
+                    _availableColumns.Add(qualified);
+                }
+
+                var selectCol = new VisualSelectColumn
+                {
+                    IsSelected = true,
+                    TableAlias = tableName,
+                    ColumnName = col.Name,
+                    DataType = col.DataType,
+                    AggregateFunction = string.Empty,
+                    OutputAlias = string.Empty
+                };
+
+                selectCol.PropertyChanged += (_, _) => RebuildSqlPreview();
+                _selectColumns.Add(selectCol);
+            }
+
+            ViewWhereFilterTree.UpdateColumns(_availableColumns.ToList());
+            ViewHavingFilterTree.UpdateColumns(_availableColumns.ToList());
+        }
+        catch (Exception ex)
+        {
+            TxtStatusSummary.Text = $"Erro ao obter colunas de {tableName}: {ex.Message}";
         }
     }
 
     public void RebuildSqlPreview()
     {
-        var baseTable = CmbBaseTable.SelectedItem as string ?? string.Empty;
-        int? limit = int.TryParse(TxtLimit.Text, out var parsedLimit) && parsedLimit > 0 ? parsedLimit : null;
+        var baseTable = CmbBaseTable.SelectedItem as string;
+        if (string.IsNullOrWhiteSpace(baseTable))
+        {
+            TxtGeneratedSql.Text = "-- Selecione uma tabela base para construir a consulta.";
+            return;
+        }
+
+        int? limit = int.TryParse(TxtLimit.Text, out var l) ? l : 100;
+        int? offset = int.TryParse(TxtOffset.Text, out var o) ? o : null;
 
         var model = new VisualQueryModel
         {
             BaseTable = baseTable,
-            BaseTableAlias = string.Empty,
+            BaseTableAlias = baseTable,
             Distinct = ChkDistinct.IsChecked == true,
             Limit = limit,
+            Offset = offset,
             SelectColumns = _selectColumns.ToList(),
             Joins = _joins.ToList(),
-            Filters = _filters.ToList(),
+            FilterTree = _whereFilterTree,
+            HavingTree = _havingFilterTree,
             Sorts = _sorts.ToList()
         };
 
-        // If no joins are used, omit table prefix on single-table query for extra clean SQL
+        // If no joins are used, omit table prefix on single-table query for clean SQL
         if (_joins.Count == 0)
         {
             model.SelectColumns = _selectColumns.Select(c => new VisualSelectColumn
@@ -281,7 +348,8 @@ public partial class VisualQueryBuilderTabControl : UserControl, IDisposable
                 TableAlias = string.Empty,
                 ColumnName = c.ColumnName,
                 AggregateFunction = c.AggregateFunction,
-                OutputAlias = c.OutputAlias
+                OutputAlias = c.OutputAlias,
+                IsGroupBy = c.IsGroupBy
             }).ToList();
         }
 
@@ -295,10 +363,14 @@ public partial class VisualQueryBuilderTabControl : UserControl, IDisposable
 
         BtnRunVisualQuery.IsEnabled = false;
         TxtStatusSummary.Text = "Executando consulta...";
+        TxtStatusSummary.Foreground = Brush.Parse("#38bdf8");
+
+        _queryCts?.Cancel();
+        _queryCts = new CancellationTokenSource();
 
         try
         {
-            var res = await _databaseService.ExecuteQueryAsync(sql, 1000);
+            var res = await _databaseService.ExecuteQueryAsync(sql, 1000, _queryCts.Token);
             if (!res.Success)
             {
                 TxtStatusSummary.Text = $"✖ Erro: {res.ErrorMessage}";
@@ -322,6 +394,11 @@ public partial class VisualQueryBuilderTabControl : UserControl, IDisposable
             TxtStatusSummary.Text = $"✓ {res.Rows.Count} linhas retornadas em {res.ElapsedMilliseconds} ms";
             TxtStatusSummary.Foreground = Brush.Parse("#34d399");
         }
+        catch (OperationCanceledException)
+        {
+            TxtStatusSummary.Text = "Consulta cancelada pelo usuário.";
+            TxtStatusSummary.Foreground = Brush.Parse("#fbbf24");
+        }
         finally
         {
             BtnRunVisualQuery.IsEnabled = true;
@@ -340,11 +417,14 @@ public partial class VisualQueryBuilderTabControl : UserControl, IDisposable
 
     public void Dispose()
     {
+        _queryCts?.Cancel();
+        _queryCts?.Dispose();
         GridResults.ItemsSource = null;
         GridResults.Columns.Clear();
         _selectColumns.Clear();
         _joins.Clear();
-        _filters.Clear();
+        _whereFilterTree.Children.Clear();
+        _havingFilterTree.Children.Clear();
         _sorts.Clear();
         _availableColumns.Clear();
         _tables.Clear();

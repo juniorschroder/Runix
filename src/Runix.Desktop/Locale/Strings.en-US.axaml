@@ -401,4 +401,13 @@
     <sys:String x:Key="Migrations.TabTitle">Migrations</sys:String>
     <sys:String x:Key="Diff.Action.ExportMigration">🚀 Export as Migration (V{N+1}__...)</sys:String>
 
+    <!-- Phase 37: Enhanced Visual Query Builder -->
+    <sys:String x:Key="QueryBuilder.Title">Visual Query Builder</sys:String>
+    <sys:String x:Key="QueryBuilder.SelectTab">Columns &amp; Grouping</sys:String>
+    <sys:String x:Key="QueryBuilder.JoinsTab">Relational Joins</sys:String>
+    <sys:String x:Key="QueryBuilder.FiltersTab">Filters (WHERE &amp; HAVING)</sys:String>
+    <sys:String x:Key="QueryBuilder.SortTab">Sorting (ORDER BY)</sys:String>
+    <sys:String x:Key="QueryBuilder.RunQuery">▶ Run Query</sys:String>
+    <sys:String x:Key="QueryBuilder.OpenInEditor">📝 Open in SQL Editor</sys:String>
+
 </ResourceDictionary>

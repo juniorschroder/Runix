@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="250"
+             x:Class="Runix.Desktop.Views.QueryBuilder.FilterGroupView">
+
+    <Border Name="BorderGroupContainer" Background="#0e141f" BorderBrush="#38bdf8" BorderThickness="2,0,0,0"
+            CornerRadius="4" Padding="10,8" Margin="0,3">
+        <StackPanel Spacing="6">
+            <!-- GROUP HEADER -->
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto">
+                <!-- 1. Logical Operator Pill (AND / OR) -->
+                <Button Name="BtnToggleOperator" Grid.Column="0" Content="AND"
+                        Background="#008bb9" Foreground="White" FontWeight="Bold" FontSize="11"
+                        Padding="10,3" CornerRadius="4" Margin="0,0,6,0"
+                        ToolTip.Tip="Alternar operador lógico entre AND e OR"/>
+
+                <!-- 2. NOT Negation Toggle -->
+                <ToggleButton Name="ToggleNot" Grid.Column="1" Content="NOT"
+                              FontSize="10.5" FontWeight="SemiBold" Padding="8,3" CornerRadius="4"
+                              Margin="0,0,8,0" ToolTip.Tip="Negar este grupo de condições"/>
+
+                <!-- 3. Rule Counter Badge -->
+                <TextBlock Name="TxtRuleCountBadge" Grid.Column="2" Text="0 regras"
+                           FontSize="10.5" Foreground="#64748b" VerticalAlignment="Center"/>
+
+                <!-- 4. Add Condition Button -->
+                <Button Name="BtnAddCondition" Grid.Column="3" Content="+ Condição"
+                        Classes="btn-secondary" Padding="8,3" FontSize="10.5" Margin="0,0,4,0"/>
+
+                <!-- 5. Add Nested Group Button -->
+                <Button Name="BtnAddSubGroup" Grid.Column="4" Content="+ Sub-grupo"
+                        Classes="btn-outline" Padding="8,3" FontSize="10.5" Margin="0,0,4,0"/>
+
+                <!-- 6. Remove Group Button (Hidden on root) -->
+                <Button Name="BtnRemoveGroup" Grid.Column="5" Content="✕"
+                        Classes="btn-icon" Padding="6,2" FontSize="11" Foreground="#f87171"
+                        ToolTip.Tip="Remover este grupo de filtros"/>
+            </Grid>
+
+            <!-- CONDITIONS CONTAINER -->
+            <StackPanel Name="PanelConditions" Spacing="4" Margin="4,2,0,2"/>
+
+            <!-- NESTED SUB-GROUPS CONTAINER -->
+            <StackPanel Name="PanelSubGroups" Spacing="6" Margin="8,2,0,2"/>
+        </StackPanel>
+    </Border>
+</UserControl>
