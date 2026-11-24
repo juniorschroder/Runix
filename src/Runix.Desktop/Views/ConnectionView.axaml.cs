@@ -61,12 +61,16 @@ public partial class ConnectionView : UserControl
             RebuildCategoryFlyout();
         };
 
-        BtnSelectSQLite.Click += (s, e) => SwitchEngine(DatabaseType.SQLite);
-        BtnSelectPostgres.Click += (s, e) => SwitchEngine(DatabaseType.PostgreSQL);
-        BtnSelectMySQL.Click += (s, e) => SwitchEngine(DatabaseType.MySQL);
-        BtnSelectMariaDB.Click += (s, e) => SwitchEngine(DatabaseType.MariaDB);
-        BtnSelectSqlServer.Click += (s, e) => SwitchEngine(DatabaseType.SqlServer);
-        TxtSearchEngine.TextChanged += (s, e) => FilterEngines(TxtSearchEngine.Text);
+        CmbDatabaseEngine.SelectionChanged += (s, e) =>
+        {
+            if (CmbDatabaseEngine.SelectedItem is ComboBoxItem item && item.Tag is string tag)
+            {
+                if (Enum.TryParse<DatabaseType>(tag, true, out var parsedType))
+                {
+                    SwitchEngine(parsedType, fromDropdown: true);
+                }
+            }
+        };
         BtnNewConnection.Click += (s, e) => CreateNewConnection();
 
         BtnNewCategory.Click += (s, e) =>
@@ -453,33 +457,24 @@ public partial class ConnectionView : UserControl
         flyout.Items.Add(newCatItem);
     }
 
-    private void StyleEngineButton(Button btn, bool isSelected, string activeBg, string activeBorder)
-    {
-        if (isSelected)
-        {
-            btn.Background = Brush.Parse(activeBg);
-            btn.BorderBrush = Brush.Parse(activeBorder);
-            btn.BorderThickness = new Thickness(1.5);
-            btn.Foreground = Brushes.White;
-        }
-        else
-        {
-            btn.Background = Brush.Parse("#141d2b");
-            btn.BorderBrush = Brush.Parse("#1e2d42");
-            btn.BorderThickness = new Thickness(1);
-            btn.Foreground = Brush.Parse("#8b9cb3");
-        }
-    }
-
-    private void SwitchEngine(DatabaseType type)
+    private void SwitchEngine(DatabaseType type, bool fromDropdown = false)
     {
         _currentConfig.Type = type;
 
-        StyleEngineButton(BtnSelectSQLite, type == DatabaseType.SQLite, "#0c2338", "#38bdf8");
-        StyleEngineButton(BtnSelectPostgres, type == DatabaseType.PostgreSQL, "#10233b", "#60a5fa");
-        StyleEngineButton(BtnSelectMySQL, type == DatabaseType.MySQL, "#082633", "#f29111");
-        StyleEngineButton(BtnSelectMariaDB, type == DatabaseType.MariaDB, "#191a33", "#c084fc");
-        StyleEngineButton(BtnSelectSqlServer, type == DatabaseType.SqlServer, "#2b0d12", "#f87171");
+        if (!fromDropdown && CmbDatabaseEngine != null)
+        {
+            for (int i = 0; i < CmbDatabaseEngine.Items.Count; i++)
+            {
+                if (CmbDatabaseEngine.Items[i] is ComboBoxItem item &&
+                    item.Tag is string tag &&
+                    Enum.TryParse<DatabaseType>(tag, true, out var t) &&
+                    t == type)
+                {
+                    CmbDatabaseEngine.SelectedIndex = i;
+                    break;
+                }
+            }
+        }
 
         PanelSqliteForm.IsVisible = (type == DatabaseType.SQLite);
         PanelPostgresForm.IsVisible = (type != DatabaseType.SQLite);
@@ -524,41 +519,6 @@ public partial class ConnectionView : UserControl
                 };
             }
         }
-    }
-
-    private void FilterEngines(string? query)
-    {
-        string q = (query ?? string.Empty).Trim().ToLowerInvariant();
-        if (string.IsNullOrEmpty(q))
-        {
-            BtnSelectSQLite.IsVisible = true;
-            BtnSelectPostgres.IsVisible = true;
-            BtnSelectMySQL.IsVisible = true;
-            BtnSelectMariaDB.IsVisible = true;
-            BtnSelectSqlServer.IsVisible = true;
-            TxtEngineMatchCount.Text = "5 motores disponíveis";
-            return;
-        }
-
-        bool matchSqlite = MatchesEngine(q, "sqlite", "local", "arquivo", "file", "embutido", "embedded", "db");
-        bool matchPostgres = MatchesEngine(q, "postgresql", "postgres", "pg", "relacional", "objeto", "sql");
-        bool matchMysql = MatchesEngine(q, "mysql", "lamp", "innodb", "oracle", "sql");
-        bool matchMariadb = MatchesEngine(q, "mariadb", "maria", "fork", "comunitario", "sql");
-        bool matchSqlServer = MatchesEngine(q, "sqlserver", "sql server", "mssql", "microsoft", "azure", "tsql", "dbo", "sql");
-
-        BtnSelectSQLite.IsVisible = matchSqlite;
-        BtnSelectPostgres.IsVisible = matchPostgres;
-        BtnSelectMySQL.IsVisible = matchMysql;
-        BtnSelectMariaDB.IsVisible = matchMariadb;
-        BtnSelectSqlServer.IsVisible = matchSqlServer;
-
-        int count = (matchSqlite ? 1 : 0) + (matchPostgres ? 1 : 0) + (matchMysql ? 1 : 0) + (matchMariadb ? 1 : 0) + (matchSqlServer ? 1 : 0);
-        TxtEngineMatchCount.Text = $"{count} de 5 motores";
-    }
-
-    private static bool MatchesEngine(string query, params string[] terms)
-    {
-        return terms.Any(t => t.Contains(query, StringComparison.OrdinalIgnoreCase) || query.Contains(t, StringComparison.OrdinalIgnoreCase));
     }
 
     private void SelectConnection(ConnectionConfig cfg)

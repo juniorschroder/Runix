@@ -394,125 +394,97 @@
                     </StackPanel>
                 </Grid>
 
-                <!-- Database Engine Selection -->
-                <StackPanel Spacing="10">
+                <!-- Database Engine Selection (Modern Dropdown) -->
+                <StackPanel Spacing="6">
                     <Grid ColumnDefinitions="*,Auto">
                         <TextBlock Grid.Column="0" Text="{DynamicResource Connection.Engine}" FontSize="12" FontWeight="SemiBold" Foreground="#8b9cb3" VerticalAlignment="Center"/>
-                        <TextBlock Name="TxtEngineMatchCount" Grid.Column="1" Text="5 motores disponíveis" FontSize="11" Foreground="#64748b" VerticalAlignment="Center"/>
+                        <TextBlock Name="TxtEngineMatchCount" Grid.Column="1" Text="5 motores suportados" FontSize="11" Foreground="#64748b" VerticalAlignment="Center"/>
                     </Grid>
 
-                    <!-- Real-Time Engine Search Filter -->
-                    <TextBox Name="TxtSearchEngine" Background="#0e141f" Foreground="#f0f6fc" BorderBrush="#1e2d42"
-                             CornerRadius="6" Padding="10,8" Watermark="{DynamicResource Connection.FilterEnginesWatermark}"
-                             AutomationProperties.Name="Filtrar motor de banco de dados"/>
-
-                    <!-- 5 Engine Cards -->
-                    <WrapPanel Name="PanelEngineCards" Orientation="Horizontal">
-                        <!-- SQLite Card -->
-                        <Button Name="BtnSelectSQLite" Margin="0,0,8,8" Width="228" Padding="12,10"
-                                Background="#0c2338" Foreground="White" BorderBrush="#38bdf8" BorderThickness="1.5" CornerRadius="8"
-                                HorizontalContentAlignment="Left" VerticalContentAlignment="Center"
-                                AutomationProperties.Name="Selecionar motor SQLite">
-                            <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
-                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Background="#003b57" VerticalAlignment="Center" Margin="0,0,10,0">
+                    <ComboBox Name="CmbDatabaseEngine" HorizontalAlignment="Stretch"
+                              Background="#0e141f" Foreground="#f0f6fc" BorderBrush="#1e2d42"
+                              CornerRadius="8" Padding="10,6"
+                              AutomationProperties.Name="Selecionar motor de banco de dados">
+                        <!-- SQLite Item -->
+                        <ComboBoxItem Tag="SQLite" IsSelected="True">
+                            <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center" Margin="0,2">
+                                <Border Grid.Column="0" Width="32" Height="32" CornerRadius="6" Background="#003b57" VerticalAlignment="Center" Margin="0,0,12,0">
                                     <PathIcon Data="{DynamicResource IconSqlite}" Width="20" Height="20" Foreground="#38bdf8" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <TextBlock Text="{DynamicResource Connection.SqliteTitle}" FontWeight="Bold" FontSize="13" Foreground="White"/>
-                                        <Border Background="#003b57" CornerRadius="4" Padding="4,1" VerticalAlignment="Center">
-                                            <TextBlock Text="FILE" FontSize="9" FontWeight="Bold" Foreground="#38bdf8"/>
-                                        </Border>
-                                    </StackPanel>
-                                    <TextBlock Text="{DynamicResource Connection.SqliteDesc}" FontSize="10.5" Foreground="#94a3b8" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{DynamicResource Connection.SqliteTitle}" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
+                                    <TextBlock Text="{DynamicResource Connection.SqliteDesc}" FontSize="11" Foreground="#8b9cb3"/>
                                 </StackPanel>
+                                <Border Grid.Column="2" Background="#003b57" CornerRadius="4" Padding="6,2" VerticalAlignment="Center" Margin="10,0,0,0">
+                                    <TextBlock Text="FILE" FontSize="9" FontWeight="Bold" Foreground="#38bdf8"/>
+                                </Border>
                             </Grid>
-                        </Button>
+                        </ComboBoxItem>
 
-                        <!-- PostgreSQL Card -->
-                        <Button Name="BtnSelectPostgres" Margin="0,0,8,8" Width="228" Padding="12,10"
-                                Background="#141d2b" Foreground="#8b9cb3" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8"
-                                HorizontalContentAlignment="Left" VerticalContentAlignment="Center"
-                                AutomationProperties.Name="Selecionar motor PostgreSQL">
-                            <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
-                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Background="#1e3a5f" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <!-- PostgreSQL Item -->
+                        <ComboBoxItem Tag="PostgreSQL">
+                            <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center" Margin="0,2">
+                                <Border Grid.Column="0" Width="32" Height="32" CornerRadius="6" Background="#1e3a5f" VerticalAlignment="Center" Margin="0,0,12,0">
                                     <PathIcon Data="{DynamicResource IconPostgres}" Width="20" Height="20" Foreground="#60a5fa" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <TextBlock Text="{DynamicResource Connection.PostgresTitle}" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
-                                        <Border Background="#1e3a5f" CornerRadius="4" Padding="4,1" VerticalAlignment="Center">
-                                            <TextBlock Text="5432" FontSize="9" FontWeight="Bold" Foreground="#60a5fa"/>
-                                        </Border>
-                                    </StackPanel>
-                                    <TextBlock Text="{DynamicResource Connection.PostgresDesc}" FontSize="10.5" Foreground="#8b9cb3" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{DynamicResource Connection.PostgresTitle}" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
+                                    <TextBlock Text="{DynamicResource Connection.PostgresDesc}" FontSize="11" Foreground="#8b9cb3"/>
                                 </StackPanel>
+                                <Border Grid.Column="2" Background="#1e3a5f" CornerRadius="4" Padding="6,2" VerticalAlignment="Center" Margin="10,0,0,0">
+                                    <TextBlock Text="5432" FontSize="9" FontWeight="Bold" Foreground="#60a5fa"/>
+                                </Border>
                             </Grid>
-                        </Button>
+                        </ComboBoxItem>
 
-                        <!-- MySQL Card -->
-                        <Button Name="BtnSelectMySQL" Margin="0,0,8,8" Width="228" Padding="12,10"
-                                Background="#141d2b" Foreground="#8b9cb3" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8"
-                                HorizontalContentAlignment="Left" VerticalContentAlignment="Center"
-                                AutomationProperties.Name="Selecionar motor MySQL">
-                            <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
-                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Background="#00485c" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <!-- MySQL Item -->
+                        <ComboBoxItem Tag="MySQL">
+                            <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center" Margin="0,2">
+                                <Border Grid.Column="0" Width="32" Height="32" CornerRadius="6" Background="#00485c" VerticalAlignment="Center" Margin="0,0,12,0">
                                     <PathIcon Data="{DynamicResource IconMySql}" Width="20" Height="20" Foreground="#f29111" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <TextBlock Text="{DynamicResource Connection.MysqlTitle}" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
-                                        <Border Background="#00485c" CornerRadius="4" Padding="4,1" VerticalAlignment="Center">
-                                            <TextBlock Text="3306" FontSize="9" FontWeight="Bold" Foreground="#f29111"/>
-                                        </Border>
-                                    </StackPanel>
-                                    <TextBlock Text="{DynamicResource Connection.MysqlDesc}" FontSize="10.5" Foreground="#8b9cb3" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{DynamicResource Connection.MysqlTitle}" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
+                                    <TextBlock Text="{DynamicResource Connection.MysqlDesc}" FontSize="11" Foreground="#8b9cb3"/>
                                 </StackPanel>
+                                <Border Grid.Column="2" Background="#00485c" CornerRadius="4" Padding="6,2" VerticalAlignment="Center" Margin="10,0,0,0">
+                                    <TextBlock Text="3306" FontSize="9" FontWeight="Bold" Foreground="#f29111"/>
+                                </Border>
                             </Grid>
-                        </Button>
+                        </ComboBoxItem>
 
-                        <!-- MariaDB Card -->
-                        <Button Name="BtnSelectMariaDB" Margin="0,0,8,8" Width="228" Padding="12,10"
-                                Background="#141d2b" Foreground="#8b9cb3" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8"
-                                HorizontalContentAlignment="Left" VerticalContentAlignment="Center"
-                                AutomationProperties.Name="Selecionar motor MariaDB">
-                            <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
-                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Background="#003545" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <!-- MariaDB Item -->
+                        <ComboBoxItem Tag="MariaDB">
+                            <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center" Margin="0,2">
+                                <Border Grid.Column="0" Width="32" Height="32" CornerRadius="6" Background="#003545" VerticalAlignment="Center" Margin="0,0,12,0">
                                     <PathIcon Data="{DynamicResource IconMariaDb}" Width="20" Height="20" Foreground="#c084fc" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <TextBlock Text="{DynamicResource Connection.MariadbTitle}" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
-                                        <Border Background="#003545" CornerRadius="4" Padding="4,1" VerticalAlignment="Center">
-                                            <TextBlock Text="3306" FontSize="9" FontWeight="Bold" Foreground="#c084fc"/>
-                                        </Border>
-                                    </StackPanel>
-                                    <TextBlock Text="{DynamicResource Connection.MariadbDesc}" FontSize="10.5" Foreground="#8b9cb3" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{DynamicResource Connection.MariadbTitle}" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
+                                    <TextBlock Text="{DynamicResource Connection.MariadbDesc}" FontSize="11" Foreground="#8b9cb3"/>
                                 </StackPanel>
+                                <Border Grid.Column="2" Background="#003545" CornerRadius="4" Padding="6,2" VerticalAlignment="Center" Margin="10,0,0,0">
+                                    <TextBlock Text="3306" FontSize="9" FontWeight="Bold" Foreground="#c084fc"/>
+                                </Border>
                             </Grid>
-                        </Button>
+                        </ComboBoxItem>
 
-                        <!-- SQL Server Card -->
-                        <Button Name="BtnSelectSqlServer" Margin="0,0,8,8" Width="228" Padding="12,10"
-                                Background="#141d2b" Foreground="#8b9cb3" BorderBrush="#1e2d42" BorderThickness="1" CornerRadius="8"
-                                HorizontalContentAlignment="Left" VerticalContentAlignment="Center"
-                                AutomationProperties.Name="Selecionar motor Microsoft SQL Server">
-                            <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
-                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Background="#450a0a" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <!-- SQL Server Item -->
+                        <ComboBoxItem Tag="SqlServer">
+                            <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center" Margin="0,2">
+                                <Border Grid.Column="0" Width="32" Height="32" CornerRadius="6" Background="#450a0a" VerticalAlignment="Center" Margin="0,0,12,0">
                                     <PathIcon Data="{DynamicResource IconSqlServer}" Width="20" Height="20" Foreground="#f87171" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <TextBlock Text="{DynamicResource Connection.SqlServerTitle}" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
-                                        <Border Background="#450a0a" CornerRadius="4" Padding="4,1" VerticalAlignment="Center">
-                                            <TextBlock Text="1433" FontSize="9" FontWeight="Bold" Foreground="#f87171"/>
-                                        </Border>
-                                    </StackPanel>
-                                    <TextBlock Text="{DynamicResource Connection.SqlServerDesc}" FontSize="10.5" Foreground="#8b9cb3" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{DynamicResource Connection.SqlServerTitle}" FontWeight="Bold" FontSize="13" Foreground="#f0f6fc"/>
+                                    <TextBlock Text="{DynamicResource Connection.SqlServerDesc}" FontSize="11" Foreground="#8b9cb3"/>
                                 </StackPanel>
+                                <Border Grid.Column="2" Background="#450a0a" CornerRadius="4" Padding="6,2" VerticalAlignment="Center" Margin="10,0,0,0">
+                                    <TextBlock Text="1433" FontSize="9" FontWeight="Bold" Foreground="#f87171"/>
+                                </Border>
                             </Grid>
-                        </Button>
-                    </WrapPanel>
+                        </ComboBoxItem>
+                    </ComboBox>
                 </StackPanel>
 
                 <!-- SQLITE FORM SECTION -->
