@@ -11,6 +11,20 @@ public enum SshAuthMethod
     PrivateKey
 }
 
+public enum OracleConnectionType
+{
+    ServiceName,
+    Sid,
+    TnsDescriptor
+}
+
+public enum OraclePrivilege
+{
+    Normal,
+    SysDba,
+    SysOper
+}
+
 public class ConnectionConfig : INotifyPropertyChanged
 {
     private bool _isBeingDragged;
@@ -34,6 +48,13 @@ public class ConnectionConfig : INotifyPropertyChanged
     // SQL Server specific
     public string DefaultSchema { get; set; } = "dbo";
     public bool TrustServerCertificate { get; set; } = true;
+
+    // Oracle specific
+    public OracleConnectionType OracleConnectionType { get; set; } = OracleConnectionType.ServiceName;
+    public string OracleServiceName { get; set; } = "ORCLPDB1";
+    public string OracleSid { get; set; } = "XE";
+    public string OracleTnsDescriptor { get; set; } = string.Empty;
+    public OraclePrivilege OraclePrivilege { get; set; } = OraclePrivilege.Normal;
 
     // SSH Tunnel Configuration
     public bool UseSshTunnel { get; set; }
@@ -69,8 +90,28 @@ public class ConnectionConfig : INotifyPropertyChanged
         DatabaseType.SqlServer => UseSshTunnel && !string.IsNullOrWhiteSpace(SshHost)
             ? $"🔒 SSH ({SshHost}) → {Username}@{Host}:{Port}/{Database} ({DefaultSchema})"
             : $"{Username}@{Host}:{Port}/{Database} ({DefaultSchema})",
+        DatabaseType.Oracle => FormatOracleSubtitle(),
         _ => ""
     };
+
+    private string FormatOracleSubtitle()
+    {
+        var target = OracleConnectionType switch
+        {
+            OracleConnectionType.Sid => !string.IsNullOrWhiteSpace(OracleSid) ? OracleSid : (string.IsNullOrWhiteSpace(Database) ? "XE" : Database),
+            OracleConnectionType.TnsDescriptor => "TNS",
+            _ => !string.IsNullOrWhiteSpace(OracleServiceName) ? OracleServiceName : (string.IsNullOrWhiteSpace(Database) ? "ORCLPDB1" : Database)
+        };
+        var priv = OraclePrivilege switch
+        {
+            OraclePrivilege.SysDba => " [SYSDBA]",
+            OraclePrivilege.SysOper => " [SYSOPER]",
+            _ => ""
+        };
+        return UseSshTunnel && !string.IsNullOrWhiteSpace(SshHost)
+            ? $"🔒 SSH ({SshHost}) → {Username}@{Host}:{Port}/{target}{priv}"
+            : $"{Username}@{Host}:{Port}/{target}{priv}";
+    }
 
     public string EngineIcon => Type switch
     {
@@ -79,6 +120,7 @@ public class ConnectionConfig : INotifyPropertyChanged
         DatabaseType.MySQL => "🐬",
         DatabaseType.MariaDB => "🦭",
         DatabaseType.SqlServer => "🏢",
+        DatabaseType.Oracle => "🔴",
         _ => "🗄"
     };
 
@@ -93,13 +135,16 @@ public class ConnectionConfig : INotifyPropertyChanged
         }
 
         var host = !string.IsNullOrWhiteSpace(Host) ? Host.Trim().ToLowerInvariant() : "localhost";
-        var db = !string.IsNullOrWhiteSpace(Database) ? Database.Trim().ToLowerInvariant() : "postgres";
+        var db = Type == DatabaseType.Oracle
+            ? (OracleConnectionType == OracleConnectionType.Sid ? (!string.IsNullOrWhiteSpace(OracleSid) ? OracleSid : "xe") : (!string.IsNullOrWhiteSpace(OracleServiceName) ? OracleServiceName : "orclpdb1")).Trim().ToLowerInvariant()
+            : (!string.IsNullOrWhiteSpace(Database) ? Database.Trim().ToLowerInvariant() : "postgres");
         var user = !string.IsNullOrWhiteSpace(Username) ? Username.Trim().ToLowerInvariant() : "postgres";
         var enginePrefix = Type switch
         {
             DatabaseType.MySQL => "mysql",
             DatabaseType.MariaDB => "mariadb",
             DatabaseType.SqlServer => "sqlserver",
+            DatabaseType.Oracle => "oracle",
             _ => "postgres"
         };
 
@@ -139,7 +184,12 @@ public class ConnectionConfig : INotifyPropertyChanged
             IsProduction = IsProduction,
             SafeExecutionMode = SafeExecutionMode,
             DefaultSchema = DefaultSchema,
-            TrustServerCertificate = TrustServerCertificate
+            TrustServerCertificate = TrustServerCertificate,
+            OracleConnectionType = OracleConnectionType,
+            OracleServiceName = OracleServiceName,
+            OracleSid = OracleSid,
+            OracleTnsDescriptor = OracleTnsDescriptor,
+            OraclePrivilege = OraclePrivilege
         };
     }
 

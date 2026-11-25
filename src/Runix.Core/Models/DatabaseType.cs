@@ -6,5 +6,6 @@ public enum DatabaseType
     PostgreSQL,
     MySQL,
     MariaDB,
-    SqlServer
+    SqlServer,
+    Oracle
 }

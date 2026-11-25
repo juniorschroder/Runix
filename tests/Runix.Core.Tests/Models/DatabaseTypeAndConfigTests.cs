@@ -13,6 +13,7 @@ public class DatabaseTypeAndConfigTests
         Assert.True(System.Enum.IsDefined(typeof(DatabaseType), DatabaseType.MySQL));
         Assert.True(System.Enum.IsDefined(typeof(DatabaseType), DatabaseType.MariaDB));
         Assert.True(System.Enum.IsDefined(typeof(DatabaseType), DatabaseType.SqlServer));
+        Assert.True(System.Enum.IsDefined(typeof(DatabaseType), DatabaseType.Oracle));
     }
 
     [Fact]
@@ -98,5 +99,85 @@ public class DatabaseTypeAndConfigTests
         Assert.Equal(original.TrustServerCertificate, clone.TrustServerCertificate);
         Assert.Equal(original.UseSshTunnel, clone.UseSshTunnel);
         Assert.Equal(original.SshHost, clone.SshHost);
+    }
+
+    [Fact]
+    public void ConnectionConfig_Oracle_ServiceName_FormatsSubtitleAndIconCorrectly()
+    {
+        var config = new ConnectionConfig
+        {
+            Type = DatabaseType.Oracle,
+            Host = "oracle.corp",
+            Port = 1521,
+            OracleConnectionType = OracleConnectionType.ServiceName,
+            OracleServiceName = "FREEPDB1",
+            Username = "system",
+            OraclePrivilege = OraclePrivilege.Normal
+        };
+
+        Assert.Equal("🔴", config.EngineIcon);
+        Assert.Equal("system@oracle.corp:1521/FREEPDB1", config.DisplaySubtitle);
+        Assert.Equal("oracle:oracle.corp:1521:freepdb1:system", config.GetSessionKey());
+    }
+
+    [Fact]
+    public void ConnectionConfig_Oracle_SidAndSysDba_FormatsSubtitleCorrectly()
+    {
+        var config = new ConnectionConfig
+        {
+            Type = DatabaseType.Oracle,
+            Host = "localhost",
+            Port = 1521,
+            OracleConnectionType = OracleConnectionType.Sid,
+            OracleSid = "XE",
+            Username = "sys",
+            OraclePrivilege = OraclePrivilege.SysDba
+        };
+
+        Assert.Equal("sys@localhost:1521/XE [SYSDBA]", config.DisplaySubtitle);
+        Assert.Equal("oracle:localhost:1521:xe:sys", config.GetSessionKey());
+    }
+
+    [Fact]
+    public void ConnectionConfig_Oracle_WithSshTunnel_IncludesLockPrefix()
+    {
+        var config = new ConnectionConfig
+        {
+            Type = DatabaseType.Oracle,
+            Host = "db-private",
+            Port = 1521,
+            OracleConnectionType = OracleConnectionType.ServiceName,
+            OracleServiceName = "ORCLPDB1",
+            Username = "scott",
+            UseSshTunnel = true,
+            SshHost = "gateway.corp"
+        };
+
+        Assert.Equal("🔒 SSH (gateway.corp) → scott@db-private:1521/ORCLPDB1", config.DisplaySubtitle);
+    }
+
+    [Fact]
+    public void ConnectionConfig_Clone_CopiesOracleProperties()
+    {
+        var original = new ConnectionConfig
+        {
+            Type = DatabaseType.Oracle,
+            Host = "ora19c",
+            Port = 1521,
+            OracleConnectionType = OracleConnectionType.Sid,
+            OracleSid = "PROD1",
+            OracleServiceName = "SRV_PROD",
+            OracleTnsDescriptor = "(DESCRIPTION=...)",
+            OraclePrivilege = OraclePrivilege.SysOper
+        };
+
+        var clone = original.Clone();
+
+        Assert.Equal(DatabaseType.Oracle, clone.Type);
+        Assert.Equal(OracleConnectionType.Sid, clone.OracleConnectionType);
+        Assert.Equal("PROD1", clone.OracleSid);
+        Assert.Equal("SRV_PROD", clone.OracleServiceName);
+        Assert.Equal("(DESCRIPTION=...)", clone.OracleTnsDescriptor);
+        Assert.Equal(OraclePrivilege.SysOper, clone.OraclePrivilege);
     }
 }

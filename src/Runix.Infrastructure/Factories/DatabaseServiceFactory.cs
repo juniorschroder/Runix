@@ -17,6 +17,7 @@ public static class DatabaseServiceFactory
             DatabaseType.PostgreSQL => new PostgresDatabaseService(config, sshTunnelService),
             DatabaseType.MySQL or DatabaseType.MariaDB => new MySqlDatabaseService(config, sshTunnelService),
             DatabaseType.SqlServer => new SqlServerDatabaseService(config, sshTunnelService),
+            DatabaseType.Oracle => new OracleDatabaseService(config, sshTunnelService),
             _ => throw new NotSupportedException($"Database engine '{config.Type}' is not supported.")
         };
     }

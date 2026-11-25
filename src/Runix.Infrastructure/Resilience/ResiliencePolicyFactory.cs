@@ -4,6 +4,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using MySqlConnector;
 using Npgsql;
+using Oracle.ManagedDataAccess.Client;
 using Runix.Core.Models;
 using Vard.Abstractions;
 using Vard.Builders;
@@ -49,6 +50,14 @@ public static class ResiliencePolicyFactory
         {
             // -2: Timeout, 1205: Deadlock, 4060: Cannot open DB, Azure transient limits
             return sqlServEx.Number is -2 or 1205 or 4060 or 40197 or 40501 or 40613 or 49918 or 49919 or 49920;
+        }
+
+        if (ex is OracleException oraEx)
+        {
+            if (oraEx.IsTransient) return true;
+            // 3113: end-of-file, 3114: not connected, 12170: connect timeout, 12541: no listener, 12543: unreachable, 12571: packet writer
+            // 60: deadlock, 4068: package state discarded, 4061: package state invalidated
+            return oraEx.Number is 3113 or 3114 or 12170 or 12541 or 12543 or 12571 or 60 or 4068 or 4061;
         }
 
         if (ex is TimeoutException || ex is IOException)
