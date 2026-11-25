@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.0] - 2026-11-25
+
+### 🚀 Added
+- **Oracle Database Enterprise Edition Support**:
+  - Full native cross-platform support for **Oracle Database (12c, 19c, 21c, 23ai)** powered by 100% managed driver (`Oracle.ManagedDataAccess.Core` v23.26.401), eliminating native C Oracle Instant Client dependencies.
+  - Dedicated **Vard** resilience integration with *Exponential Backoff Retry* and *Circuit Breaker* policies targeting transient Oracle network and TNS failure codes.
+  - Modern connection configuration: official Oracle vector brand styling, default port `1521`, dynamic toggling between **Service Name**, **SID**, and raw **TNS Descriptors**, and administrative privilege selection (`NORMAL`, `SYSDBA`, `SYSOPER`).
+  - Deep schema introspection querying Oracle data dictionary views (`ALL_TABLES`, `ALL_VIEWS`, `ALL_TAB_COLUMNS`, `ALL_CONSTRAINTS`, `ALL_IND_COLUMNS`).
+  - Full type mapping for Oracle native types: `NUMBER(p, s)`, `VARCHAR2`, `NVARCHAR2`, `DATE`, `TIMESTAMP`, `CLOB`, `BLOB`, `RAW`, and `ROWID`.
+  - Comprehensive PL/SQL object support: navigation and DDL generation for **Packages** (unified Specification and Body), **Stored Procedures**, **Functions**, **Triggers**, and **Sequences**.
+  - Modern ANSI SQL:2008 pagination (`OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY`) with deterministic ordering fallback.
+  - Complete integration across RUNIX tools:
+    - **Visual Query Builder**: uppercase quoted identifiers (`"COLUMN"`), filters, and auto-joins based on Oracle Foreign Key constraints.
+    - **Interactive DER Canvas**: visual modeling with Oracle DDL generator (automatically omitting unsupported `ON UPDATE` foreign key clauses).
+    - **Mock Data Generator**: Oracle parent FK sampling with `FETCH NEXT 1000 ROWS ONLY`, individual `INSERT INTO` statements, boolean `1`/`0` mapping, and `TO_DATE` literal formatting.
+- **Oracle Database Health & Telemetry Dashboard**:
+  - Storage telemetry: granular **Tablespaces** inspection (`DBA_TABLESPACES`, `DBA_DATA_FILES`, `DBA_FREE_SPACE` with non-DBA fallback to `USER_TABLESPACES`/`USER_SEGMENTS`).
+  - Cache performance metrics: real-time **Buffer Cache Hit Ratio** via `V$SYSSTAT`.
+  - Active session monitoring and blocking lock detection via `V$SESSION`.
+  - Assisted Oracle maintenance: `ALTER TABLE SHRINK SPACE COMPACT`, `ANALYZE TABLE COMPUTE STATISTICS`, `ALTER INDEX REBUILD`, and structural integrity audits (disabled constraints and invalid schema objects).
+- **Expanded Object Support for MySQL & SQL Server**:
+  - Integrated support for Stored Procedures, Functions, and Triggers in **MySQL** (`information_schema.routines`, `information_schema.triggers`) and **SQL Server** (`sys.objects`, `sys.triggers`) with on-demand DDL resolution.
+
+### ⚡ Performance
+- **Eliminated N+1 Query Bottleneck in PostgreSQL Introspection**:
+  - Replaced legacy `information_schema.tables` + loop of individual row count queries with a single atomic query against native `pg_class` and `pg_namespace` catalogs, reducing schema load times from several seconds to under 10ms.
+- **Lazy DDL Loading for Programmable Objects**:
+  - Streamlined boot catalog queries across PostgreSQL, MySQL, and SQL Server to fetch lightweight metadata only (name, schema, return type, arguments), deferring heavy DDL decompilation (`pg_get_functiondef`, `pg_get_triggerdef`, `SHOW CREATE`) to on-demand user requests.
+- **Atomic Row Count Estimates Across All Database Engines**:
+  - MySQL/MariaDB: extracted pre-computed row counts directly from `information_schema.tables` (`TABLE_ROWS`).
+  - SQL Server: grouped partition row counts from `sys.partitions` (`SUM(p.rows)`) in the primary table listing query.
+  - SQLite: utilized `sqlite_stat1` pre-computed statistics to avoid full table scans on large databases.
+- **Progressive Sidebar Rendering (`WorkspaceView`)**:
+  - The object tree now displays tables immediately upon connection while programmable routines and local storage cache load asynchronously in the background, eliminating UI freezes.
+
+### 🧪 Testing
+- Expanded automated test suite from 487 to **532 passing unit and integration tests** (322 in `Runix.Core.Tests` + 210 in `Runix.Infrastructure.Tests`) with 100% pass rate.
+
+---
+
 ## [2.0.0] - 2026-11-24
 
 ### 🚀 Added
