@@ -346,4 +346,66 @@ public class VisualQueryBuilderServiceTests
         Assert.Contains("ON dept.\"id\" = emp.\"dept_id\"", sql);
         Assert.Contains("CROSS JOIN \"calendar\"", sql);
     }
+
+    [Fact]
+    public void BuildSql_OracleDialect_GeneratesUppercaseQuotedIdentifiersAndOffsetFetch()
+    {
+        var model = new VisualQueryModel
+        {
+            BaseTable = "employees",
+            BaseTableAlias = "e",
+            Limit = 25,
+            Offset = 10,
+            SelectColumns = new List<VisualSelectColumn>
+            {
+                new() { IsSelected = true, TableAlias = "e", ColumnName = "emp_id" },
+                new() { IsSelected = true, TableAlias = "e", ColumnName = "salary" }
+            },
+            Sorts = new List<VisualSortClause>
+            {
+                new() { TableAlias = "e", ColumnName = "salary", Direction = "DESC" }
+            }
+        };
+
+        var sql = _builder.BuildSql(model, DatabaseType.Oracle);
+
+        Assert.Contains("e.\"EMP_ID\"", sql);
+        Assert.Contains("e.\"SALARY\"", sql);
+        Assert.Contains("FROM \"EMPLOYEES\" e", sql);
+        Assert.Contains("ORDER BY", sql);
+        Assert.Contains("e.\"SALARY\" DESC", sql);
+        Assert.Contains("OFFSET 10 ROWS FETCH NEXT 25 ROWS ONLY", sql);
+    }
+
+    [Fact]
+    public void BuildSql_OracleDialect_WithoutExplicitSort_EmitsDeterministicOrderBy()
+    {
+        var model = new VisualQueryModel
+        {
+            BaseTable = "departments",
+            Limit = 50,
+            SelectColumns = new List<VisualSelectColumn>
+            {
+                new() { IsSelected = true, ColumnName = "dept_name" }
+            }
+        };
+
+        var sql = _builder.BuildSql(model, DatabaseType.Oracle);
+
+        Assert.Contains("\"DEPT_NAME\"", sql);
+        Assert.Contains("FROM \"DEPARTMENTS\"", sql);
+        Assert.Contains("ORDER BY", sql);
+        Assert.Contains("1", sql);
+        Assert.Contains("OFFSET 0 ROWS FETCH NEXT 50 ROWS ONLY", sql);
+    }
+
+    [Fact]
+    public void QuoteIdentifier_Oracle_FormatsUppercaseQuotes()
+    {
+        var quoted = VisualQueryBuilderService.QuoteIdentifier("user_accounts", DatabaseType.Oracle);
+        Assert.Equal("\"USER_ACCOUNTS\"", quoted);
+
+        var preQuoted = VisualQueryBuilderService.QuoteIdentifier("\"already_quoted\"", DatabaseType.Oracle);
+        Assert.Equal("\"ALREADY_QUOTED\"", preQuoted);
+    }
 }

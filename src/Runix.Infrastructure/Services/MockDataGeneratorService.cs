@@ -279,6 +279,8 @@ public class MockDataGeneratorService : IMockDataGeneratorService
                 {
                     DatabaseType.SqlServer =>
                         $"SELECT DISTINCT TOP 1000 {VisualQueryBuilderService.QuoteIdentifier(targetCol, dialect)} FROM {VisualQueryBuilderService.QuoteIdentifier(targetTable, dialect)};",
+                    DatabaseType.Oracle =>
+                        $"SELECT DISTINCT {VisualQueryBuilderService.QuoteIdentifier(targetCol, dialect)} FROM {VisualQueryBuilderService.QuoteIdentifier(targetTable, dialect)} FETCH NEXT 1000 ROWS ONLY",
                     _ =>
                         $"SELECT DISTINCT {VisualQueryBuilderService.QuoteIdentifier(targetCol, dialect)} FROM {VisualQueryBuilderService.QuoteIdentifier(targetTable, dialect)} LIMIT 1000;"
                 };
@@ -461,6 +463,22 @@ public class MockDataGeneratorService : IMockDataGeneratorService
         var quotedTable = VisualQueryBuilderService.QuoteIdentifier(config.TableName, dialect);
         var colHeaders = string.Join(", ", activeRules.Select(r => VisualQueryBuilderService.QuoteIdentifier(r.ColumnName, dialect)));
 
+        if (dialect == DatabaseType.Oracle)
+        {
+            // Oracle não suporta sintaxe multi-row VALUES (...), (...)
+            foreach (var row in rows)
+            {
+                var valuesList = new List<string>();
+                foreach (var rule in activeRules)
+                {
+                    row.TryGetValue(rule.ColumnName, out var val);
+                    valuesList.Add(FormatSqlLiteral(val, dialect));
+                }
+                sb.AppendLine($"INSERT INTO {quotedTable} ({colHeaders}) VALUES ({string.Join(", ", valuesList)});");
+            }
+            return sb.ToString();
+        }
+
         // Divide em blocos de até 100 linhas por INSERT para legibilidade e compatibilidade
         const int chunkSize = 100;
         for (int i = 0; i < rows.Count; i += chunkSize)
@@ -507,6 +525,7 @@ public class MockDataGeneratorService : IMockDataGeneratorService
             bool b => (dialect == DatabaseType.PostgreSQL) ? (b ? "TRUE" : "FALSE") : (b ? "1" : "0"),
             int or long or short or byte => Convert.ToString(value, CultureInfo.InvariantCulture)!,
             decimal or double or float => Convert.ToString(value, CultureInfo.InvariantCulture)!,
+            DateTime dt when dialect == DatabaseType.Oracle => $"TO_DATE('{dt:yyyy-MM-dd HH:mm:ss}', 'YYYY-MM-DD HH24:MI:SS')",
             DateTime dt => $"'{dt:yyyy-MM-dd HH:mm:ss}'",
             Guid g => $"'{g}'",
             _ => $"'{value.ToString()!.Replace("'", "''")}'"
@@ -517,6 +536,7 @@ public class MockDataGeneratorService : IMockDataGeneratorService
     /// Calcula o tamanho seguro do lote de inserção para respeitar os limites de parâmetros de cada engine.
     /// SQL Server: máx 2.100 parâmetros por comando.
     /// SQLite: máx 999 parâmetros por comando.
+    /// Oracle: máx 1.000 parâmetros por comando.
     /// </summary>
     public static int CalculateSafeBatchSize(int columnCount, DatabaseType dialect)
     {
@@ -529,6 +549,9 @@ public class MockDataGeneratorService : IMockDataGeneratorService
 
             DatabaseType.SQLite =>
                 Math.Clamp(900 / columnCount, 1, 200),
+
+            DatabaseType.Oracle =>
+                Math.Clamp(1000 / columnCount, 1, 100),
 
             DatabaseType.MySQL or DatabaseType.MariaDB =>
                 Math.Clamp(3000 / columnCount, 1, 500),
@@ -592,38 +615,63 @@ public class MockDataGeneratorService : IMockDataGeneratorService
         int totalBatches = batches.Count;
 
         // Monta os comandos parametrizados para cada lote
-        var commands = new List<ParameterizedCommand>(totalBatches);
+        var commands = new List<ParameterizedCommand>(dialect == DatabaseType.Oracle ? rows.Count : totalBatches);
 
-        for (int bIndex = 0; bIndex < totalBatches; bIndex++)
+        if (dialect == DatabaseType.Oracle)
         {
-            var chunk = batches[bIndex];
-            var sqlSb = new StringBuilder();
-            sqlSb.Append($"INSERT INTO {quotedTable} ({colHeaders}) VALUES ");
-
-            var parameters = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
-            var valueClauses = new List<string>();
-
-            for (int rIdx = 0; rIdx < chunk.Count; rIdx++)
+            // Oracle não suporta múltiplos tuples no mesmo VALUES — cria comandos individuais executados na mesma transação
+            for (int rIdx = 0; rIdx < rows.Count; rIdx++)
             {
-                var row = chunk[rIdx];
+                var row = rows[rIdx];
                 var paramPlaceholders = new List<string>();
+                var parameters = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
 
                 for (int cIdx = 0; cIdx < activeRules.Count; cIdx++)
                 {
                     var rule = activeRules[cIdx];
-                    var pName = $"p_{bIndex}_{rIdx}_{cIdx}";
-                    paramPlaceholders.Add($"@{pName}");
+                    var pName = $"p_{rIdx}_{cIdx}";
+                    paramPlaceholders.Add($":{pName}");
                     row.TryGetValue(rule.ColumnName, out var cellVal);
                     parameters[pName] = cellVal ?? DBNull.Value;
                 }
 
-                valueClauses.Add($"({string.Join(", ", paramPlaceholders)})");
+                var sql = $"INSERT INTO {quotedTable} ({colHeaders}) VALUES ({string.Join(", ", paramPlaceholders)})";
+                commands.Add(new ParameterizedCommand(sql, parameters));
             }
+        }
+        else
+        {
+            for (int bIndex = 0; bIndex < totalBatches; bIndex++)
+            {
+                var chunk = batches[bIndex];
+                var sqlSb = new StringBuilder();
+                sqlSb.Append($"INSERT INTO {quotedTable} ({colHeaders}) VALUES ");
 
-            sqlSb.Append(string.Join(", ", valueClauses));
-            sqlSb.Append(';');
+                var parameters = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                var valueClauses = new List<string>();
 
-            commands.Add(new ParameterizedCommand(sqlSb.ToString(), parameters));
+                for (int rIdx = 0; rIdx < chunk.Count; rIdx++)
+                {
+                    var row = chunk[rIdx];
+                    var paramPlaceholders = new List<string>();
+
+                    for (int cIdx = 0; cIdx < activeRules.Count; cIdx++)
+                    {
+                        var rule = activeRules[cIdx];
+                        var pName = $"p_{bIndex}_{rIdx}_{cIdx}";
+                        paramPlaceholders.Add($"@{pName}");
+                        row.TryGetValue(rule.ColumnName, out var cellVal);
+                        parameters[pName] = cellVal ?? DBNull.Value;
+                    }
+
+                    valueClauses.Add($"({string.Join(", ", paramPlaceholders)})");
+                }
+
+                sqlSb.Append(string.Join(", ", valueClauses));
+                sqlSb.Append(';');
+
+                commands.Add(new ParameterizedCommand(sqlSb.ToString(), parameters));
+            }
         }
 
         try

@@ -147,4 +147,31 @@ public class OracleDatabaseServiceTests
         var result = OracleDatabaseService.FormatOracleType(rawType, dataLength, precision, scale, charLength);
         Assert.Equal(expected, result);
     }
+
+    [Fact]
+    public void BuildTableDataSql_WithoutSortColumn_GeneratesDeterministicOrderBy1()
+    {
+        var sql = OracleDatabaseService.BuildTableDataSql("employees", offset: 0, limit: 100);
+
+        Assert.Contains("SELECT * FROM \"EMPLOYEES\"", sql);
+        Assert.Contains("ORDER BY 1", sql);
+        Assert.Contains("OFFSET 0 ROWS FETCH NEXT 100 ROWS ONLY", sql);
+    }
+
+    [Fact]
+    public void BuildTableDataSql_WithSortColumnAndFilter_GeneratesProperOrderByAndOffsetFetch()
+    {
+        var sql = OracleDatabaseService.BuildTableDataSql(
+            "hr.employees",
+            offset: 50,
+            limit: 25,
+            filter: "salary > 5000",
+            sortColumn: "hire_date",
+            sortAsc: false);
+
+        Assert.Contains("SELECT * FROM \"HR\".\"EMPLOYEES\"", sql);
+        Assert.Contains("WHERE salary > 5000", sql);
+        Assert.Contains("ORDER BY \"HIRE_DATE\" DESC", sql);
+        Assert.Contains("OFFSET 50 ROWS FETCH NEXT 25 ROWS ONLY", sql);
+    }
 }

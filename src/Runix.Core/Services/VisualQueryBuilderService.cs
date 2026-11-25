@@ -228,6 +228,20 @@ public class VisualQueryBuilderService : IVisualQueryBuilderService
                 sb.Append($" OFFSET {offset} ROWS FETCH NEXT {limit} ROWS ONLY");
             }
         }
+        else if (dialect == DatabaseType.Oracle)
+        {
+            if (model.Limit.HasValue || model.Offset.HasValue)
+            {
+                if (!hasExplicitOrderBy)
+                {
+                    sb.Append(" ORDER BY 1");
+                }
+
+                int offset = model.Offset ?? 0;
+                int limit = model.Limit ?? 100;
+                sb.Append($" OFFSET {offset} ROWS FETCH NEXT {limit} ROWS ONLY");
+            }
+        }
         else
         {
             if (model.Limit.HasValue && model.Limit.Value > 0)
@@ -500,6 +514,11 @@ public class VisualQueryBuilderService : IVisualQueryBuilderService
 
             DatabaseType.MySQL or DatabaseType.MariaDB =>
                 (trimmed.StartsWith('`') && trimmed.EndsWith('`')) ? trimmed : $"`{trimmed.Replace("`", "``")}`",
+
+            DatabaseType.Oracle =>
+                (trimmed.StartsWith('"') && trimmed.EndsWith('"'))
+                    ? trimmed.ToUpperInvariant()
+                    : $"\"{trimmed.Replace("\"", "\"\"").ToUpperInvariant()}\"",
 
             _ =>
                 (trimmed.StartsWith('"') && trimmed.EndsWith('"')) ? trimmed : $"\"{trimmed.Replace("\"", "\"\"")}\""

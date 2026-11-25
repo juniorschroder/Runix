@@ -345,5 +345,43 @@ public class MockDataGeneratorServiceTests : IDisposable
         var sqlServerScript = _service.GenerateSqlScript(config, rows, DatabaseType.SqlServer);
         sqlServerScript.Should().Contain("INSERT INTO [users] ([id], [name], [is_active]) VALUES");
         sqlServerScript.Should().Contain("1"); // boolean as 1
+
+        // Oracle
+        var oracleScript = _service.GenerateSqlScript(config, rows, DatabaseType.Oracle);
+        // Oracle deve gerar instruções INSERT individuais (sem multi-row VALUES com vírgula)
+        oracleScript.Should().Contain("INSERT INTO \"USERS\" (\"ID\", \"NAME\", \"IS_ACTIVE\") VALUES (1, 'Alice', 1);");
+        oracleScript.Should().Contain("INSERT INTO \"USERS\" (\"ID\", \"NAME\", \"IS_ACTIVE\") VALUES (2, 'Bob O''Connor', 0);");
+        oracleScript.Should().NotContain("VALUES (1, 'Alice', 1),");
+    }
+
+    [Fact]
+    public void GenerateSqlScript_Oracle_FormatsDatesWithToDate()
+    {
+        var config = new TableMockConfig
+        {
+            TableName = "events",
+            RowCount = 1,
+            Rules = new List<ColumnGeneratorRule>
+            {
+                new() { ColumnName = "event_time", SelectedGenerator = GeneratorType.DateTime }
+            }
+        };
+
+        var date = new DateTime(2026, 11, 25, 14, 30, 0, DateTimeKind.Utc);
+        var rows = new List<Dictionary<string, object?>>
+        {
+            new() { ["event_time"] = date }
+        };
+
+        var script = _service.GenerateSqlScript(config, rows, DatabaseType.Oracle);
+        script.Should().Contain("TO_DATE('2026-11-25 14:30:00', 'YYYY-MM-DD HH24:MI:SS')");
+    }
+
+    [Fact]
+    public void CalculateSafeBatchSize_Oracle_ReturnsSafeBatchLimits()
+    {
+        var batchSize = MockDataGeneratorService.CalculateSafeBatchSize(10, DatabaseType.Oracle);
+        batchSize.Should().BeInRange(1, 100);
+        batchSize.Should().Be(100); // 1000 / 10 = 100
     }
 }

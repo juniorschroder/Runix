@@ -285,19 +285,21 @@ public class OracleDatabaseService : IDatabaseService
         return results;
     }
 
-    public async Task<QueryResult> GetTableDataAsync(string tableName, int offset = 0, int limit = 100, string? filter = null, string? sortColumn = null, bool sortAsc = true)
+    public static string BuildTableDataSql(string tableName, int offset = 0, int limit = 100, string? filter = null, string? sortColumn = null, bool sortAsc = true)
     {
         var quotedTable = QuoteIdentifier(tableName);
-        var whereClause = string.IsNullOrWhiteSpace(filter) ? "" : $"WHERE {filter}";
-        var orderClause = string.IsNullOrWhiteSpace(sortColumn) ? "" : $"ORDER BY {QuoteIdentifier(sortColumn)} {(sortAsc ? "ASC" : "DESC")}";
+        var whereClause = string.IsNullOrWhiteSpace(filter) ? "" : $"WHERE {filter}\n";
+        var orderClause = string.IsNullOrWhiteSpace(sortColumn) ? "ORDER BY 1" : $"ORDER BY {QuoteIdentifier(sortColumn)} {(sortAsc ? "ASC" : "DESC")}";
 
         // Oracle 12c+ standard offset pagination
-        var sql = $@"
-SELECT * FROM {quotedTable}
-{whereClause}
-{orderClause}
-OFFSET {offset} ROWS FETCH NEXT {limit} ROWS ONLY";
+        return $@"SELECT * FROM {quotedTable}
+{whereClause}{orderClause}
+OFFSET {offset} ROWS FETCH NEXT {limit} ROWS ONLY".Trim();
+    }
 
+    public async Task<QueryResult> GetTableDataAsync(string tableName, int offset = 0, int limit = 100, string? filter = null, string? sortColumn = null, bool sortAsc = true)
+    {
+        var sql = BuildTableDataSql(tableName, offset, limit, filter, sortColumn, sortAsc);
         return await ExecuteQueryAsync(sql);
     }
 
@@ -876,9 +878,9 @@ OFFSET {offset} ROWS FETCH NEXT {limit} ROWS ONLY";
         if (identifier.Contains("."))
         {
             var parts = identifier.Split('.');
-            return string.Join(".", parts.Select(p => $"\"{p.Trim('\"')}\""));
+            return string.Join(".", parts.Select(p => $"\"{p.Trim('\"').ToUpperInvariant()}\""));
         }
-        return $"\"{identifier.Trim('\"')}\"";
+        return $"\"{identifier.Trim('\"').ToUpperInvariant()}\"";
     }
 
     public void Dispose()

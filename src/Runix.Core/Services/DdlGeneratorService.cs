@@ -15,7 +15,9 @@ public class DdlGeneratorService : IDdlGenerator
     public string GenerateCreateTableSql(ErdTableNode node, DatabaseType type)
     {
         var sb = new StringBuilder();
-        var safeTable = $"\"{node.TableName.Replace("\"", "\"\"")}\"";
+        var safeTable = type == DatabaseType.Oracle 
+            ? $"\"{node.TableName.Replace("\"", "\"\"").ToUpperInvariant()}\""
+            : $"\"{node.TableName.Replace("\"", "\"\"")}\"";
 
         sb.AppendLine($"CREATE TABLE {safeTable} (");
 
@@ -24,10 +26,18 @@ public class DdlGeneratorService : IDdlGenerator
 
         foreach (var col in node.Columns)
         {
-            var safeCol = $"\"{col.Name.Replace("\"", "\"\"")}\"";
+            var safeCol = type == DatabaseType.Oracle
+                ? $"\"{col.Name.Replace("\"", "\"\"").ToUpperInvariant()}\""
+                : $"\"{col.Name.Replace("\"", "\"\"")}\"";
             var typeStr = MapDataType(col.DataType, type);
             var nullStr = col.IsNullable ? "" : " NOT NULL";
-            var defStr = string.IsNullOrWhiteSpace(col.DefaultValue) ? "" : $" DEFAULT {col.DefaultValue}";
+            var defVal = col.DefaultValue;
+            if (type == DatabaseType.Oracle && !string.IsNullOrWhiteSpace(defVal))
+            {
+                if (string.Equals(defVal.Trim(), "true", StringComparison.OrdinalIgnoreCase)) defVal = "1";
+                else if (string.Equals(defVal.Trim(), "false", StringComparison.OrdinalIgnoreCase)) defVal = "0";
+            }
+            var defStr = string.IsNullOrWhiteSpace(defVal) ? "" : $" DEFAULT {defVal}";
 
             columnDefs.Add($"    {safeCol} {typeStr}{nullStr}{defStr}");
 
@@ -40,7 +50,15 @@ public class DdlGeneratorService : IDdlGenerator
         // Chave Primária
         if (pkCols.Count > 0)
         {
-            columnDefs.Add($"    PRIMARY KEY ({string.Join(", ", pkCols)})");
+            if (type == DatabaseType.Oracle)
+            {
+                var pkConstraintName = $"\"PK_{node.TableName.Replace("\"", "\"\"").ToUpperInvariant()}\"";
+                columnDefs.Add($"    CONSTRAINT {pkConstraintName} PRIMARY KEY ({string.Join(", ", pkCols)})");
+            }
+            else
+            {
+                columnDefs.Add($"    PRIMARY KEY ({string.Join(", ", pkCols)})");
+            }
         }
 
         sb.Append(string.Join(",\n", columnDefs));
@@ -99,7 +117,7 @@ public class DdlGeneratorService : IDdlGenerator
         }
         else
         {
-            // PostgreSQL: Tabelas primeiro, depois ALTER TABLE para Foreign Keys
+            // PostgreSQL e Oracle: Tabelas primeiro, depois ALTER TABLE para Foreign Keys
             foreach (var node in graph.Nodes)
             {
                 sb.AppendLine(GenerateCreateTableSql(node, type));
@@ -110,13 +128,37 @@ public class DdlGeneratorService : IDdlGenerator
                 sb.AppendLine("-- Foreign Key Constraints");
                 foreach (var rel in graph.Relationships)
                 {
-                    var safeSource = $"\"{rel.SourceTable.Replace("\"", "\"\"")}\"";
-                    var safeTarget = $"\"{rel.TargetTable.Replace("\"", "\"\"")}\"";
-                    var safeCol = $"\"{rel.SourceColumn.Replace("\"", "\"\"")}\"";
-                    var safeTargetCol = $"\"{rel.TargetColumn.Replace("\"", "\"\"")}\"";
-                    var constraintName = $"\"fk_{rel.SourceTable}_{rel.SourceColumn}\"";
+                    var safeSource = type == DatabaseType.Oracle
+                        ? $"\"{rel.SourceTable.Replace("\"", "\"\"").ToUpperInvariant()}\""
+                        : $"\"{rel.SourceTable.Replace("\"", "\"\"")}\"";
+                    var safeTarget = type == DatabaseType.Oracle
+                        ? $"\"{rel.TargetTable.Replace("\"", "\"\"").ToUpperInvariant()}\""
+                        : $"\"{rel.TargetTable.Replace("\"", "\"\"")}\"";
+                    var safeCol = type == DatabaseType.Oracle
+                        ? $"\"{rel.SourceColumn.Replace("\"", "\"\"").ToUpperInvariant()}\""
+                        : $"\"{rel.SourceColumn.Replace("\"", "\"\"")}\"";
+                    var safeTargetCol = type == DatabaseType.Oracle
+                        ? $"\"{rel.TargetColumn.Replace("\"", "\"\"").ToUpperInvariant()}\""
+                        : $"\"{rel.TargetColumn.Replace("\"", "\"\"")}\"";
+                    var constraintName = type == DatabaseType.Oracle
+                        ? $"\"FK_{rel.SourceTable.Replace("\"", "\"\"").ToUpperInvariant()}_{rel.SourceColumn.Replace("\"", "\"\"").ToUpperInvariant()}\""
+                        : $"\"fk_{rel.SourceTable}_{rel.SourceColumn}\"";
 
-                    sb.AppendLine($"ALTER TABLE {safeSource} ADD CONSTRAINT {constraintName} FOREIGN KEY ({safeCol}) REFERENCES {safeTarget}({safeTargetCol}) ON UPDATE {rel.OnUpdate} ON DELETE {rel.OnDelete};");
+                    if (type == DatabaseType.Oracle)
+                    {
+                        // Oracle NÃO suporta ON UPDATE em Foreign Keys
+                        var deleteClause = rel.OnDelete?.Trim().ToUpperInvariant() switch
+                        {
+                            "CASCADE" => " ON DELETE CASCADE",
+                            "SET NULL" => " ON DELETE SET NULL",
+                            _ => ""
+                        };
+                        sb.AppendLine($"ALTER TABLE {safeSource} ADD CONSTRAINT {constraintName} FOREIGN KEY ({safeCol}) REFERENCES {safeTarget}({safeTargetCol}){deleteClause};");
+                    }
+                    else
+                    {
+                        sb.AppendLine($"ALTER TABLE {safeSource} ADD CONSTRAINT {constraintName} FOREIGN KEY ({safeCol}) REFERENCES {safeTarget}({safeTargetCol}) ON UPDATE {rel.OnUpdate} ON DELETE {rel.OnDelete};");
+                    }
                 }
             }
         }
@@ -134,6 +176,20 @@ public class DdlGeneratorService : IDdlGenerator
             if (upper.Contains("BLOB")) return "BLOB";
             if (upper.Contains("REAL") || upper.Contains("FLOA") || upper.Contains("DOUB")) return "REAL";
             return "NUMERIC";
+        }
+        else if (dbType == DatabaseType.Oracle)
+        {
+            if (upper.Contains("BIGINT")) return "NUMBER(19)";
+            if (upper.Contains("INT")) return "NUMBER(10)";
+            if (upper.Contains("BOOLEAN") || upper.Equals("BOOL") || upper.Contains("BIT")) return "NUMBER(1)";
+            if (upper.Contains("DECIMAL") || upper.Contains("NUMERIC") || upper.Contains("FLOAT") || upper.Contains("DOUBLE") || upper.Contains("REAL")) return "NUMBER(12,2)";
+            if (upper.Contains("VARCHAR") || upper.Contains("CHAR")) return "VARCHAR2(255)";
+            if (upper.Contains("TEXT") || upper.Contains("CLOB")) return "CLOB";
+            if (upper.Contains("BLOB") || upper.Contains("BYTEA")) return "BLOB";
+            if (upper.Contains("DATE")) return "DATE";
+            if (upper.Contains("TIMESTAMP") || upper.Contains("TIME")) return "TIMESTAMP";
+            if (upper.Contains("RAW") || upper.Contains("UUID") || upper.Contains("GUID")) return "RAW(16)";
+            return upper;
         }
         else
         {
