@@ -209,7 +209,8 @@ public class MySqlDatabaseService : IDatabaseService
         const string sql = @"
             SELECT 
                 table_name AS TableName,
-                table_type AS TableType
+                table_type AS TableType,
+                COALESCE(table_rows, 0) AS TableRows
             FROM information_schema.tables 
             WHERE table_schema = DATABASE()
             ORDER BY table_name;";
@@ -222,13 +223,15 @@ public class MySqlDatabaseService : IDatabaseService
         {
             var name = reader.GetString(0);
             var typeStr = reader.GetString(1);
+            long rowCount = reader.IsDBNull(2) ? -1 : reader.GetInt64(2);
             var isView = string.Equals(typeStr, "VIEW", StringComparison.OrdinalIgnoreCase);
 
             tables.Add(new TableInfo
             {
                 Name = name,
                 Schema = string.IsNullOrWhiteSpace(Config.Database) ? "mysql" : Config.Database,
-                Type = isView ? "VIEW" : "BASE TABLE"
+                Type = isView ? "VIEW" : "BASE TABLE",
+                RowCount = isView ? null : rowCount
             });
         }
 

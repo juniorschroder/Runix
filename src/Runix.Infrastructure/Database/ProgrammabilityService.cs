@@ -26,6 +26,8 @@ public class ProgrammabilityService : IProgrammabilityService
         {
             DatabaseType.PostgreSQL => await GetPostgresObjectsAsync(),
             DatabaseType.Oracle => await GetOracleObjectsAsync(),
+            DatabaseType.MySQL or DatabaseType.MariaDB => await GetMySqlObjectsAsync(),
+            DatabaseType.SqlServer => await GetSqlServerObjectsAsync(),
             _ => await GetSqliteObjectsAsync()
         };
 
@@ -52,6 +54,30 @@ public class ProgrammabilityService : IProgrammabilityService
             if (!string.IsNullOrWhiteSpace(oracleDdl))
             {
                 return oracleDdl;
+            }
+        }
+        else if (_databaseService.Config.Type == DatabaseType.PostgreSQL)
+        {
+            var pgDdl = await GetPostgresObjectDdlAsync(obj, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(pgDdl))
+            {
+                return pgDdl;
+            }
+        }
+        else if (_databaseService.Config.Type is DatabaseType.MySQL or DatabaseType.MariaDB)
+        {
+            var mySqlDdl = await GetMySqlObjectDdlAsync(obj, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(mySqlDdl))
+            {
+                return mySqlDdl;
+            }
+        }
+        else if (_databaseService.Config.Type == DatabaseType.SqlServer)
+        {
+            var ssDdl = await GetSqlServerObjectDdlAsync(obj, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(ssDdl))
+            {
+                return ssDdl;
             }
         }
 
@@ -206,9 +232,9 @@ public class ProgrammabilityService : IProgrammabilityService
     {
         var objects = new List<DatabaseObjectInfo>();
 
-        // 1. Views
+        // 1. Views (Lightweight: name + schema only for fast boot)
         const string viewsSql = @"
-            SELECT schemaname, viewname, definition
+            SELECT schemaname, viewname
             FROM pg_views
             WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
             ORDER BY schemaname, viewname;";
@@ -220,28 +246,24 @@ public class ProgrammabilityService : IProgrammabilityService
             {
                 var schema = GetString(viewsRes, row, "schemaname", "public");
                 var name = GetString(viewsRes, row, "viewname");
-                var def = GetString(viewsRes, row, "definition").Trim();
                 if (string.IsNullOrWhiteSpace(name)) continue;
 
-                var fullDdl = $"CREATE OR REPLACE VIEW \"{schema}\".\"{name}\" AS\n{EnsureSemicolon(def)}";
                 objects.Add(new DatabaseObjectInfo
                 {
                     Schema = schema,
                     Name = name,
                     ObjectType = DatabaseObjectType.View,
-                    DefinitionDdl = fullDdl,
                     SpecificId = $"view:{schema}.{name}"
                 });
             }
         }
 
-        // 2. Triggers
+        // 2. Triggers (Lightweight metadata without decompiling triggerdef during boot)
         const string triggersSql = @"
             SELECT
                 n.nspname AS schema_name,
                 t.tgname AS trigger_name,
-                c.relname AS table_name,
-                pg_get_triggerdef(t.oid, true) AS ddl
+                c.relname AS table_name
             FROM pg_trigger t
             JOIN pg_class c ON t.tgrelid = c.oid
             JOIN pg_namespace n ON c.relnamespace = n.oid
@@ -257,7 +279,6 @@ public class ProgrammabilityService : IProgrammabilityService
                 var schema = GetString(triggersRes, row, "schema_name", "public");
                 var name = GetString(triggersRes, row, "trigger_name");
                 var tableName = GetString(triggersRes, row, "table_name");
-                var ddl = GetString(triggersRes, row, "ddl");
                 if (string.IsNullOrWhiteSpace(name)) continue;
 
                 objects.Add(new DatabaseObjectInfo
@@ -266,13 +287,12 @@ public class ProgrammabilityService : IProgrammabilityService
                     Name = name,
                     ObjectType = DatabaseObjectType.Trigger,
                     TargetTableName = tableName,
-                    DefinitionDdl = EnsureSemicolon(ddl),
                     SpecificId = $"trigger:{schema}.{tableName}.{name}"
                 });
             }
         }
 
-        // 3. Functions & Procedures
+        // 3. Functions & Procedures (Lightweight metadata without full body decompilation)
         const string routinesSql = @"
             SELECT
                 n.nspname AS schema_name,
@@ -281,8 +301,7 @@ public class ProgrammabilityService : IProgrammabilityService
                 CASE WHEN p.prokind = 'p' THEN 'PROCEDURE' ELSE 'FUNCTION' END AS kind,
                 pg_get_function_result(p.oid) AS return_type,
                 pg_get_function_identity_arguments(p.oid) AS args,
-                l.lanname AS lang,
-                pg_get_functiondef(p.oid) AS ddl
+                l.lanname AS lang
             FROM pg_proc p
             JOIN pg_namespace n ON p.pronamespace = n.oid
             JOIN pg_language l ON p.prolang = l.oid
@@ -302,7 +321,6 @@ public class ProgrammabilityService : IProgrammabilityService
                 var returnType = GetString(routinesRes, row, "return_type");
                 var args = GetString(routinesRes, row, "args");
                 var lang = GetString(routinesRes, row, "lang", "sql");
-                var ddl = GetString(routinesRes, row, "ddl");
                 if (string.IsNullOrWhiteSpace(name)) continue;
 
                 objects.Add(new DatabaseObjectInfo
@@ -313,15 +331,14 @@ public class ProgrammabilityService : IProgrammabilityService
                     ReturnType = returnType,
                     Arguments = args,
                     Language = lang,
-                    DefinitionDdl = EnsureSemicolon(ddl),
                     SpecificId = $"routine:{oidStr}"
                 });
             }
         }
 
-        // 4. Indexes
+        // 4. Indexes (Lightweight metadata)
         const string indexesSql = @"
-            SELECT schemaname, indexname, tablename, indexdef
+            SELECT schemaname, indexname, tablename
             FROM pg_indexes
             WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
             ORDER BY schemaname, indexname;";
@@ -334,7 +351,6 @@ public class ProgrammabilityService : IProgrammabilityService
                 var schema = GetString(indexesRes, row, "schemaname", "public");
                 var name = GetString(indexesRes, row, "indexname");
                 var tableName = GetString(indexesRes, row, "tablename");
-                var ddl = GetString(indexesRes, row, "indexdef");
                 if (string.IsNullOrWhiteSpace(name)) continue;
 
                 objects.Add(new DatabaseObjectInfo
@@ -343,14 +359,277 @@ public class ProgrammabilityService : IProgrammabilityService
                     Name = name,
                     ObjectType = DatabaseObjectType.Index,
                     TargetTableName = tableName,
-                    IsUnique = ddl.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase),
-                    DefinitionDdl = EnsureSemicolon(ddl),
                     SpecificId = $"index:{schema}.{name}"
                 });
             }
         }
 
         return objects;
+    }
+
+    private async Task<string> GetPostgresObjectDdlAsync(DatabaseObjectInfo obj, CancellationToken cancellationToken = default)
+    {
+        var schema = string.IsNullOrWhiteSpace(obj.Schema) ? "public" : obj.Schema.Trim();
+        var name = obj.Name.Trim();
+
+        try
+        {
+            switch (obj.ObjectType)
+            {
+                case DatabaseObjectType.Function or DatabaseObjectType.Procedure:
+                {
+                    string oidClause = "";
+                    if (!string.IsNullOrEmpty(obj.SpecificId) && obj.SpecificId.StartsWith("routine:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var oidVal = obj.SpecificId.Substring("routine:".Length);
+                        if (long.TryParse(oidVal, out _))
+                        {
+                            oidClause = $"p.oid = {oidVal}::oid";
+                        }
+                    }
+
+                    if (string.IsNullOrEmpty(oidClause))
+                    {
+                        oidClause = $"n.nspname = '{schema.Replace("'", "''")}' AND p.proname = '{name.Replace("'", "''")}'";
+                    }
+
+                    var sql = $@"
+                        SELECT pg_get_functiondef(p.oid) AS ddl
+                        FROM pg_proc p
+                        JOIN pg_namespace n ON p.pronamespace = n.oid
+                        WHERE {oidClause}
+                        LIMIT 1;";
+
+                    var res = await _databaseService.ExecuteQueryAsync(sql, 1, cancellationToken);
+                    if (res.Success && res.Rows.Count > 0 && res.Rows[0].Count > 0 && res.Rows[0][0] != null)
+                    {
+                        return EnsureSemicolon(res.Rows[0][0]!.ToString()!);
+                    }
+                    break;
+                }
+                case DatabaseObjectType.Trigger:
+                {
+                    var sql = $@"
+                        SELECT pg_get_triggerdef(t.oid, true) AS ddl
+                        FROM pg_trigger t
+                        JOIN pg_class c ON t.tgrelid = c.oid
+                        JOIN pg_namespace n ON c.relnamespace = n.oid
+                        WHERE n.nspname = '{schema.Replace("'", "''")}' 
+                          AND t.tgname = '{name.Replace("'", "''")}'
+                        LIMIT 1;";
+
+                    var res = await _databaseService.ExecuteQueryAsync(sql, 1, cancellationToken);
+                    if (res.Success && res.Rows.Count > 0 && res.Rows[0].Count > 0 && res.Rows[0][0] != null)
+                    {
+                        return EnsureSemicolon(res.Rows[0][0]!.ToString()!);
+                    }
+                    break;
+                }
+                case DatabaseObjectType.View:
+                {
+                    var sql = $@"
+                        SELECT definition
+                        FROM pg_views
+                        WHERE schemaname = '{schema.Replace("'", "''")}' 
+                          AND viewname = '{name.Replace("'", "''")}'
+                        LIMIT 1;";
+
+                    var res = await _databaseService.ExecuteQueryAsync(sql, 1, cancellationToken);
+                    if (res.Success && res.Rows.Count > 0 && res.Rows[0].Count > 0 && res.Rows[0][0] != null)
+                    {
+                        var def = res.Rows[0][0]!.ToString()!.Trim();
+                        return $"CREATE OR REPLACE VIEW \"{schema}\".\"{name}\" AS\n{EnsureSemicolon(def)}";
+                    }
+                    break;
+                }
+                case DatabaseObjectType.Index:
+                {
+                    var sql = $@"
+                        SELECT indexdef
+                        FROM pg_indexes
+                        WHERE schemaname = '{schema.Replace("'", "''")}' 
+                          AND indexname = '{name.Replace("'", "''")}'
+                        LIMIT 1;";
+
+                    var res = await _databaseService.ExecuteQueryAsync(sql, 1, cancellationToken);
+                    if (res.Success && res.Rows.Count > 0 && res.Rows[0].Count > 0 && res.Rows[0][0] != null)
+                    {
+                        return EnsureSemicolon(res.Rows[0][0]!.ToString()!);
+                    }
+                    break;
+                }
+            }
+        }
+        catch
+        {
+            // Ignore and fall back to template
+        }
+
+        return GenerateTemplateDdl(obj.ObjectType, obj.Name, obj.TargetTableName);
+    }
+
+    private async Task<List<DatabaseObjectInfo>> GetMySqlObjectsAsync()
+    {
+        var objects = new List<DatabaseObjectInfo>();
+        var dbName = !string.IsNullOrWhiteSpace(_databaseService.Config.Database)
+            ? _databaseService.Config.Database
+            : "mysql";
+
+        // 1. Routines (Procedures & Functions)
+        var routineSql = $@"
+            SELECT ROUTINE_NAME, ROUTINE_TYPE, DTD_IDENTIFIER
+            FROM information_schema.routines
+            WHERE ROUTINE_SCHEMA = '{dbName.Replace("'", "''")}'
+            ORDER BY ROUTINE_TYPE, ROUTINE_NAME;";
+
+        var routRes = await _databaseService.ExecuteQueryAsync(routineSql, 5000);
+        if (routRes.Success)
+        {
+            foreach (var row in routRes.Rows)
+            {
+                var name = GetString(routRes, row, "ROUTINE_NAME");
+                var type = GetString(routRes, row, "ROUTINE_TYPE").ToUpperInvariant();
+                var ret = GetString(routRes, row, "DTD_IDENTIFIER");
+                if (string.IsNullOrWhiteSpace(name)) continue;
+
+                var isProc = type == "PROCEDURE";
+                objects.Add(new DatabaseObjectInfo
+                {
+                    Schema = dbName,
+                    Name = name,
+                    ObjectType = isProc ? DatabaseObjectType.Procedure : DatabaseObjectType.Function,
+                    ReturnType = isProc ? null : ret,
+                    SpecificId = $"mysql_routine:{dbName}.{name}"
+                });
+            }
+        }
+
+        // 2. Triggers
+        var triggerSql = $@"
+            SELECT TRIGGER_NAME, EVENT_OBJECT_TABLE
+            FROM information_schema.triggers
+            WHERE TRIGGER_SCHEMA = '{dbName.Replace("'", "''")}'
+            ORDER BY TRIGGER_NAME;";
+
+        var trigRes = await _databaseService.ExecuteQueryAsync(triggerSql, 5000);
+        if (trigRes.Success)
+        {
+            foreach (var row in trigRes.Rows)
+            {
+                var name = GetString(trigRes, row, "TRIGGER_NAME");
+                var tbl = GetString(trigRes, row, "EVENT_OBJECT_TABLE");
+                if (string.IsNullOrWhiteSpace(name)) continue;
+
+                objects.Add(new DatabaseObjectInfo
+                {
+                    Schema = dbName,
+                    Name = name,
+                    ObjectType = DatabaseObjectType.Trigger,
+                    TargetTableName = tbl,
+                    SpecificId = $"mysql_trigger:{dbName}.{name}"
+                });
+            }
+        }
+
+        return objects;
+    }
+
+    private async Task<string> GetMySqlObjectDdlAsync(DatabaseObjectInfo obj, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            string showCmd = obj.ObjectType switch
+            {
+                DatabaseObjectType.Procedure => $"SHOW CREATE PROCEDURE `{obj.Name.Replace("`", "``")}`;",
+                DatabaseObjectType.Function => $"SHOW CREATE FUNCTION `{obj.Name.Replace("`", "``")}`;",
+                DatabaseObjectType.Trigger => $"SHOW CREATE TRIGGER `{obj.Name.Replace("`", "``")}`;",
+                _ => ""
+            };
+
+            if (!string.IsNullOrEmpty(showCmd))
+            {
+                var res = await _databaseService.ExecuteQueryAsync(showCmd, 1, cancellationToken);
+                if (res.Success && res.Rows.Count > 0 && res.Rows[0].Count >= 3 && res.Rows[0][2] != null)
+                {
+                    return EnsureSemicolon(res.Rows[0][2]!.ToString()!);
+                }
+            }
+        }
+        catch
+        {
+            // Ignore
+        }
+
+        return GenerateTemplateDdl(obj.ObjectType, obj.Name, obj.TargetTableName);
+    }
+
+    private async Task<List<DatabaseObjectInfo>> GetSqlServerObjectsAsync()
+    {
+        var objects = new List<DatabaseObjectInfo>();
+
+        const string sql = @"
+            SELECT 
+                s.name AS SchemaName,
+                o.name AS ObjectName,
+                o.type AS ObjectType,
+                OBJECT_NAME(o.parent_object_id) AS TargetTable
+            FROM sys.objects o
+            JOIN sys.schemas s ON o.schema_id = s.schema_id
+            WHERE o.is_ms_shipped = 0 
+              AND o.type IN ('P', 'FN', 'IF', 'TF', 'TR')
+            ORDER BY o.type, s.name, o.name;";
+
+        var res = await _databaseService.ExecuteQueryAsync(sql, 5000);
+        if (res.Success)
+        {
+            foreach (var row in res.Rows)
+            {
+                var schema = GetString(res, row, "SchemaName", "dbo");
+                var name = GetString(res, row, "ObjectName");
+                var type = GetString(res, row, "ObjectType").Trim().ToUpperInvariant();
+                var targetTbl = GetString(res, row, "TargetTable");
+                if (string.IsNullOrWhiteSpace(name)) continue;
+
+                var objType = type switch
+                {
+                    "P" => DatabaseObjectType.Procedure,
+                    "FN" or "IF" or "TF" => DatabaseObjectType.Function,
+                    "TR" => DatabaseObjectType.Trigger,
+                    _ => DatabaseObjectType.Procedure
+                };
+
+                objects.Add(new DatabaseObjectInfo
+                {
+                    Schema = schema,
+                    Name = name,
+                    ObjectType = objType,
+                    TargetTableName = string.IsNullOrWhiteSpace(targetTbl) ? null : targetTbl,
+                    SpecificId = $"sqlserver:{schema}.{name}"
+                });
+            }
+        }
+
+        return objects;
+    }
+
+    private async Task<string> GetSqlServerObjectDdlAsync(DatabaseObjectInfo obj, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var schema = string.IsNullOrWhiteSpace(obj.Schema) ? "dbo" : obj.Schema;
+            var sql = $"SELECT OBJECT_DEFINITION(OBJECT_ID(N'[{schema}].[{obj.Name}]'));";
+            var res = await _databaseService.ExecuteQueryAsync(sql, 1, cancellationToken);
+            if (res.Success && res.Rows.Count > 0 && res.Rows[0].Count > 0 && res.Rows[0][0] != null)
+            {
+                return EnsureSemicolon(res.Rows[0][0]!.ToString()!);
+            }
+        }
+        catch
+        {
+            // Ignore
+        }
+
+        return GenerateTemplateDdl(obj.ObjectType, obj.Name, obj.TargetTableName);
     }
 
     private static string GetString(QueryResult res, List<object?> row, string key, string fallback = "")

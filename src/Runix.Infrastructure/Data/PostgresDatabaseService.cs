@@ -183,6 +183,64 @@ public class PostgresDatabaseService : IDatabaseService
         await _connectionLock.WaitAsync();
         try
         {
+            // Fast atomic catalog query: single round-trip fetching tables, views and estimated row counts
+            const string sql = @"
+                SELECT 
+                    c.relname AS table_name,
+                    n.nspname AS table_schema,
+                    CASE WHEN c.relkind IN ('v', 'm') THEN 'view' ELSE 'table' END AS table_type,
+                    GREATEST(0, c.reltuples::bigint) AS estimated_rows
+                FROM pg_class c
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+                WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+                  AND n.nspname NOT LIKE 'pg_toast%'
+                  AND n.nspname NOT LIKE 'pg_temp%'
+                  AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+                ORDER BY 
+                    CASE WHEN c.relkind IN ('v', 'm') THEN 1 ELSE 0 END,
+                    n.nspname,
+                    c.relname;";
+
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = sql;
+            using var reader = await cmd.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                var name = reader.GetString(0);
+                var schema = reader.GetString(1);
+                var type = reader.GetString(2);
+                long rowCount = reader.IsDBNull(3) ? -1 : reader.GetInt64(3);
+
+                tables.Add(new TableInfo
+                {
+                    Name = name,
+                    Schema = schema,
+                    Type = type,
+                    RowCount = type == "table" ? rowCount : null
+                });
+            }
+
+            return tables;
+        }
+        catch
+        {
+            // Fallback for restricted user catalogs
+            return await GetTablesFallbackAsync();
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
+    }
+
+    private async Task<List<TableInfo>> GetTablesFallbackAsync()
+    {
+        var tables = new List<TableInfo>();
+        if (_connection == null) return tables;
+
+        try
+        {
             const string sql = @"
                 SELECT table_name, table_schema, table_type
                 FROM information_schema.tables 
@@ -208,35 +266,11 @@ public class PostgresDatabaseService : IDatabaseService
                 });
             }
 
-            // Fast row count estimate from pg_class
-            foreach (var tbl in tables)
-            {
-                if (tbl.Type == "table")
-                {
-                    try
-                    {
-                        using var countCmd = _connection.CreateCommand();
-                        countCmd.CommandText = "SELECT reltuples::bigint FROM pg_class WHERE relname = @name;";
-                        countCmd.Parameters.AddWithValue("@name", tbl.Name);
-                        var count = await countCmd.ExecuteScalarAsync();
-                        if (count != null && count != DBNull.Value)
-                        {
-                            var c = Convert.ToInt64(count);
-                            tbl.RowCount = c >= 0 ? c : -1;
-                        }
-                    }
-                    catch
-                    {
-                        // Ignore
-                    }
-                }
-            }
-
             return tables;
         }
-        finally
+        catch
         {
-            _connectionLock.Release();
+            return tables;
         }
     }
 

@@ -520,19 +520,31 @@ public partial class WorkspaceView : UserControl
         try
         {
             _favoriteTables = FavoriteTablesStorage.GetFavorites(GetDatabaseIdentifier());
+
+            // 1. Instant progressive render: load tables first and display them immediately on sidebar
             _allTables = await _databaseService.GetTablesAsync();
+            FilterTables();
+            RebuildCommandPaletteCatalog();
+
+            // 2. Concurrently load saved queries/snippets while programmability loads
+            var localStorageTask = Task.Run(async () =>
+            {
+                try
+                {
+                    var queries = await _appStorage.GetSavedQueriesAsync();
+                    _allSavedQueries = queries.ToList();
+                    var snippets = await _appStorage.GetCustomSnippetsAsync();
+                    _allSnippets = snippets.ToList();
+                }
+                catch
+                {
+                    // Ignore local storage errors
+                }
+            });
+
+            // 3. Load programmable objects (views, triggers, functions, procedures) and refresh tree
             _allProgrammableObjects = await _programmabilityService.GetProgrammableObjectsAsync();
-            try
-            {
-                var queries = await _appStorage.GetSavedQueriesAsync();
-                _allSavedQueries = queries.ToList();
-                var snippets = await _appStorage.GetCustomSnippetsAsync();
-                _allSnippets = snippets.ToList();
-            }
-            catch
-            {
-                // Ignore local storage errors
-            }
+            await localStorageTask;
 
             FilterTables();
             RebuildCommandPaletteCatalog();

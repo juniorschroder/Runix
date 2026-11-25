@@ -168,24 +168,56 @@ public class SqliteDatabaseService : IDatabaseService
                 });
             }
 
-            // Try getting row count estimates
+            // Fast row count resolution: first attempt reading pre-computed stats from sqlite_stat1
+            var statCounts = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                using var statCmd = _connection.CreateCommand();
+                statCmd.CommandText = "SELECT tbl, stat FROM sqlite_stat1;";
+                using var statReader = await statCmd.ExecuteReaderAsync();
+                while (await statReader.ReadAsync())
+                {
+                    var tbl = statReader.GetString(0);
+                    var statStr = statReader.GetString(1);
+                    // sqlite_stat1 format: "nrow [nval1 nval2 ...]"
+                    var parts = statStr.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length > 0 && long.TryParse(parts[0], out long rows) && !statCounts.ContainsKey(tbl))
+                    {
+                        statCounts[tbl] = rows;
+                    }
+                }
+            }
+            catch
+            {
+                // sqlite_stat1 might not exist, ignore
+            }
+
+            // Assign stat counts or quick scan for small table sets
+            bool scanSmallSets = tables.Count <= 30;
             foreach (var tbl in tables)
             {
                 if (tbl.Type == "table")
                 {
-                    try
+                    if (statCounts.TryGetValue(tbl.Name, out long estimatedRows))
                     {
-                        using var countCmd = _connection.CreateCommand();
-                        countCmd.CommandText = $"SELECT COUNT(*) FROM \"{tbl.Name.Replace("\"", "\"\"")}\";";
-                        var count = await countCmd.ExecuteScalarAsync();
-                        if (count != null && count != DBNull.Value)
-                        {
-                            tbl.RowCount = Convert.ToInt64(count);
-                        }
+                        tbl.RowCount = estimatedRows;
                     }
-                    catch
+                    else if (scanSmallSets)
                     {
-                        // Ignore row count failure
+                        try
+                        {
+                            using var countCmd = _connection.CreateCommand();
+                            countCmd.CommandText = $"SELECT COUNT(*) FROM \"{tbl.Name.Replace("\"", "\"\"")}\";";
+                            var count = await countCmd.ExecuteScalarAsync();
+                            if (count != null && count != DBNull.Value)
+                            {
+                                tbl.RowCount = Convert.ToInt64(count);
+                            }
+                        }
+                        catch
+                        {
+                            // Ignore row count failure
+                        }
                     }
                 }
             }

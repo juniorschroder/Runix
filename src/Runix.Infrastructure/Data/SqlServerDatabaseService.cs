@@ -206,19 +206,23 @@ public class SqlServerDatabaseService : IDatabaseService
             SELECT 
                 s.name AS SchemaName,
                 t.name AS TableName,
-                'BASE TABLE' AS TableType
+                'BASE TABLE' AS TableType,
+                COALESCE(SUM(p.rows), 0) AS EstimatedRows
             FROM sys.tables t
             JOIN sys.schemas s ON t.schema_id = s.schema_id
+            LEFT JOIN sys.partitions p ON t.object_id = p.object_id AND p.index_id IN (0, 1)
             WHERE t.is_ms_shipped = 0
+            GROUP BY s.name, t.name
             UNION ALL
             SELECT 
                 s.name AS SchemaName,
                 v.name AS TableName,
-                'VIEW' AS TableType
+                'VIEW' AS TableType,
+                0 AS EstimatedRows
             FROM sys.views v
             JOIN sys.schemas s ON v.schema_id = s.schema_id
             WHERE v.is_ms_shipped = 0
-            ORDER BY SchemaName, TableName;";
+            ORDER BY TableType, SchemaName, TableName;";
 
         await using var cmd = _connection!.CreateCommand();
         cmd.CommandText = sql;
@@ -229,6 +233,7 @@ public class SqlServerDatabaseService : IDatabaseService
             var schema = reader.GetString(0);
             var name = reader.GetString(1);
             var typeStr = reader.GetString(2);
+            long rowCount = reader.IsDBNull(3) ? -1 : reader.GetInt64(3);
             var isView = string.Equals(typeStr, "VIEW", StringComparison.OrdinalIgnoreCase);
 
             var fullName = string.Equals(schema, "dbo", StringComparison.OrdinalIgnoreCase)
@@ -239,7 +244,8 @@ public class SqlServerDatabaseService : IDatabaseService
             {
                 Name = fullName,
                 Schema = schema,
-                Type = isView ? "VIEW" : "BASE TABLE"
+                Type = isView ? "VIEW" : "BASE TABLE",
+                RowCount = isView ? null : rowCount
             });
         }
 
