@@ -1,0 +1,46 @@
+# GitHub Automated Release Notes Configuration
+# Documentation: https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes
+
+changelog:
+  exclude:
+    labels:
+      - ignore
+      - automated
+      - chore
+    authors:
+      - dependabot[bot]
+      - github-actions[bot]
+  categories:
+    - title: "🚀 Multi-Engine & Core Features"
+      labels:
+        - "feature"
+        - "enhancement"
+        - "database"
+        - "feat"
+    - title: "🛡️ Resilience & Security"
+      labels:
+        - "resilience"
+        - "security"
+        - "vault"
+    - title: "🎨 Interface, UX & Design System"
+      labels:
+        - "ui"
+        - "ux"
+        - "design"
+        - "theme"
+    - title: "🐛 Bug Fixes & Stability"
+      labels:
+        - "bug"
+        - "fix"
+        - "hotfix"
+    - title: "📐 ERD & Visual Query Modeling"
+      labels:
+        - "erd"
+        - "query-builder"
+        - "diagram"
+    - title: "📚 Documentation & Tests"
+      labels:
+        - "documentation"
+        - "docs"
+        - "test"
+        - "tests"
