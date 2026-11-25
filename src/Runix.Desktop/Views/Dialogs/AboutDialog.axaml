@@ -24,7 +24,7 @@
                             <TextBlock Text="RUNIX" FontSize="20" FontWeight="Bold" Foreground="#008bb9" LetterSpacing="1.5" VerticalAlignment="Center"/>
                             <TextBlock Text="Database Studio" FontSize="16" FontWeight="SemiBold" Foreground="#f0f6fc" VerticalAlignment="Center"/>
                             <Border Background="#0c2338" BorderBrush="#38bdf8" BorderThickness="1" CornerRadius="5" Padding="7,2" VerticalAlignment="Center">
-                                <TextBlock Name="TxtVersionBadge" Text="v1.1.0" FontSize="11" FontWeight="Bold" Foreground="#38bdf8"/>
+                                <TextBlock Name="TxtVersionBadge" Text="v2.0.0" FontSize="11" FontWeight="Bold" Foreground="#38bdf8"/>
                             </Border>
                         </StackPanel>
                         <TextBlock Text="{DynamicResource About.Tagline}" FontSize="11.5" Foreground="#8b9cb3" TextWrapping="Wrap"/>

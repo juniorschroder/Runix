@@ -94,6 +94,13 @@ public partial class WorkspaceView : UserControl
     {
         TxtLanguageLabel.Text = LocalizationManager.CurrentLanguageLabel;
         ToolTip.SetTip(BtnLanguageToggle, $"Alternar Idioma ({LocalizationManager.CurrentLanguageLabel})");
+        UpdateMenuHeaders();
+    }
+
+    private void UpdateMenuHeaders()
+    {
+        var aboutLabel = LocalizationManager.GetString("About.Button", "Sobre").Replace("ℹ ", "").Trim();
+        MenuAbout.Header = $"ℹ {aboutLabel} RUNIX (v{AppConstants.AppVersion})";
     }
 
     private void UpdateResponsiveHeaderLayout()
@@ -1016,7 +1023,7 @@ public partial class WorkspaceView : UserControl
             new() { Id = "action:refresh", Title = "Atualizar Catálogo de Schema", Subtitle = "Recarregar tabelas, views e objetos programáveis", Category = CommandPaletteCategory.Action, Icon = "🔄", ShortcutHint = "Refresh", Payload = "refresh" },
             new() { Id = "action:language", Title = "Alternar Idioma da Interface (PT-BR / EN-US)", Subtitle = "Mudar idioma dinamicamente", Category = CommandPaletteCategory.Action, Icon = "🌐", ShortcutHint = "i18n", Payload = "language" },
             new() { Id = "action:check-updates", Title = "Verificar Atualizações do RUNIX (Check for Updates)", Subtitle = "Consultar a última release oficial e instaladores no GitHub", Category = CommandPaletteCategory.Action, Icon = "⬆️", ShortcutHint = "Update", Payload = "check-updates" },
-            new() { Id = "action:about", Title = "Sobre o RUNIX Database Studio (v1.1.0)", Subtitle = "Ver informações da versão 1.1.0, arquitetura e criador José Carlos Schröder Júnior", Category = CommandPaletteCategory.Action, Icon = "ℹ️", ShortcutHint = "About", Payload = "about" },
+            new() { Id = "action:about", Title = $"Sobre o RUNIX Database Studio (v{AppConstants.AppVersion})", Subtitle = $"Ver informações da versão {AppConstants.AppVersion}, arquitetura e criador José Carlos Schröder Júnior", Category = CommandPaletteCategory.Action, Icon = "ℹ️", ShortcutHint = "About", Payload = "about" },
             new() { Id = "action:disconnect", Title = "Desconectar da Sessão Atual", Subtitle = "Fechar conexão e voltar para a tela inicial", Category = CommandPaletteCategory.Action, Icon = "🔌", ShortcutHint = "Disconnect", Payload = "disconnect" }
         };
 

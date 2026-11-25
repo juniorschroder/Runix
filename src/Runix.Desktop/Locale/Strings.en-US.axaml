@@ -239,10 +239,10 @@
 
     <!-- About Dialog -->
     <sys:String x:Key="About.Button">ℹ About</sys:String>
-    <sys:String x:Key="About.MenuItem">ℹ About RUNIX (v1.1.0)</sys:String>
+    <sys:String x:Key="About.MenuItem">ℹ About RUNIX (v2.0.0)</sys:String>
     <sys:String x:Key="About.Title">About RUNIX Database Studio</sys:String>
     <sys:String x:Key="About.Tagline">Cross-Platform Relational Database Studio (macOS, Linux &amp; Windows)</sys:String>
-    <sys:String x:Key="About.Description">Modern, high-performance desktop client for inspecting, querying, administering, and visually modeling PostgreSQL and SQLite databases.</sys:String>
+    <sys:String x:Key="About.Description">Modern, high-performance desktop client for inspecting, querying, administering, and visually modeling PostgreSQL, SQLite, MySQL, MariaDB, and SQL Server databases.</sys:String>
     <sys:String x:Key="About.CreatorLabel">CREATOR &amp; AUTHOR</sys:String>
     <sys:String x:Key="About.CreatorRole">Open LinkedIn profile ↗</sys:String>
     <sys:String x:Key="About.RepositoryLabel">OFFICIAL REPOSITORY</sys:String>
