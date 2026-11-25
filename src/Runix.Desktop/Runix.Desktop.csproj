@@ -11,10 +11,10 @@
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
     <TieredPGO>true</TieredPGO>
     <GarbageCollectionAdaptationMode>1</GarbageCollectionAdaptationMode>
-    <Version>1.6.0</Version>
-    <AssemblyVersion>1.6.0.0</AssemblyVersion>
-    <FileVersion>1.6.0.0</FileVersion>
-    <InformationalVersion>1.6.0</InformationalVersion>
+    <Version>2.0.0</Version>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
+    <InformationalVersion>2.0.0</InformationalVersion>
     <Title>Runix Database Studio</Title>
     <Product>Runix Database Studio</Product>
     <Authors>José Carlos Schröder Júnior</Authors>

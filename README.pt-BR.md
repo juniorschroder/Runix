@@ -5,7 +5,7 @@
 **Estúdio de Bancos de Dados Relacionais Moderno, Multiplataforma (macOS, Linux & Windows) e de Alta Performance**  
 *Desenvolvido nativamente com .NET 10, C# 13, Avalonia UI 11 & SkiaSharp — Zero overhead de Electron, 100% offline & privacy-first.*
 
-[![Versão](https://img.shields.io/badge/Vers%C3%A3o-1.6.0-008bb9?style=for-the-badge)](#)
+[![Versão](https://img.shields.io/badge/Vers%C3%A3o-2.0.0-008bb9?style=for-the-badge)](#)
 [![Plataformas](https://img.shields.io/badge/Plataformas-macOS_%7C_Linux_%7C_Windows-0f172a?style=for-the-badge)](#)
 [![.NET 10.0](https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![C# 13](https://img.shields.io/badge/C%23-13.0-239120?style=for-the-badge&logo=csharp&logoColor=white)](https://learn.microsoft.com/en-us/dotnet/csharp/)
