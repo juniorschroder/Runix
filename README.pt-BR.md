@@ -5,7 +5,7 @@
 **Estúdio de Bancos de Dados Relacionais Moderno, Multiplataforma (macOS, Linux & Windows) e de Alta Performance**  
 *Desenvolvido nativamente com .NET 10, C# 13, Avalonia UI 11 & SkiaSharp — Zero overhead de Electron, 100% offline & privacy-first.*
 
-[![Versão](https://img.shields.io/badge/Vers%C3%A3o-2.0.0-008bb9?style=for-the-badge)](#)
+[![Versão](https://img.shields.io/badge/Vers%C3%A3o-2.1.0-008bb9?style=for-the-badge)](#)
 [![Plataformas](https://img.shields.io/badge/Plataformas-macOS_%7C_Linux_%7C_Windows-0f172a?style=for-the-badge)](#)
 [![.NET 10.0](https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![C# 13](https://img.shields.io/badge/C%23-13.0-239120?style=for-the-badge&logo=csharp&logoColor=white)](https://learn.microsoft.com/en-us/dotnet/csharp/)
@@ -15,8 +15,9 @@
 [![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![MariaDB](https://img.shields.io/badge/MariaDB-003545?style=for-the-badge&logo=mariadb&logoColor=white)](https://mariadb.org/)
 [![SQL Server](https://img.shields.io/badge/SQL_Server-CC292B?style=for-the-badge&logo=microsoftsqlserver&logoColor=white)](https://www.microsoft.com/sql-server)
+[![Oracle Database](https://img.shields.io/badge/Oracle_Database-F80000?style=for-the-badge&logo=oracle&logoColor=white)](https://www.oracle.com/database/)
 [![Vard Resilience](https://img.shields.io/badge/Vard-Resilience-F59E0B?style=for-the-badge)](https://github.com/juniorschroder/vard)
-[![Testes](https://img.shields.io/badge/Testes-487_Passando-10B981?style=for-the-badge)](#-testes--verificação-headless)
+[![Testes](https://img.shields.io/badge/Testes-532_Passando-10B981?style=for-the-badge)](#-testes--verificação-headless)
 
 <p align="center">
   <a href="README.md">🇺🇸 English</a> • <strong>🇧🇷 Português (Brasil)</strong>
@@ -28,7 +29,7 @@
 
 ## 📖 Sobre o Projeto
 
-O **RUNIX Database Studio** é um cliente desktop **multiplataforma (executando nativamente no macOS, Linux e Windows)**, moderno, veloz e resiliente para inspeção, consulta, administração, geração de dados fictícios e modelagem visual de bancos de dados relacionais (**PostgreSQL**, **SQLite**, **MySQL**, **MariaDB** e **Microsoft SQL Server**).
+O **RUNIX Database Studio** é um cliente desktop **multiplataforma (executando nativamente no macOS, Linux e Windows)**, moderno, veloz e resiliente para inspeção, consulta, administração, geração de dados fictícios e modelagem visual de bancos de dados relacionais (**PostgreSQL**, **SQLite**, **MySQL**, **MariaDB**, **Microsoft SQL Server** e **Oracle Database**).
 
 Projetado sob **Clean Architecture** estrita e renderizado nativamente via **Avalonia UI** e **SkiaSharp**, o RUNIX entrega inicialização instantânea, baixo consumo de memória, tolerância a falhas transitórias de rede com [**Vard**](https://github.com/juniorschroder/vard) (Retry exponencial & Circuit Breaker), criptografia militar **AES-256-GCM** para credenciais e pacotes de compartilhamento (`.rcf`), categorias de conexões com drag-and-drop e suporte bilíngue em tempo real (**Português `pt-BR`** e **Inglês `en-US`**).
 
@@ -37,8 +38,8 @@ Projetado sob **Clean Architecture** estrita e renderizado nativamente via **Ava
 ## ✨ Principais Recursos
 
 ### 🔌 Multi-Engine, Conectividade, Segurança & Resiliência
-- **Multi-Engine Relacional Amplo:** Suporte nativo de alta performance para **PostgreSQL** (`Npgsql`), **SQLite** (`Microsoft.Data.Sqlite`), **MySQL** (`MySqlConnector`), **MariaDB** (`MySqlConnector`) e **Microsoft SQL Server** (`Microsoft.Data.SqlClient`), além de banco de demonstração embarcado (`demo.db`).
-- **Seletor em Dropdown Moderno:** Alternância fluida de motor em dropdown com os logos oficiais vetoriais, configuração automática de portas padrão (`5432`, `3306`, `1433`), opções específicas por dialeto (ex: *Trust Server Certificate* para SQL Server, *Modo SSL* para PostgreSQL) e seletor de arquivo local para SQLite.
+- **Multi-Engine Relacional Amplo:** Suporte nativo de alta performance para **PostgreSQL** (`Npgsql`), **SQLite** (`Microsoft.Data.Sqlite`), **MySQL** (`MySqlConnector`), **MariaDB** (`MySqlConnector`), **Microsoft SQL Server** (`Microsoft.Data.SqlClient`) e **Oracle Database** (`Oracle.ManagedDataAccess.Core` — driver 100% gerenciado, sem dependência do Oracle Instant Client), além de banco de demonstração embarcado (`demo.db`).
+- **Seletor em Dropdown Moderno:** Alternância fluida de motor em dropdown com os logos oficiais vetoriais, configuração automática de portas padrão (`5432`, `3306`, `1433`, `1521`), opções específicas por dialeto (ex: *Service Name*, *SID*, *TNS Descriptor* e privilégios administrativos `NORMAL`/`SYSDBA`/`SYSOPER` para Oracle, *Trust Server Certificate* para SQL Server, *Modo SSL* para PostgreSQL) e seletor de arquivo local para SQLite.
 - **Categorias Hierárquicas de Conexão:** Agrupamento de perfis em pastas colapsáveis na barra lateral com reordenação via drag-and-drop, gerenciamento inline e badges visuais de ambiente (Produção `🚨 PROD`, Somente-Leitura `🔒 RO`, Túnel SSH `🔐 SSH`).
 - **Cofre de Credenciais AES-256-GCM:** Senhas de banco, senhas SSH e passphrases de chaves são criptografadas em repouso (`AesGcm` + derivação `PBKDF2-SHA256` com 100.000 iterações).
 - **Pacotes Criptografados (`.rcf`):** Exporte e importe conexões, consultas salvas e snippets em um arquivo `.rcf` protegido por senha mestra para compartilhamento seguro entre equipes ou migração de estação.
@@ -69,6 +70,7 @@ Projetado sob **Clean Architecture** estrita e renderizado nativamente via **Ava
   - **Triggers:** Temporização (`BEFORE`, `AFTER`, `INSTEAD OF`), eventos disparadores e corpo executável.
   - **Índices:** Tipo (Clustered, Non-Clustered, Unique), ordem de colunas e DDL associado.
   - **Funções e Stored Procedures:** Assinaturas de parâmetros, tipo de retorno, dialeto/linguagem e código-fonte.
+  - **Packages e Sequences PL/SQL Oracle:** Navegação de especificação (`PACKAGE`) e corpo de implementação (`PACKAGE BODY`) e propriedades de sequências.
 
 ### 📝 Edição de Dados In-Grid (Stage / Commit) & Inspetor de Registro
 - **Edição Transacional com Dirty Tracking:** Edite células diretamente no `DataGrid`, adicione novas linhas ou marque registros para exclusão com destaque semântico de cores (Âmbar para edições, Verde para inserções, Vermelho para exclusões).
@@ -83,7 +85,9 @@ Projetado sob **Clean Architecture** estrita e renderizado nativamente via **Ava
 - **Visual Explain Plan & Profiler:** Árvore visual de execução para PostgreSQL (`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)`) e SQLite (`EXPLAIN QUERY PLAN`), com mapa de calor de custos e motor heurístico de recomendação de índices (`CREATE INDEX`).
 - **Gráficos Nativos em SkiaSharp:** Transforme qualquer resultado de query em gráficos de **Barras Verticais**, **Barras Horizontais**, **Linhas/Área**, **Dispersão (Scatter)** ou **Donut/Pizza**, com agregação automática e exportação para **PNG Retina 2x** e **SVG**.
 - **Schema Compare & Diff Tool:** Compare dois bancos de dados ativos ou snapshots de schema lado a lado e gere scripts DDL de sincronização com modo seguro.
-- **Dashboard de Saúde & Manutenção Assistida:** Telemetria em tempo real (Cache Hit Ratio, tamanho de tabelas vs. índices, Dead Tuples, páginas/freelist SQLite), detecção de índices redundantes ou não utilizados, e execução assistida de `VACUUM`, `ANALYZE`, `REINDEX` e `PRAGMA integrity_check`.
+- **Dashboard de Saúde & Manutenção Assistida:** Telemetria em tempo real de armazenamento e performance:
+  - **Telemetria Oracle Database:** Ocupação de Tablespaces (`DBA_TABLESPACES`, `DBA_DATA_FILES`, `DBA_FREE_SPACE`), Buffer Cache Hit Ratio (`V$SYSSTAT`), monitoramento de sessões ativas e bloqueadas por locks (`V$SESSION`), e manutenção assistida (`SHRINK SPACE COMPACT`, `ANALYZE TABLE COMPUTE STATISTICS`, `ALTER INDEX REBUILD` e checagem de integridade de constraints desabilitadas / objetos inválidos).
+  - **Telemetria PostgreSQL & SQLite:** Cache Hit Ratio, tamanho de tabelas vs. índices, Dead Tuples, páginas/freelist SQLite, detecção de índices redundantes ou não utilizados, e execução assistida de `VACUUM`, `ANALYZE`, `REINDEX` e `PRAGMA integrity_check`.
 - **Administração PostgreSQL:** Gerenciador visual de Roles/Usuários, Matriz de Privilégios (`GRANT`/`REVOKE`) e Monitor de Sessões Ativas (`pg_stat_activity` com `pg_terminate_backend`).
 - **Importação, Exportação & Backup/Restore:** Exportação streaming para **CSV**, **JSON**, **Excel (`.xlsx`)** e **SQL Dump**; Assistente de Importação em 3 passos com auto-mapeamento de colunas; e Backup/Restore nativo (`.sql`, `.sql.gz`, `.db`) com ordenação topológica de chaves estrangeiras.
 
@@ -139,7 +143,7 @@ flowchart TD
     end
 
     subgraph Infrastructure ["⚙️ Camada de Infraestrutura (src/Runix.Infrastructure)"]
-        Data["Drivers de Dados\nSqlite, Postgres, MySql, MariaDB & SqlServer"]
+        Data["Drivers de Dados\nSqlite, Postgres, MySql, MariaDB, SqlServer & Oracle"]
         Resilience["Resiliência (Vard)\nResilientDatabaseService (Retry + Circuit Breaker)"]
         Sec["Segurança & Rede\nAesCredentialVaultService, ConnectionBundleService, SshTunnelService"]
         Engines["Motores Especializados\nSkiaChartRenderer, DataExport/Import, DatabaseBackup, DatabaseHealth, MockDataGenerator"]
@@ -163,11 +167,11 @@ flowchart TD
 ├── Runix.sln                          # Solution principal (.NET 10)
 ├── src/
 │   ├── Runix.Core/                    # Domínio puro: Modelos, Interfaces, Lexer SQL, Diff Engine, Layout DER, Modelos Mock Data
-│   ├── Runix.Infrastructure/          # Implementações: SQLite, PostgreSQL, MySQL, MariaDB, SQL Server, Vard Resilience, AES-256-GCM, SkiaSharp, MiniExcel
+│   ├── Runix.Infrastructure/          # Implementações: SQLite, PostgreSQL, MySQL, MariaDB, SQL Server, Oracle, Vard Resilience, AES-256-GCM, SkiaSharp, MiniExcel
 │   └── Runix.Desktop/                 # Aplicação Desktop Avalonia UI 11.1, XAML Views, Temas e Localização (pt-BR / en-US)
 ├── tests/
-│   ├── Runix.Core.Tests/              # Testes unitários de domínio, parsers, formatadores e motores de cálculo (305 testes)
-│   └── Runix.Infrastructure.Tests/    # Testes de integração de drivers, criptografia, backup/restore, import/export e resiliência (182 testes)
+│   ├── Runix.Core.Tests/              # Testes unitários de domínio, parsers, formatadores e motores de cálculo (322 testes)
+│   └── Runix.Infrastructure.Tests/    # Testes de integração de drivers, criptografia, backup/restore, import/export e resiliência (210 testes)
 └── Screenshots/                       # Capturas de tela geradas via pipeline Headless Skia
 ```
 
@@ -185,10 +189,11 @@ flowchart TD
 | **Driver SQLite** | **Microsoft.Data.Sqlite** | `11.0.0` | Provedor ADO.NET para bancos SQLite locais e catálogo interno da aplicação |
 | **Driver MySQL & MariaDB** | **MySqlConnector** | `2.4.0` | Provedor ADO.NET assíncrono de alta performance para MySQL e MariaDB |
 | **Driver SQL Server** | **Microsoft.Data.SqlClient** | `6.0.2` | Provedor oficial da Microsoft para SQL Server e Azure SQL |
+| **Driver Oracle Database** | **Oracle.ManagedDataAccess.Core** | `23.26.401` | Provedor ADO.NET oficial 100% gerenciado para Oracle Database (12c, 19c, 21c, 23ai) |
 | **Resiliência** | [**Vard**](https://github.com/juniorschroder/vard) | `1.0.0` | Políticas de tolerância a falhas transitórias (*Retry* exponencial e *Circuit Breaker*) |
 | **Planilhas Excel** | **MiniExcel** | `1.47.0` | Leitura e escrita de arquivos `.xlsx` via streaming com baixo uso de memória |
 | **Criptografia** | **System.Security.Cryptography** | Nativo | `AesGcm` (256-bit) + `Rfc2898DeriveBytes.Pbkdf2` (SHA-256) para cofre e pacotes `.rcf` |
-| **Testes** | **xUnit + FluentAssertions** | `2.9.x` | Suíte automatizada com **487 testes aprovados** (unitários e de integração) |
+| **Testes** | **xUnit + FluentAssertions** | `2.9.x` | Suíte automatizada com **532 testes aprovados** (unitários e de integração) |
 
 ---
 
@@ -223,7 +228,7 @@ dotnet publish src/Runix.Desktop/Runix.Desktop.csproj -c Release -o ./publish
 
 ## 🧪 Testes & Verificação Headless
 
-O RUNIX conta com **487 testes automatizados** (divididos entre `Runix.Core.Tests` e `Runix.Infrastructure.Tests`) que validam analisador léxico SQL, motores multi-engine, gerador de dados mock, migrações DDL, criptografia AES-256-GCM e o pipeline de resiliência [Vard](https://github.com/juniorschroder/vard):
+O RUNIX conta com **532 testes automatizados** (divididos entre `Runix.Core.Tests` e `Runix.Infrastructure.Tests`) que validam analisador léxico SQL, motores multi-engine, gerador de dados mock, migrações DDL, criptografia AES-256-GCM e o pipeline de resiliência [Vard](https://github.com/juniorschroder/vard):
 
 ```bash
 dotnet test Runix.sln
