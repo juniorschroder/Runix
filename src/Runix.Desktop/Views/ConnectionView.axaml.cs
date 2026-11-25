@@ -160,6 +160,16 @@ public partial class ConnectionView : UserControl
             PanelSshKeyAuth.IsVisible = isKey;
         };
 
+        CmbOracleConnectionType.SelectionChanged += (s, e) =>
+        {
+            PanelOracleTnsField.IsVisible = CmbOracleConnectionType.SelectedIndex == 2;
+        };
+
+        CmbOraclePrivilege.SelectionChanged += (s, e) =>
+        {
+            BorderOraclePrivilegeWarning.IsVisible = CmbOraclePrivilege.SelectedIndex > 0;
+        };
+
         TreeSavedConnections.SelectionChanged += (s, e) =>
         {
             if (TreeSavedConnections.SelectedItem is ConnectionConfig cfg)
@@ -524,6 +534,18 @@ public partial class ConnectionView : UserControl
                 IconForeground = SolidColorBrush.Parse("#f87171"),
                 BadgeBackground = SolidColorBrush.Parse("#450a0a"),
                 BadgeForeground = SolidColorBrush.Parse("#f87171")
+            },
+            new()
+            {
+                Type = DatabaseType.Oracle,
+                Title = LocalizationManager.GetString("Connection.OracleTitle", "Oracle Database"),
+                Subtitle = LocalizationManager.GetString("Connection.OracleDesc", "Oracle 12c, 19c, 21c e 23c enterprise"),
+                Badge = "1521",
+                IconData = getIcon("IconOracle"),
+                IconBackground = SolidColorBrush.Parse("#2d0e0e"),
+                IconForeground = SolidColorBrush.Parse("#ea2f10"),
+                BadgeBackground = SolidColorBrush.Parse("#380c0c"),
+                BadgeForeground = SolidColorBrush.Parse("#f87171")
             }
         };
 
@@ -557,6 +579,10 @@ public partial class ConnectionView : UserControl
                     opt.Title = LocalizationManager.GetString("Connection.SqlServerTitle", "SQL Server");
                     opt.Subtitle = LocalizationManager.GetString("Connection.SqlServerDesc", "Microsoft SQL Server relacional corporativo");
                     break;
+                case DatabaseType.Oracle:
+                    opt.Title = LocalizationManager.GetString("Connection.OracleTitle", "Oracle Database");
+                    opt.Subtitle = LocalizationManager.GetString("Connection.OracleDesc", "Oracle 12c, 19c, 21c e 23c enterprise");
+                    break;
             }
         }
         var selected = CmbDatabaseEngine.SelectedItem as DatabaseEngineOption;
@@ -584,42 +610,56 @@ public partial class ConnectionView : UserControl
         PanelSqliteForm.IsVisible = (type == DatabaseType.SQLite);
         PanelPostgresForm.IsVisible = (type != DatabaseType.SQLite);
         PanelSqlServerOptions.IsVisible = (type == DatabaseType.SqlServer);
+        PanelOracleOptions.IsVisible = (type == DatabaseType.Oracle);
+
+        if (LblPgDatabase != null)
+        {
+            LblPgDatabase.Text = type == DatabaseType.Oracle
+                ? LocalizationManager.GetString("Connection.OracleServiceOrSid", "Service Name (PDB) / SID")
+                : LocalizationManager.GetString("Connection.Database", "Nome do Banco de Dados");
+        }
+
+        TxtPgDatabase.Watermark = type == DatabaseType.Oracle ? "Ex: ORCLPDB1, FREEPDB1 ou XE" : "postgres";
+        TxtPgUser.Watermark = type == DatabaseType.Oracle ? "system ou c##usuario" : "postgres";
 
         // Smart Port & Defaults Assignment
         if (type != DatabaseType.SQLite)
         {
             string currentPort = (TxtPgPort.Text ?? string.Empty).Trim();
-            if (string.IsNullOrEmpty(currentPort) || currentPort == "5432" || currentPort == "3306" || currentPort == "1433")
+            if (string.IsNullOrEmpty(currentPort) || currentPort == "5432" || currentPort == "3306" || currentPort == "1433" || currentPort == "1521")
             {
                 TxtPgPort.Text = type switch
                 {
                     DatabaseType.PostgreSQL => "5432",
                     DatabaseType.MySQL or DatabaseType.MariaDB => "3306",
                     DatabaseType.SqlServer => "1433",
+                    DatabaseType.Oracle => "1521",
                     _ => "5432"
                 };
             }
 
             string currentDb = (TxtPgDatabase.Text ?? string.Empty).Trim();
-            if (string.IsNullOrEmpty(currentDb) || currentDb == "postgres" || currentDb == "mysql" || currentDb == "master")
+            if (string.IsNullOrEmpty(currentDb) || currentDb == "postgres" || currentDb == "mysql" || currentDb == "master" || currentDb == "ORCLPDB1")
             {
                 TxtPgDatabase.Text = type switch
                 {
                     DatabaseType.PostgreSQL => "postgres",
                     DatabaseType.MySQL or DatabaseType.MariaDB => "mysql",
                     DatabaseType.SqlServer => "master",
+                    DatabaseType.Oracle => "ORCLPDB1",
                     _ => ""
                 };
             }
 
             string currentUsr = (TxtPgUser.Text ?? string.Empty).Trim();
-            if (string.IsNullOrEmpty(currentUsr) || currentUsr == "postgres" || currentUsr == "root" || currentUsr == "sa")
+            if (string.IsNullOrEmpty(currentUsr) || currentUsr == "postgres" || currentUsr == "root" || currentUsr == "sa" || currentUsr == "system")
             {
                 TxtPgUser.Text = type switch
                 {
                     DatabaseType.PostgreSQL => "postgres",
                     DatabaseType.MySQL or DatabaseType.MariaDB => "root",
                     DatabaseType.SqlServer => "sa",
+                    DatabaseType.Oracle => "system",
                     _ => "root"
                 };
             }
@@ -642,6 +682,25 @@ public partial class ConnectionView : UserControl
 
         TxtDefaultSchema.Text = string.IsNullOrWhiteSpace(cfg.DefaultSchema) ? "dbo" : cfg.DefaultSchema;
         ChkTrustServerCert.IsChecked = cfg.TrustServerCertificate;
+
+        if (cfg.Type == DatabaseType.Oracle)
+        {
+            CmbOracleConnectionType.SelectedIndex = cfg.OracleConnectionType switch
+            {
+                OracleConnectionType.Sid => 1,
+                OracleConnectionType.TnsDescriptor => 2,
+                _ => 0
+            };
+            CmbOraclePrivilege.SelectedIndex = cfg.OraclePrivilege switch
+            {
+                OraclePrivilege.SysDba => 1,
+                OraclePrivilege.SysOper => 2,
+                _ => 0
+            };
+            TxtOracleTns.Text = cfg.OracleTnsDescriptor ?? "";
+            PanelOracleTnsField.IsVisible = cfg.OracleConnectionType == OracleConnectionType.TnsDescriptor;
+            BorderOraclePrivilegeWarning.IsVisible = cfg.OraclePrivilege != OraclePrivilege.Normal;
+        }
 
         for (int i = 0; i < ComboPgSsl.Items.Count; i++)
         {
@@ -694,6 +753,12 @@ public partial class ConnectionView : UserControl
         TxtPgPassword.Text = "";
         ComboPgSsl.SelectedIndex = 1;
 
+        CmbOracleConnectionType.SelectedIndex = 0;
+        CmbOraclePrivilege.SelectedIndex = 0;
+        TxtOracleTns.Text = "";
+        PanelOracleTnsField.IsVisible = false;
+        BorderOraclePrivilegeWarning.IsVisible = false;
+
         TabsPostgresConnection.SelectedIndex = 0;
         BadgeSshTabActive.IsVisible = false;
         PanelSshConfigFields.IsVisible = true;
@@ -729,7 +794,16 @@ public partial class ConnectionView : UserControl
         CardQuickConnect.IsVisible = true;
         TxtQuickName.Text = string.IsNullOrWhiteSpace(_currentConfig.Name) ? "Nova Conexão" : _currentConfig.Name;
         TxtQuickIcon.Text = _currentConfig.EngineIcon;
-        TxtQuickEngineTag.Text = _currentConfig.Type == DatabaseType.SQLite ? "SQLITE" : "POSTGRESQL";
+        TxtQuickEngineTag.Text = _currentConfig.Type switch
+        {
+            DatabaseType.SQLite => "SQLITE",
+            DatabaseType.PostgreSQL => "POSTGRESQL",
+            DatabaseType.MySQL => "MYSQL",
+            DatabaseType.MariaDB => "MARIADB",
+            DatabaseType.SqlServer => "SQL SERVER",
+            DatabaseType.Oracle => "ORACLE",
+            _ => "DATABASE"
+        };
 
         if (_currentConfig.Type == DatabaseType.SQLite)
         {
@@ -810,6 +884,13 @@ public partial class ConnectionView : UserControl
                 SshPassword = cfg.SshPassword,
                 SshPrivateKeyPath = cfg.SshPrivateKeyPath,
                 SshPrivateKeyPassphrase = cfg.SshPrivateKeyPassphrase,
+                DefaultSchema = cfg.DefaultSchema,
+                TrustServerCertificate = cfg.TrustServerCertificate,
+                OracleConnectionType = cfg.OracleConnectionType,
+                OraclePrivilege = cfg.OraclePrivilege,
+                OracleServiceName = cfg.OracleServiceName,
+                OracleSid = cfg.OracleSid,
+                OracleTnsDescriptor = cfg.OracleTnsDescriptor,
                 IsReadOnly = cfg.IsReadOnly,
                 IsProduction = cfg.IsProduction
             };
@@ -1263,6 +1344,24 @@ public partial class ConnectionView : UserControl
                 _currentConfig.DefaultSchema = string.IsNullOrWhiteSpace(TxtDefaultSchema.Text) ? "dbo" : TxtDefaultSchema.Text.Trim();
                 _currentConfig.TrustServerCertificate = ChkTrustServerCert.IsChecked == true;
             }
+            else if (_currentConfig.Type == DatabaseType.Oracle)
+            {
+                _currentConfig.OracleConnectionType = CmbOracleConnectionType.SelectedIndex switch
+                {
+                    1 => OracleConnectionType.Sid,
+                    2 => OracleConnectionType.TnsDescriptor,
+                    _ => OracleConnectionType.ServiceName
+                };
+                _currentConfig.OraclePrivilege = CmbOraclePrivilege.SelectedIndex switch
+                {
+                    1 => OraclePrivilege.SysDba,
+                    2 => OraclePrivilege.SysOper,
+                    _ => OraclePrivilege.Normal
+                };
+                _currentConfig.OracleServiceName = (TxtPgDatabase.Text ?? string.Empty).Trim();
+                _currentConfig.OracleSid = (TxtPgDatabase.Text ?? string.Empty).Trim();
+                _currentConfig.OracleTnsDescriptor = (TxtOracleTns.Text ?? string.Empty).Trim();
+            }
         }
 
         _currentConfig.IsReadOnly = ChkReadOnly.IsChecked == true;
@@ -1376,8 +1475,28 @@ public partial class ConnectionView : UserControl
             TxtDiagnosticLatency.Foreground = Brush.Parse("#f87171");
         }
 
-        TxtDiagnosticVersion.Text = string.IsNullOrWhiteSpace(diag.ServerVersion) ? "Database Server" : diag.ServerVersion;
-        TxtDiagnosticEncryption.Text = string.IsNullOrWhiteSpace(diag.EncryptionDetails) ? "Standard Connection" : diag.EncryptionDetails;
+        TxtDiagnosticVersion.Text = string.IsNullOrWhiteSpace(diag.ServerVersion)
+            ? (_currentConfig.Type == DatabaseType.Oracle ? "Oracle Database Server" : "Database Server")
+            : diag.ServerVersion;
+
+        if (_currentConfig.Type == DatabaseType.Oracle)
+        {
+            string privBadge = _currentConfig.OraclePrivilege != OraclePrivilege.Normal
+                ? $"[{_currentConfig.OraclePrivilege}] "
+                : "";
+            string connMode = _currentConfig.OracleConnectionType switch
+            {
+                OracleConnectionType.Sid => $"SID: {_currentConfig.OracleSid}",
+                OracleConnectionType.TnsDescriptor => "TNS Descriptor",
+                _ => $"Service: {_currentConfig.OracleServiceName}"
+            };
+            string enc = string.IsNullOrWhiteSpace(diag.EncryptionDetails) ? "Direct TCP/IP" : diag.EncryptionDetails;
+            TxtDiagnosticEncryption.Text = $"{privBadge}{connMode} • {enc}";
+        }
+        else
+        {
+            TxtDiagnosticEncryption.Text = string.IsNullOrWhiteSpace(diag.EncryptionDetails) ? "Standard Connection" : diag.EncryptionDetails;
+        }
     }
 
     private void OnSaveConnection(object? sender, RoutedEventArgs e)

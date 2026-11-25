@@ -488,7 +488,7 @@
                                     </Grid>
 
                                     <StackPanel Spacing="6">
-                                        <TextBlock Text="{DynamicResource Connection.Database}" FontSize="12" FontWeight="SemiBold" Foreground="#8b9cb3"/>
+                                        <TextBlock Name="LblPgDatabase" Text="{DynamicResource Connection.Database}" FontSize="12" FontWeight="SemiBold" Foreground="#8b9cb3"/>
                                         <TextBox Name="TxtPgDatabase" Text="postgres" Background="#090d14" Foreground="#f0f6fc" 
                                                  BorderBrush="#1e2d42" CornerRadius="6" Padding="10,8"
                                                  AutomationProperties.Name="{DynamicResource A11y.DatabaseName}"/>
@@ -547,6 +547,58 @@
                                                           FontSize="11.5" Foreground="#f0f6fc"
                                                           ToolTip.Tip="Habilita TrustServerCertificate=True na connection string do SQL Server (recomendado para instâncias locais, Docker ou certificados autoassinados)"
                                                           AutomationProperties.Name="{DynamicResource Connection.TrustServerCertificate}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+
+                                    <!-- ORACLE SPECIFIC OPTIONS (Visible only when Oracle is selected) -->
+                                    <StackPanel Name="PanelOracleOptions" Spacing="10" IsVisible="False" Margin="0,4,0,0">
+                                        <Border Background="#1a0c0e" BorderBrush="#7f1d1d" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                                            <StackPanel Spacing="10">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="🔴" FontSize="13" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{DynamicResource Connection.OracleOptionsTitle}" FontWeight="SemiBold" FontSize="12" Foreground="#f87171" VerticalAlignment="Center"/>
+                                                </StackPanel>
+
+                                                <!-- Tipo de Conexão: Service Name vs SID vs TNS -->
+                                                <StackPanel Spacing="4">
+                                                    <TextBlock Text="{DynamicResource Connection.OracleConnectionType}" FontSize="11" Foreground="#8b9cb3"/>
+                                                    <ComboBox Name="CmbOracleConnectionType" SelectedIndex="0" HorizontalAlignment="Stretch"
+                                                              Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42" CornerRadius="5">
+                                                        <ComboBoxItem Content="{DynamicResource Connection.OracleTypeServiceName}"/>
+                                                        <ComboBoxItem Content="{DynamicResource Connection.OracleTypeSid}"/>
+                                                        <ComboBoxItem Content="{DynamicResource Connection.OracleTypeTns}"/>
+                                                    </ComboBox>
+                                                </StackPanel>
+
+                                                <!-- TNS Descriptor Multiline Box -->
+                                                <StackPanel Name="PanelOracleTnsField" Spacing="4" IsVisible="False">
+                                                    <TextBlock Text="{DynamicResource Connection.OracleTnsLabel}" FontSize="11" Foreground="#8b9cb3"/>
+                                                    <TextBox Name="TxtOracleTns" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="60"
+                                                             Watermark="{DynamicResource Connection.OracleTnsPlaceholder}"
+                                                             Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42" CornerRadius="5" Padding="8,6"/>
+                                                </StackPanel>
+
+                                                <!-- Privilégio Administrativo: Normal vs SYSDBA vs SYSOPER -->
+                                                <StackPanel Spacing="4">
+                                                    <TextBlock Text="{DynamicResource Connection.OraclePrivilegeLabel}" FontSize="11" Foreground="#8b9cb3"/>
+                                                    <ComboBox Name="CmbOraclePrivilege" SelectedIndex="0" HorizontalAlignment="Stretch"
+                                                              Background="#090d14" Foreground="#f0f6fc" BorderBrush="#1e2d42" CornerRadius="5">
+                                                        <ComboBoxItem Content="{DynamicResource Connection.OraclePrivilegeNormal}"/>
+                                                        <ComboBoxItem Content="{DynamicResource Connection.OraclePrivilegeSysDba}"/>
+                                                        <ComboBoxItem Content="{DynamicResource Connection.OraclePrivilegeSysOper}"/>
+                                                    </ComboBox>
+                                                </StackPanel>
+
+                                                <!-- Aviso SYSDBA / SYSOPER -->
+                                                <Border Name="BorderOraclePrivilegeWarning" Background="#2e1a0c" BorderBrush="#d97706" BorderThickness="1"
+                                                        CornerRadius="5" Padding="8,6" IsVisible="False">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <TextBlock Text="⚠️" FontSize="12" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{DynamicResource Connection.OraclePrivilegeWarning}"
+                                                                   FontSize="10.5" Foreground="#fcd34d" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                                    </StackPanel>
+                                                </Border>
                                             </StackPanel>
                                         </Border>
                                     </StackPanel>
