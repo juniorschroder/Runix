@@ -47,6 +47,20 @@ public sealed class TableStorageMetric
         : 0.0;
 }
 
+public sealed class OracleTablespaceMetric
+{
+    public string TablespaceName { get; init; } = string.Empty;
+    public long TotalSizeBytes { get; init; }
+    public long UsedSizeBytes { get; init; }
+    public long FreeSizeBytes { get; init; }
+    public int FileCount { get; init; }
+    public int AutoextensibleCount { get; init; }
+    public double UsedPercent => TotalSizeBytes > 0 ? Math.Round((double)UsedSizeBytes * 100.0 / TotalSizeBytes, 1) : 0.0;
+    public string TotalSizeFormatted => DatabaseHealthReport.FormatBytes(TotalSizeBytes);
+    public string UsedSizeFormatted => DatabaseHealthReport.FormatBytes(UsedSizeBytes);
+    public string FreeSizeFormatted => DatabaseHealthReport.FormatBytes(FreeSizeBytes);
+}
+
 public sealed class IndexHealthFinding
 {
     public string Schema { get; init; } = "main";
@@ -113,6 +127,7 @@ public sealed class DatabaseHealthReport
     public int IndexCount { get; init; }
     public int ActiveConnections { get; init; } = 1;
     public int MaxConnections { get; init; } = 100;
+    public int BlockedSessions { get; init; }
     public string JournalOrWalMode { get; init; } = "WAL";
     public int PageSize { get; init; } = 4096;
     public long PageCount { get; init; }
@@ -120,6 +135,7 @@ public sealed class DatabaseHealthReport
     public HealthSeverity OverallSeverity { get; init; } = HealthSeverity.Healthy;
     public string StatusSummary { get; init; } = "Banco de dados operando com saúde ideal.";
     public List<TableStorageMetric> TableMetrics { get; init; } = new();
+    public List<OracleTablespaceMetric> TablespaceMetrics { get; init; } = new();
     public List<IndexHealthFinding> IndexFindings { get; init; } = new();
     public List<IntegrityCheckIssue> IntegrityIssues { get; init; } = new();
 
@@ -150,7 +166,24 @@ public sealed class DatabaseHealthReport
         sb.AppendLine($"- **Eficiência de Cache / Páginas:** {CacheOrPageEfficiencyPercent:F1}%");
         sb.AppendLine($"- **Fragmentação / Dead Tuples:** {FragmentationOrDeadTuplePercent:F1}%");
         sb.AppendLine($"- **Objetos:** {TableCount} tabelas, {ViewCount} views, {IndexCount} índices");
+        if (BlockedSessions > 0)
+        {
+            sb.AppendLine($"- **Sessões Bloqueadas (Locks):** ⚠ {BlockedSessions} sessão(ões) em espera");
+        }
         sb.AppendLine();
+
+        if (TablespaceMetrics.Count > 0)
+        {
+            sb.AppendLine("## Tablespaces Oracle");
+            sb.AppendLine("| Tablespace | Total | Usado | Livre | % Utilização | Arquivos | Autoextensíveis |");
+            sb.AppendLine("|---|---:|---:|---:|---:|---:|---:|");
+            foreach (var ts in TablespaceMetrics)
+            {
+                sb.AppendLine($"| {ts.TablespaceName} | {ts.TotalSizeFormatted} | {ts.UsedSizeFormatted} | {ts.FreeSizeFormatted} | {ts.UsedPercent:F1}% | {ts.FileCount} | {ts.AutoextensibleCount} |");
+            }
+            sb.AppendLine();
+        }
+
         sb.AppendLine("## Armazenamento por Tabela");
         sb.AppendLine("| Tabela | Linhas | Dados | Índices | Total | Dead Tuples |");
         sb.AppendLine("|---|---:|---:|---:|---:|---:|");
@@ -166,6 +199,16 @@ public sealed class DatabaseHealthReport
             foreach (var f in IndexFindings)
             {
                 sb.AppendLine($"- **[{f.SeverityBadge}] {f.TableName}.{f.IndexName}** ({f.FindingType}): {f.Description}");
+            }
+        }
+
+        if (IntegrityIssues.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("## Inconsistências de Integridade");
+            foreach (var iss in IntegrityIssues)
+            {
+                sb.AppendLine($"- **[{iss.CheckType}] {iss.TableName}:** {iss.Description}");
             }
         }
 

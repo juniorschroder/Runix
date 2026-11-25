@@ -25,15 +25,44 @@ public sealed class DatabaseHealthService : IDatabaseHealthService
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return _databaseService.Config.Type == DatabaseType.PostgreSQL
-            ? await CollectPostgresHealthAsync(cancellationToken)
-            : await CollectSqliteHealthAsync(includeIntegrityCheck, cancellationToken);
+        if (_databaseService.Config.Type == DatabaseType.PostgreSQL)
+        {
+            return await CollectPostgresHealthAsync(cancellationToken);
+        }
+        if (_databaseService.Config.Type == DatabaseType.Oracle)
+        {
+            return await CollectOracleHealthAsync(includeIntegrityCheck, cancellationToken);
+        }
+        return await CollectSqliteHealthAsync(includeIntegrityCheck, cancellationToken);
     }
 
     public string GetMaintenanceSqlPreview(MaintenanceOperationType operation, string? tableName = null)
     {
         bool isPg = _databaseService.Config.Type == DatabaseType.PostgreSQL;
+        bool isOra = _databaseService.Config.Type == DatabaseType.Oracle;
         string? quotedTable = string.IsNullOrWhiteSpace(tableName) ? null : QuoteIdentifier(tableName);
+
+        if (isOra)
+        {
+            return operation switch
+            {
+                MaintenanceOperationType.Vacuum => quotedTable != null
+                    ? $"ALTER TABLE {quotedTable} SHRINK SPACE COMPACT;"
+                    : "/* Reorganização de Tablespaces */",
+                MaintenanceOperationType.Analyze => quotedTable != null
+                    ? $"ANALYZE TABLE {quotedTable} COMPUTE STATISTICS;"
+                    : "BEGIN DBMS_STATS.GATHER_SCHEMA_STATS(USER); END;",
+                MaintenanceOperationType.VacuumAnalyze => quotedTable != null
+                    ? $"ANALYZE TABLE {quotedTable} COMPUTE STATISTICS;"
+                    : "BEGIN DBMS_STATS.GATHER_SCHEMA_STATS(USER); END;",
+                MaintenanceOperationType.Reindex => quotedTable != null
+                    ? $"ALTER INDEX {quotedTable} REBUILD;"
+                    : "/* Rebuild de Índices */",
+                MaintenanceOperationType.IntegrityCheck =>
+                    "SELECT owner, constraint_name, table_name, constraint_type FROM all_constraints WHERE status = 'DISABLED' AND owner = USER;\nSELECT owner, object_name, object_type, status FROM all_objects WHERE status = 'INVALID' AND owner = USER;",
+                _ => "ANALYZE;"
+            };
+        }
 
         return operation switch
         {
@@ -465,6 +494,281 @@ public sealed class DatabaseHealthService : IDatabaseHealthService
         };
     }
 
+    private async Task<DatabaseHealthReport> CollectOracleHealthAsync(
+        bool includeIntegrityCheck,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        string targetName = !string.IsNullOrWhiteSpace(_databaseService.Config.Database)
+            ? $"{_databaseService.Config.Database}@{_databaseService.Config.Host}"
+            : (!string.IsNullOrWhiteSpace(_databaseService.Config.OracleServiceName)
+                ? $"{_databaseService.Config.OracleServiceName}@{_databaseService.Config.Host}"
+                : (!string.IsNullOrWhiteSpace(_databaseService.Config.OracleSid)
+                    ? $"{_databaseService.Config.OracleSid}@{_databaseService.Config.Host}"
+                    : $"Oracle@{_databaseService.Config.Host}"));
+
+        // 1. Tablespaces (Primary via DBA views, Fallback via USER views)
+        var tablespaces = new List<OracleTablespaceMetric>();
+        var dbaTsRes = await _databaseService.ExecuteQueryAsync(@"
+            SELECT 
+                d.tablespace_name,
+                d.total_bytes,
+                COALESCE(f.free_bytes, 0) AS free_bytes,
+                d.total_bytes - COALESCE(f.free_bytes, 0) AS used_bytes,
+                d.file_count,
+                d.autoextend_count
+            FROM (
+                SELECT 
+                    tablespace_name, 
+                    SUM(bytes) AS total_bytes, 
+                    COUNT(*) AS file_count, 
+                    SUM(CASE WHEN autoextensible = 'YES' THEN 1 ELSE 0 END) AS autoextend_count
+                FROM dba_data_files
+                GROUP BY tablespace_name
+            ) d
+            LEFT JOIN (
+                SELECT 
+                    tablespace_name, 
+                    SUM(bytes) AS free_bytes
+                FROM dba_free_space
+                GROUP BY tablespace_name
+            ) f ON d.tablespace_name = f.tablespace_name
+            ORDER BY d.tablespace_name;");
+
+        if (dbaTsRes.Success && dbaTsRes.Rows.Count > 0)
+        {
+            foreach (var row in dbaTsRes.Rows)
+            {
+                if (row.Count < 6) continue;
+                tablespaces.Add(new OracleTablespaceMetric
+                {
+                    TablespaceName = row[0]?.ToString() ?? string.Empty,
+                    TotalSizeBytes = ParseLong(row[1]),
+                    FreeSizeBytes = ParseLong(row[2]),
+                    UsedSizeBytes = ParseLong(row[3]),
+                    FileCount = (int)ParseLong(row[4], 1),
+                    AutoextensibleCount = (int)ParseLong(row[5], 0)
+                });
+            }
+        }
+        else
+        {
+            // Fallback for non-DBA catalog
+            var userTsRes = await _databaseService.ExecuteQueryAsync(@"
+                SELECT 
+                    t.tablespace_name,
+                    COALESCE(s.used_bytes, 0) AS total_bytes,
+                    0 AS free_bytes,
+                    COALESCE(s.used_bytes, 0) AS used_bytes,
+                    1 AS file_count,
+                    0 AS autoextend_count
+                FROM user_tablespaces t
+                LEFT JOIN (
+                    SELECT tablespace_name, SUM(bytes) AS used_bytes
+                    FROM user_segments
+                    GROUP BY tablespace_name
+                ) s ON t.tablespace_name = s.tablespace_name
+                ORDER BY t.tablespace_name;");
+
+            if (userTsRes.Success)
+            {
+                foreach (var row in userTsRes.Rows)
+                {
+                    if (row.Count < 6) continue;
+                    tablespaces.Add(new OracleTablespaceMetric
+                    {
+                        TablespaceName = row[0]?.ToString() ?? string.Empty,
+                        TotalSizeBytes = ParseLong(row[1]),
+                        FreeSizeBytes = ParseLong(row[2]),
+                        UsedSizeBytes = ParseLong(row[3]),
+                        FileCount = (int)ParseLong(row[4], 1),
+                        AutoextensibleCount = (int)ParseLong(row[5], 0)
+                    });
+                }
+            }
+        }
+
+        long totalSizeBytes = tablespaces.Sum(ts => ts.TotalSizeBytes);
+        long freeSizeBytes = tablespaces.Sum(ts => ts.FreeSizeBytes);
+        long usedSizeBytes = tablespaces.Sum(ts => ts.UsedSizeBytes);
+
+        // 2. Table storage metrics (ALL_SEGMENTS/USER_SEGMENTS)
+        var tableMetrics = new List<TableStorageMetric>();
+        var tblRes = await _databaseService.ExecuteQueryAsync(@"
+            SELECT 
+                s.owner,
+                s.segment_name,
+                t.tablespace_name,
+                SUM(CASE WHEN s.segment_type LIKE 'TABLE%' THEN s.bytes ELSE 0 END) AS data_bytes,
+                COALESCE(idx.idx_bytes, 0) AS index_bytes,
+                NVL(tbl.num_rows, 0) AS row_count
+            FROM all_segments s
+            JOIN all_tables tbl ON s.owner = tbl.owner AND s.segment_name = tbl.table_name
+            LEFT JOIN (
+                SELECT i.table_owner, i.table_name, SUM(si.bytes) AS idx_bytes
+                FROM all_indexes i
+                JOIN all_segments si ON i.owner = si.owner AND i.index_name = si.segment_name
+                GROUP BY i.table_owner, i.table_name
+            ) idx ON s.owner = idx.table_owner AND s.segment_name = idx.table_name
+            WHERE s.owner = USER
+            GROUP BY s.owner, s.segment_name, t.tablespace_name, idx.idx_bytes, tbl.num_rows
+            ORDER BY (SUM(CASE WHEN s.segment_type LIKE 'TABLE%' THEN s.bytes ELSE 0 END) + COALESCE(idx.idx_bytes, 0)) DESC;");
+
+        if (!tblRes.Success || tblRes.Rows.Count == 0)
+        {
+            tblRes = await _databaseService.ExecuteQueryAsync(@"
+                SELECT 
+                    USER AS owner,
+                    s.segment_name,
+                    tbl.tablespace_name,
+                    SUM(CASE WHEN s.segment_type LIKE 'TABLE%' THEN s.bytes ELSE 0 END) AS data_bytes,
+                    COALESCE(idx.idx_bytes, 0) AS index_bytes,
+                    NVL(tbl.num_rows, 0) AS row_count
+                FROM user_segments s
+                JOIN user_tables tbl ON s.segment_name = tbl.table_name
+                LEFT JOIN (
+                    SELECT i.table_name, SUM(si.bytes) AS idx_bytes
+                    FROM user_indexes i
+                    JOIN user_segments si ON i.index_name = si.segment_name
+                    GROUP BY i.table_name
+                ) idx ON s.segment_name = idx.table_name
+                GROUP BY s.segment_name, tbl.tablespace_name, idx.idx_bytes, tbl.num_rows
+                ORDER BY (SUM(CASE WHEN s.segment_type LIKE 'TABLE%' THEN s.bytes ELSE 0 END) + COALESCE(idx.idx_bytes, 0)) DESC;");
+        }
+
+        if (tblRes.Success)
+        {
+            foreach (var row in tblRes.Rows)
+            {
+                if (row.Count < 6) continue;
+                tableMetrics.Add(new TableStorageMetric
+                {
+                    Schema = row[0]?.ToString() ?? string.Empty,
+                    TableName = row[1]?.ToString() ?? string.Empty,
+                    DataSizeBytes = ParseLong(row[3]),
+                    IndexSizeBytes = ParseLong(row[4]),
+                    RowCount = ParseLong(row[5])
+                });
+            }
+        }
+
+        long dataBytesTotal = tableMetrics.Sum(t => t.DataSizeBytes);
+        long idxBytesTotal = tableMetrics.Sum(t => t.IndexSizeBytes);
+        if (totalSizeBytes <= 0)
+        {
+            totalSizeBytes = dataBytesTotal + idxBytesTotal;
+            usedSizeBytes = totalSizeBytes;
+        }
+
+        // 3. Object Counts
+        int tableCount = tableMetrics.Count;
+        if (tableCount == 0)
+        {
+            tableCount = (int)await ExecuteScalarLongAsync("SELECT count(*) FROM user_tables;", 0);
+        }
+        int viewCount = (int)await ExecuteScalarLongAsync("SELECT count(*) FROM user_views;", 0);
+        int indexCount = (int)await ExecuteScalarLongAsync("SELECT count(*) FROM user_indexes;", 0);
+
+        // 4. Buffer Cache Hit Ratio (V$SYSSTAT)
+        double cacheHitRatio = 100.0;
+        var sysstatRes = await _databaseService.ExecuteQueryAsync(@"
+            SELECT 
+                ROUND((1 - (phy.value / NULLIF(cur.value + con.value, 0))) * 100, 2) AS hit_ratio
+            FROM v$sysstat phy, v$sysstat cur, v$sysstat con
+            WHERE phy.name = 'physical reads'
+              AND cur.name = 'db block gets'
+              AND con.name = 'consistent gets';");
+
+        if (sysstatRes.Success && sysstatRes.Rows.Count > 0 && sysstatRes.Rows[0].Count > 0 && sysstatRes.Rows[0][0] != null)
+        {
+            if (double.TryParse(sysstatRes.Rows[0][0]!.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out double ratio))
+            {
+                cacheHitRatio = Math.Clamp(ratio, 0.0, 100.0);
+            }
+        }
+
+        // 5. Active Sessions & Locks (V$SESSION)
+        int totalConns = 1;
+        int activeConns = 1;
+        int blockedSessions = 0;
+
+        var sessRes = await _databaseService.ExecuteQueryAsync(@"
+            SELECT 
+                COUNT(*) AS total_conns,
+                SUM(CASE WHEN status = 'ACTIVE' AND type != 'BACKGROUND' THEN 1 ELSE 0 END) AS active_conns,
+                SUM(CASE WHEN blocking_session IS NOT NULL THEN 1 ELSE 0 END) AS blocked_sessions
+            FROM v$session;");
+
+        if (sessRes.Success && sessRes.Rows.Count > 0 && sessRes.Rows[0].Count >= 3)
+        {
+            totalConns = Math.Max(1, (int)ParseLong(sessRes.Rows[0][0], 1));
+            activeConns = Math.Max(1, (int)ParseLong(sessRes.Rows[0][1], 1));
+            blockedSessions = (int)ParseLong(sessRes.Rows[0][2], 0);
+        }
+
+        // 6. Integrity checks (if requested)
+        var integrityIssues = new List<IntegrityCheckIssue>();
+        if (includeIntegrityCheck)
+        {
+            integrityIssues = await RunIntegrityChecksAsync();
+        }
+
+        // 7. Severity assessment
+        var severity = HealthSeverity.Healthy;
+        var summaryParts = new List<string>();
+
+        if (blockedSessions > 0)
+        {
+            severity = blockedSessions >= 5 ? HealthSeverity.Critical : HealthSeverity.Warning;
+            summaryParts.Add($"⚠ {blockedSessions} sessão(ões) bloqueada(s) por locks");
+        }
+
+        if (cacheHitRatio < 85.0)
+        {
+            if (severity == HealthSeverity.Healthy) severity = HealthSeverity.Warning;
+            summaryParts.Add($"Buffer Cache Hit Ratio baixo ({cacheHitRatio:F1}%)");
+        }
+
+        bool hasHighTsUtilization = tablespaces.Any(ts => ts.TotalSizeBytes > 0 && ts.UsedPercent >= 90.0);
+        if (hasHighTsUtilization)
+        {
+            if (severity == HealthSeverity.Healthy) severity = HealthSeverity.Warning;
+            var highTs = tablespaces.First(ts => ts.UsedPercent >= 90.0);
+            summaryParts.Add($"Tablespace '{highTs.TablespaceName}' em {highTs.UsedPercent:F1}% de uso");
+        }
+
+        string summary = summaryParts.Count > 0
+            ? string.Join(" | ", summaryParts)
+            : $"Oracle Database saudável (Cache Hit: {cacheHitRatio:F1}%, {tablespaces.Count} tablespace(s), {activeConns} conexão(ões) ativa(s)).";
+
+        return new DatabaseHealthReport
+        {
+            DatabaseType = DatabaseType.Oracle,
+            TargetName = targetName,
+            CollectedAtUtc = DateTime.UtcNow,
+            TotalSizeBytes = totalSizeBytes,
+            DataSizeBytes = dataBytesTotal,
+            IndexSizeBytes = idxBytesTotal,
+            FreeOrReclaimableBytes = freeSizeBytes,
+            CacheOrPageEfficiencyPercent = cacheHitRatio,
+            FragmentationOrDeadTuplePercent = totalSizeBytes > 0 ? Math.Round((double)freeSizeBytes * 100.0 / totalSizeBytes, 1) : 0.0,
+            TableCount = tableCount,
+            ViewCount = viewCount,
+            IndexCount = indexCount,
+            ActiveConnections = activeConns,
+            MaxConnections = Math.Max(totalConns, 100),
+            BlockedSessions = blockedSessions,
+            JournalOrWalMode = tablespaces.Count > 0 ? $"{tablespaces.Count} Tablespaces" : "Tablespaces",
+            PageSize = 8192,
+            OverallSeverity = severity,
+            StatusSummary = summary,
+            TableMetrics = tableMetrics,
+            TablespaceMetrics = tablespaces,
+            IntegrityIssues = integrityIssues
+        };
+    }
+
     private async Task<List<IntegrityCheckIssue>> RunIntegrityChecksAsync()
     {
         var issues = new List<IntegrityCheckIssue>();
@@ -509,6 +813,73 @@ public sealed class DatabaseHealthService : IDatabaseHealthService
                 }
             }
         }
+        else if (_databaseService.Config.Type == DatabaseType.Oracle)
+        {
+            // Disabled constraints
+            var disConRes = await _databaseService.ExecuteQueryAsync(@"
+                SELECT owner, constraint_name, table_name, constraint_type 
+                FROM all_constraints 
+                WHERE status = 'DISABLED' AND owner = USER;");
+
+            if (!disConRes.Success || disConRes.Rows.Count == 0)
+            {
+                disConRes = await _databaseService.ExecuteQueryAsync(@"
+                    SELECT USER AS owner, constraint_name, table_name, constraint_type 
+                    FROM user_constraints 
+                    WHERE status = 'DISABLED';");
+            }
+
+            if (disConRes.Success)
+            {
+                foreach (var row in disConRes.Rows)
+                {
+                    if (row.Count >= 3)
+                    {
+                        string cName = row[1]?.ToString() ?? string.Empty;
+                        string tbl = row[2]?.ToString() ?? string.Empty;
+                        string type = row.Count > 3 ? row[3]?.ToString() ?? "C" : "C";
+                        issues.Add(new IntegrityCheckIssue
+                        {
+                            CheckType = "Disabled Constraint",
+                            TableName = tbl,
+                            Description = $"Constraint '{cName}' (Tipo: {type}) na tabela '{tbl}' está com status DISABLED."
+                        });
+                    }
+                }
+            }
+
+            // Invalid objects
+            var invObjRes = await _databaseService.ExecuteQueryAsync(@"
+                SELECT owner, object_name, object_type, status 
+                FROM all_objects 
+                WHERE status = 'INVALID' AND owner = USER;");
+
+            if (!invObjRes.Success || invObjRes.Rows.Count == 0)
+            {
+                invObjRes = await _databaseService.ExecuteQueryAsync(@"
+                    SELECT USER AS owner, object_name, object_type, status 
+                    FROM user_objects 
+                    WHERE status = 'INVALID';");
+            }
+
+            if (invObjRes.Success)
+            {
+                foreach (var row in invObjRes.Rows)
+                {
+                    if (row.Count >= 3)
+                    {
+                        string objName = row[1]?.ToString() ?? string.Empty;
+                        string objType = row[2]?.ToString() ?? string.Empty;
+                        issues.Add(new IntegrityCheckIssue
+                        {
+                            CheckType = "Invalid Object",
+                            TableName = objName,
+                            Description = $"Objeto '{objName}' (Tipo: {objType}) no schema está com status INVALID."
+                        });
+                    }
+                }
+            }
+        }
         return issues;
     }
 
@@ -517,6 +888,11 @@ public sealed class DatabaseHealthService : IDatabaseHealthService
         if (_databaseService.Config.Type == DatabaseType.PostgreSQL)
         {
             return await ExecuteScalarLongAsync("SELECT pg_database_size(current_database());", 0);
+        }
+
+        if (_databaseService.Config.Type == DatabaseType.Oracle)
+        {
+            return await ExecuteScalarLongAsync("SELECT COALESCE(SUM(bytes), 0) FROM user_segments;", 0);
         }
 
         if (!string.IsNullOrWhiteSpace(_databaseService.Config.FilePath) && File.Exists(_databaseService.Config.FilePath))

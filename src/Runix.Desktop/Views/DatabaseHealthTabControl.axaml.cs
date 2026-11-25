@@ -156,13 +156,30 @@ public partial class DatabaseHealthTabControl : UserControl, IDisposable
         TxtKpiSizeBreakdown.Text = $"Dados: {report.DataSizeFormatted} • Índices: {report.IndexSizeFormatted}";
 
         TxtKpiEfficiency.Text = $"{report.CacheOrPageEfficiencyPercent:F1}%";
-        TxtKpiJournalMode.Text = $"Modo {report.JournalOrWalMode} • Page Size {report.PageSize} B";
+        if (report.DatabaseType == DatabaseType.Oracle)
+        {
+            TxtKpiJournalMode.Text = report.TablespaceMetrics.Count > 0
+                ? $"{report.TablespaceMetrics.Count} Tablespaces • Block {report.PageSize} B"
+                : $"Oracle Block {report.PageSize} B";
+            TxtKpiFragmentation.Text = $"{report.FragmentationOrDeadTuplePercent:F1}%";
+            TxtKpiReclaimable.Text = $"Espaço Livre em TS: {report.FreeSizeFormatted}";
+            TxtKpiCatalogCounts.Text = $"{report.TableCount} Tabelas • {report.IndexCount} Índices";
+            TxtKpiConnections.Text = report.BlockedSessions > 0
+                ? $"{report.ActiveConnections} ativa(s) • ⚠ {report.BlockedSessions} bloqueada(s)"
+                : $"{report.ActiveConnections} ativa(s) • 0 bloqueadas";
 
-        TxtKpiFragmentation.Text = $"{report.FragmentationOrDeadTuplePercent:F1}%";
-        TxtKpiReclaimable.Text = $"Recuperável via VACUUM: {report.FreeSizeFormatted}";
+            BtnRunVacuum.Content = "🧹 SHRINK SPACE";
+        }
+        else
+        {
+            TxtKpiJournalMode.Text = $"Modo {report.JournalOrWalMode} • Page Size {report.PageSize} B";
+            TxtKpiFragmentation.Text = $"{report.FragmentationOrDeadTuplePercent:F1}%";
+            TxtKpiReclaimable.Text = $"Recuperável via VACUUM: {report.FreeSizeFormatted}";
+            TxtKpiCatalogCounts.Text = $"{report.TableCount} Tabelas • {report.IndexCount} Índices";
+            TxtKpiConnections.Text = $"{report.ViewCount} Views • {report.ActiveConnections} conexão(ões) ativa(s)";
 
-        TxtKpiCatalogCounts.Text = $"{report.TableCount} Tabelas • {report.IndexCount} Índices";
-        TxtKpiConnections.Text = $"{report.ViewCount} Views • {report.ActiveConnections} conexão(ões) ativa(s)";
+            BtnRunVacuum.Content = "🧹 Executar VACUUM";
+        }
 
         // Table Storage List & Target ComboBox
         var scopeItems = new List<string> { "(Banco Inteiro)" };
