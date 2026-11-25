@@ -129,4 +129,22 @@ public class OracleDatabaseServiceTests
         Assert.IsType<OracleDatabaseService>(service);
         Assert.Equal(DatabaseType.Oracle, service.Config.Type);
     }
+
+    [Theory]
+    [InlineData("VARCHAR2", 50, null, null, 50, "VARCHAR2(50)")]
+    [InlineData("NVARCHAR2", 100, null, null, 100, "NVARCHAR2(100)")]
+    [InlineData("NUMBER", 22, 10, 0, null, "NUMBER(10)")]
+    [InlineData("NUMBER", 22, 12, 2, null, "NUMBER(12,2)")]
+    [InlineData("NUMBER", 22, null, null, null, "NUMBER")]
+    [InlineData("DATE", 7, null, null, null, "DATE")]
+    [InlineData("TIMESTAMP(6)", 11, null, null, null, "TIMESTAMP(6)")]
+    [InlineData("CLOB", 4000, null, null, null, "CLOB")]
+    [InlineData("BLOB", 4000, null, null, null, "BLOB")]
+    [InlineData("RAW", 16, null, null, null, "RAW(16)")]
+    public void FormatOracleType_FormatsTypesCorrectly(
+        string rawType, int dataLength, int? precision, int? scale, int? charLength, string expected)
+    {
+        var result = OracleDatabaseService.FormatOracleType(rawType, dataLength, precision, scale, charLength);
+        Assert.Equal(expected, result);
+    }
 }

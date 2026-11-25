@@ -14,7 +14,9 @@ public enum SidebarItemType
     Column,
     Trigger,
     Function,
-    Index
+    Index,
+    Package,
+    Sequence
 }
 
 public abstract class DatabaseSidebarItem : INotifyPropertyChanged
@@ -187,6 +189,8 @@ public class ProgrammabilitySidebarItem : DatabaseSidebarItem
             DatabaseObjectType.Trigger => SidebarItemType.Trigger,
             DatabaseObjectType.Function or DatabaseObjectType.Procedure => SidebarItemType.Function,
             DatabaseObjectType.Index => SidebarItemType.Index,
+            DatabaseObjectType.Package => SidebarItemType.Package,
+            DatabaseObjectType.Sequence => SidebarItemType.Sequence,
             _ => SidebarItemType.View
         };
     }

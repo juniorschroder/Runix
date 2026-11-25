@@ -22,9 +22,12 @@ public class ProgrammabilityService : IProgrammabilityService
         DatabaseObjectType? filterType = null,
         CancellationToken cancellationToken = default)
     {
-        var results = _databaseService.Config.Type == DatabaseType.PostgreSQL
-            ? await GetPostgresObjectsAsync()
-            : await GetSqliteObjectsAsync();
+        var results = _databaseService.Config.Type switch
+        {
+            DatabaseType.PostgreSQL => await GetPostgresObjectsAsync(),
+            DatabaseType.Oracle => await GetOracleObjectsAsync(),
+            _ => await GetSqliteObjectsAsync()
+        };
 
         if (filterType.HasValue)
         {
@@ -41,6 +44,15 @@ public class ProgrammabilityService : IProgrammabilityService
         if (!string.IsNullOrWhiteSpace(obj.DefinitionDdl))
         {
             return EnsureSemicolon(obj.DefinitionDdl);
+        }
+
+        if (_databaseService.Config.Type == DatabaseType.Oracle)
+        {
+            var oracleDdl = await GetOracleObjectDdlAsync(obj, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(oracleDdl))
+            {
+                return oracleDdl;
+            }
         }
 
         var allObjects = await GetProgrammableObjectsAsync(obj.ObjectType, cancellationToken);
@@ -91,6 +103,12 @@ public class ProgrammabilityService : IProgrammabilityService
             }
 
             commands.Add(new ParameterizedCommand(trimmedDdl));
+        }
+        else if (_databaseService.Config.Type == DatabaseType.Oracle)
+        {
+            // Em Oracle via ADO.NET, scripts PL/SQL não devem conter o terminador de script '/'
+            var cleanDdl = Regex.Replace(trimmedDdl, @"\s*/\s*$", "").Trim();
+            commands.Add(new ParameterizedCommand(cleanDdl));
         }
         else
         {
@@ -345,6 +363,373 @@ public class ProgrammabilityService : IProgrammabilityService
         return fallback;
     }
 
+    private async Task<List<DatabaseObjectInfo>> GetOracleObjectsAsync()
+    {
+        var objects = new List<DatabaseObjectInfo>();
+        var currentUser = (!string.IsNullOrWhiteSpace(_databaseService.Config.Username) ? _databaseService.Config.Username : "").Trim().ToUpperInvariant();
+        var ownerCondition = !string.IsNullOrEmpty(currentUser)
+            ? $"(OWNER = '{currentUser}' OR OWNER = USER)"
+            : "OWNER = USER";
+        var seqOwnerCondition = !string.IsNullOrEmpty(currentUser)
+            ? $"(SEQUENCE_OWNER = '{currentUser}' OR SEQUENCE_OWNER = USER)"
+            : "SEQUENCE_OWNER = USER";
+
+        // 1. Views
+        try
+        {
+            var viewsSql = $@"
+                SELECT OWNER, VIEW_NAME
+                FROM ALL_VIEWS
+                WHERE {ownerCondition}
+                ORDER BY OWNER, VIEW_NAME";
+
+            var viewsRes = await _databaseService.ExecuteQueryAsync(viewsSql, 5000);
+            if (!viewsRes.Success || viewsRes.Rows.Count == 0)
+            {
+                viewsRes = await _databaseService.ExecuteQueryAsync("SELECT USER AS OWNER, VIEW_NAME FROM USER_VIEWS ORDER BY VIEW_NAME", 5000);
+            }
+
+            if (viewsRes.Success)
+            {
+                foreach (var row in viewsRes.Rows)
+                {
+                    var owner = GetString(viewsRes, row, "OWNER", currentUser);
+                    var name = GetString(viewsRes, row, "VIEW_NAME");
+                    if (string.IsNullOrWhiteSpace(name)) continue;
+
+                    objects.Add(new DatabaseObjectInfo
+                    {
+                        Schema = owner,
+                        Name = name,
+                        ObjectType = DatabaseObjectType.View,
+                        SpecificId = $"view:{owner}.{name}"
+                    });
+                }
+            }
+        }
+        catch { /* Fallback silencioso */ }
+
+        // 2. Triggers
+        try
+        {
+            var triggersSql = $@"
+                SELECT OWNER, TRIGGER_NAME, TABLE_OWNER, TABLE_NAME, STATUS
+                FROM ALL_TRIGGERS
+                WHERE {ownerCondition}
+                ORDER BY OWNER, TRIGGER_NAME";
+
+            var triggersRes = await _databaseService.ExecuteQueryAsync(triggersSql, 5000);
+            if (!triggersRes.Success || triggersRes.Rows.Count == 0)
+            {
+                triggersRes = await _databaseService.ExecuteQueryAsync("SELECT USER AS OWNER, TRIGGER_NAME, TABLE_OWNER, TABLE_NAME, STATUS FROM USER_TRIGGERS ORDER BY TRIGGER_NAME", 5000);
+            }
+
+            if (triggersRes.Success)
+            {
+                foreach (var row in triggersRes.Rows)
+                {
+                    var owner = GetString(triggersRes, row, "OWNER", currentUser);
+                    var name = GetString(triggersRes, row, "TRIGGER_NAME");
+                    var tblName = GetString(triggersRes, row, "TABLE_NAME");
+                    if (string.IsNullOrWhiteSpace(name)) continue;
+
+                    objects.Add(new DatabaseObjectInfo
+                    {
+                        Schema = owner,
+                        Name = name,
+                        ObjectType = DatabaseObjectType.Trigger,
+                        TargetTableName = tblName,
+                        SpecificId = $"trigger:{owner}.{name}"
+                    });
+                }
+            }
+        }
+        catch { /* Fallback silencioso */ }
+
+        // 3. Procedures, Functions, Packages
+        try
+        {
+            var objectsSql = $@"
+                SELECT OWNER, OBJECT_NAME, OBJECT_TYPE, STATUS
+                FROM ALL_OBJECTS
+                WHERE OBJECT_TYPE IN ('PROCEDURE', 'FUNCTION', 'PACKAGE')
+                  AND {ownerCondition}
+                ORDER BY OBJECT_TYPE, OWNER, OBJECT_NAME";
+
+            var objectsRes = await _databaseService.ExecuteQueryAsync(objectsSql, 5000);
+            if (!objectsRes.Success || objectsRes.Rows.Count == 0)
+            {
+                objectsRes = await _databaseService.ExecuteQueryAsync("SELECT USER AS OWNER, OBJECT_NAME, OBJECT_TYPE, STATUS FROM USER_OBJECTS WHERE OBJECT_TYPE IN ('PROCEDURE', 'FUNCTION', 'PACKAGE') ORDER BY OBJECT_TYPE, OBJECT_NAME", 5000);
+            }
+
+            if (objectsRes.Success)
+            {
+                var packageSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var row in objectsRes.Rows)
+                {
+                    var owner = GetString(objectsRes, row, "OWNER", currentUser);
+                    var name = GetString(objectsRes, row, "OBJECT_NAME");
+                    var type = GetString(objectsRes, row, "OBJECT_TYPE").ToUpperInvariant();
+                    if (string.IsNullOrWhiteSpace(name)) continue;
+
+                    var objType = type switch
+                    {
+                        "PACKAGE" => DatabaseObjectType.Package,
+                        "PROCEDURE" => DatabaseObjectType.Procedure,
+                        "FUNCTION" => DatabaseObjectType.Function,
+                        _ => DatabaseObjectType.Procedure
+                    };
+
+                    if (objType == DatabaseObjectType.Package)
+                    {
+                        var key = $"{owner}.{name}";
+                        if (packageSeen.Contains(key)) continue;
+                        packageSeen.Add(key);
+                    }
+
+                    objects.Add(new DatabaseObjectInfo
+                    {
+                        Schema = owner,
+                        Name = name,
+                        ObjectType = objType,
+                        SpecificId = $"{objType.ToString().ToLowerInvariant()}:{owner}.{name}"
+                    });
+                }
+            }
+        }
+        catch { /* Fallback silencioso */ }
+
+        // 4. Sequences
+        try
+        {
+            var seqSql = $@"
+                SELECT SEQUENCE_OWNER, SEQUENCE_NAME, MIN_VALUE, MAX_VALUE, INCREMENT_BY, LAST_NUMBER
+                FROM ALL_SEQUENCES
+                WHERE {seqOwnerCondition}
+                ORDER BY SEQUENCE_OWNER, SEQUENCE_NAME";
+
+            var seqRes = await _databaseService.ExecuteQueryAsync(seqSql, 5000);
+            if (!seqRes.Success || seqRes.Rows.Count == 0)
+            {
+                seqRes = await _databaseService.ExecuteQueryAsync("SELECT USER AS SEQUENCE_OWNER, SEQUENCE_NAME, MIN_VALUE, MAX_VALUE, INCREMENT_BY, LAST_NUMBER FROM USER_SEQUENCES ORDER BY SEQUENCE_NAME", 5000);
+            }
+
+            if (seqRes.Success)
+            {
+                foreach (var row in seqRes.Rows)
+                {
+                    var owner = GetString(seqRes, row, "SEQUENCE_OWNER", currentUser);
+                    var name = GetString(seqRes, row, "SEQUENCE_NAME");
+                    if (string.IsNullOrWhiteSpace(name)) continue;
+
+                    objects.Add(new DatabaseObjectInfo
+                    {
+                        Schema = owner,
+                        Name = name,
+                        ObjectType = DatabaseObjectType.Sequence,
+                        SpecificId = $"sequence:{owner}.{name}"
+                    });
+                }
+            }
+        }
+        catch { /* Fallback silencioso */ }
+
+        return objects;
+    }
+
+    private async Task<string> GetOracleObjectDdlAsync(DatabaseObjectInfo obj, CancellationToken cancellationToken = default)
+    {
+        var rawName = obj.Name.Trim();
+        var (schema, name) = SplitOracleSchemaAndName(obj.Schema, rawName);
+
+        try
+        {
+            switch (obj.ObjectType)
+            {
+                case DatabaseObjectType.Package:
+                {
+                    // Specification e Body unificados a partir de ALL_SOURCE separados por /
+                    var sql = $@"
+                        SELECT TYPE, LINE, TEXT
+                        FROM ALL_SOURCE
+                        WHERE OWNER = '{schema}' AND NAME = '{name}' AND TYPE IN ('PACKAGE', 'PACKAGE BODY')
+                        ORDER BY CASE WHEN TYPE = 'PACKAGE' THEN 1 ELSE 2 END, LINE";
+
+                    var res = await _databaseService.ExecuteQueryAsync(sql, 50000, cancellationToken);
+                    if (!res.Success || res.Rows.Count == 0)
+                    {
+                        var userSql = $@"
+                            SELECT TYPE, LINE, TEXT
+                            FROM USER_SOURCE
+                            WHERE NAME = '{name}' AND TYPE IN ('PACKAGE', 'PACKAGE BODY')
+                            ORDER BY CASE WHEN TYPE = 'PACKAGE' THEN 1 ELSE 2 END, LINE";
+                        res = await _databaseService.ExecuteQueryAsync(userSql, 50000, cancellationToken);
+                    }
+
+                    if (res.Success && res.Rows.Count > 0)
+                    {
+                        var specLines = new List<string>();
+                        var bodyLines = new List<string>();
+
+                        foreach (var row in res.Rows)
+                        {
+                            var type = GetString(res, row, "TYPE").ToUpperInvariant();
+                            var text = GetString(res, row, "TEXT");
+                            if (type == "PACKAGE")
+                            {
+                                specLines.Add(text);
+                            }
+                            else if (type == "PACKAGE BODY")
+                            {
+                                bodyLines.Add(text);
+                            }
+                        }
+
+                        var specText = string.Join("", specLines).Trim();
+                        var bodyText = string.Join("", bodyLines).Trim();
+
+                        var parts = new List<string>();
+                        if (!string.IsNullOrWhiteSpace(specText))
+                        {
+                            parts.Add(specText.EndsWith('/') ? specText : specText + "\n/");
+                        }
+                        if (!string.IsNullOrWhiteSpace(bodyText))
+                        {
+                            parts.Add(bodyText.EndsWith('/') ? bodyText : bodyText + "\n/");
+                        }
+
+                        if (parts.Count > 0)
+                        {
+                            return string.Join("\n\n", parts);
+                        }
+                    }
+                    break;
+                }
+
+                case DatabaseObjectType.Sequence:
+                {
+                    var sql = $@"
+                        SELECT SEQUENCE_OWNER, SEQUENCE_NAME, MIN_VALUE, MAX_VALUE, INCREMENT_BY, LAST_NUMBER, CACHE_SIZE, CYCLE_FLAG
+                        FROM ALL_SEQUENCES
+                        WHERE SEQUENCE_OWNER = '{schema}' AND SEQUENCE_NAME = '{name}'";
+
+                    var res = await _databaseService.ExecuteQueryAsync(sql, 10, cancellationToken);
+                    if (!res.Success || res.Rows.Count == 0)
+                    {
+                        var userSql = $@"
+                            SELECT '{schema}' AS SEQUENCE_OWNER, SEQUENCE_NAME, MIN_VALUE, MAX_VALUE, INCREMENT_BY, LAST_NUMBER, CACHE_SIZE, CYCLE_FLAG
+                            FROM USER_SEQUENCES
+                            WHERE SEQUENCE_NAME = '{name}'";
+                        res = await _databaseService.ExecuteQueryAsync(userSql, 10, cancellationToken);
+                    }
+
+                    if (res.Success && res.Rows.Count > 0)
+                    {
+                        var row = res.Rows[0];
+                        var minVal = GetString(res, row, "MIN_VALUE", "1");
+                        var maxVal = GetString(res, row, "MAX_VALUE", "999999999999999999999999999");
+                        var incBy = GetString(res, row, "INCREMENT_BY", "1");
+                        var lastNum = GetString(res, row, "LAST_NUMBER", "1");
+                        var cacheSizeStr = GetString(res, row, "CACHE_SIZE", "0");
+                        var cacheSize = long.TryParse(cacheSizeStr, out var cs) ? cs : 0L;
+                        var cycleFlag = GetString(res, row, "CYCLE_FLAG", "N");
+
+                        return $"CREATE SEQUENCE \"{schema}\".\"{name}\"\nSTART WITH {lastNum}\nINCREMENT BY {incBy}\nMINVALUE {minVal}\nMAXVALUE {maxVal}\n{(cacheSize > 0 ? $"CACHE {cacheSize}" : "NOCACHE")}\n{(cycleFlag == "Y" ? "CYCLE" : "NOCYCLE")};";
+                    }
+                    break;
+                }
+
+                case DatabaseObjectType.Procedure or DatabaseObjectType.Function or DatabaseObjectType.Trigger:
+                {
+                    var typeStr = obj.ObjectType switch
+                    {
+                        DatabaseObjectType.Procedure => "PROCEDURE",
+                        DatabaseObjectType.Function => "FUNCTION",
+                        DatabaseObjectType.Trigger => "TRIGGER",
+                        _ => "PROCEDURE"
+                    };
+
+                    var sql = $@"
+                        SELECT LINE, TEXT
+                        FROM ALL_SOURCE
+                        WHERE OWNER = '{schema}' AND NAME = '{name}' AND TYPE = '{typeStr}'
+                        ORDER BY LINE";
+
+                    var res = await _databaseService.ExecuteQueryAsync(sql, 50000, cancellationToken);
+                    if (!res.Success || res.Rows.Count == 0)
+                    {
+                        var userSql = $@"
+                            SELECT LINE, TEXT
+                            FROM USER_SOURCE
+                            WHERE NAME = '{name}' AND TYPE = '{typeStr}'
+                            ORDER BY LINE";
+                        res = await _databaseService.ExecuteQueryAsync(userSql, 50000, cancellationToken);
+                    }
+
+                    if (res.Success && res.Rows.Count > 0)
+                    {
+                        var lines = res.Rows.Select(r => GetString(res, r, "TEXT"));
+                        var fullText = string.Join("", lines).Trim();
+                        return fullText.EndsWith('/') ? fullText : fullText + "\n/";
+                    }
+                    break;
+                }
+
+                case DatabaseObjectType.View:
+                {
+                    var sql = $@"
+                        SELECT TEXT
+                        FROM ALL_VIEWS
+                        WHERE OWNER = '{schema}' AND VIEW_NAME = '{name}'";
+
+                    var res = await _databaseService.ExecuteQueryAsync(sql, 10, cancellationToken);
+                    if (!res.Success || res.Rows.Count == 0)
+                    {
+                        var userSql = $@"
+                            SELECT TEXT
+                            FROM USER_VIEWS
+                            WHERE VIEW_NAME = '{name}'";
+                        res = await _databaseService.ExecuteQueryAsync(userSql, 10, cancellationToken);
+                    }
+
+                    if (res.Success && res.Rows.Count > 0)
+                    {
+                        var text = GetString(res, res.Rows[0], "TEXT").Trim();
+                        return $"CREATE OR REPLACE VIEW \"{schema}\".\"{name}\" AS\n{EnsureSemicolon(text)}";
+                    }
+                    break;
+                }
+            }
+        }
+        catch
+        {
+            // Silencioso em caso de erro na extração
+        }
+
+        return GenerateTemplateDdl(obj.ObjectType, obj.Name, obj.TargetTableName);
+    }
+
+    private (string schema, string name) SplitOracleSchemaAndName(string? schema, string name)
+    {
+        var clean = name.Replace("\"", "").Trim();
+        var defaultOwner = !string.IsNullOrWhiteSpace(_databaseService.Config.Username)
+            ? _databaseService.Config.Username.Trim().ToUpperInvariant()
+            : "USER";
+
+        if (clean.Contains('.'))
+        {
+            var parts = clean.Split('.');
+            return (parts[0].ToUpperInvariant(), parts[1].ToUpperInvariant());
+        }
+
+        var resolvedSchema = !string.IsNullOrWhiteSpace(schema) && !schema.Equals("main", StringComparison.OrdinalIgnoreCase) && !schema.Equals("public", StringComparison.OrdinalIgnoreCase)
+            ? schema.Trim().ToUpperInvariant()
+            : defaultOwner;
+
+        return (resolvedSchema, clean.ToUpperInvariant());
+    }
+
     private static string BuildDropStatement(DatabaseObjectInfo obj, DatabaseType dbType, bool ifExists)
     {
         var existsClause = ifExists ? "IF EXISTS " : string.Empty;
@@ -364,6 +749,21 @@ public class ProgrammabilityService : IProgrammabilityService
         var qualified = string.IsNullOrWhiteSpace(obj.Schema)
             ? quotedName
             : $"{EscapeIdent(obj.Schema)}.{quotedName}";
+
+        if (dbType == DatabaseType.Oracle)
+        {
+            return obj.ObjectType switch
+            {
+                DatabaseObjectType.View => $"DROP VIEW {qualified};",
+                DatabaseObjectType.Trigger => $"DROP TRIGGER {qualified};",
+                DatabaseObjectType.Function => $"DROP FUNCTION {qualified};",
+                DatabaseObjectType.Procedure => $"DROP PROCEDURE {qualified};",
+                DatabaseObjectType.Package => $"DROP PACKAGE {qualified};",
+                DatabaseObjectType.Sequence => $"DROP SEQUENCE {qualified};",
+                DatabaseObjectType.Index => $"DROP INDEX {qualified};",
+                _ => string.Empty
+            };
+        }
 
         return obj.ObjectType switch
         {

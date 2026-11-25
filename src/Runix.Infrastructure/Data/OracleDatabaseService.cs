@@ -301,35 +301,515 @@ OFFSET {offset} ROWS FETCH NEXT {limit} ROWS ONLY";
         return await ExecuteQueryAsync(sql);
     }
 
-    public Task<List<TableInfo>> GetTablesAsync()
+    private (string schema, string table) SplitSchemaAndTable(string tableName)
     {
-        // Implementação inicial funcional — será enriquecida na Fase 41
-        return Task.FromResult(new List<TableInfo>());
+        var raw = tableName.Replace("\"", "").Trim();
+        var defaultOwner = !string.IsNullOrWhiteSpace(Config.Username)
+            ? Config.Username.ToUpperInvariant()
+            : "USER";
+
+        if (raw.Contains('.'))
+        {
+            var parts = raw.Split('.');
+            return (parts[0].ToUpperInvariant(), parts[1].ToUpperInvariant());
+        }
+
+        return (defaultOwner, raw.ToUpperInvariant());
     }
 
-    public Task<List<ColumnInfo>> GetTableColumnsAsync(string tableName)
+    public static string FormatOracleType(string rawType, int dataLength, int? precision, int? scale, int? charLength)
     {
-        return Task.FromResult(new List<ColumnInfo>());
+        var upper = rawType.ToUpperInvariant().Trim();
+        if (upper.StartsWith("VARCHAR2") || upper.StartsWith("NVARCHAR2") || upper.StartsWith("CHAR") || upper.StartsWith("NCHAR"))
+        {
+            var len = charLength.HasValue && charLength.Value > 0 ? charLength.Value : dataLength;
+            return $"{upper}({len})";
+        }
+
+        if (upper == "NUMBER")
+        {
+            if (precision.HasValue && precision.Value > 0)
+            {
+                if (scale.HasValue && scale.Value > 0)
+                {
+                    return $"NUMBER({precision.Value},{scale.Value})";
+                }
+                return $"NUMBER({precision.Value})";
+            }
+            return "NUMBER";
+        }
+
+        if (upper.StartsWith("TIMESTAMP"))
+        {
+            if (scale.HasValue && scale.Value >= 0 && scale.Value != 6)
+            {
+                return $"{upper}({scale.Value})";
+            }
+            return upper;
+        }
+
+        if (upper == "RAW")
+        {
+            return $"RAW({dataLength})";
+        }
+
+        return upper;
     }
 
-    public Task<List<TableIndexInfo>> GetTableIndexesAsync(string tableName)
+    public async Task<List<TableInfo>> GetTablesAsync()
     {
-        return Task.FromResult(new List<TableIndexInfo>());
+        var tables = new List<TableInfo>();
+        await EnsureConnectedAsync();
+        await _connectionLock.WaitAsync();
+        try
+        {
+            var currentUser = (!string.IsNullOrWhiteSpace(Config.Username) ? Config.Username : "").Trim().ToUpperInvariant();
+
+            const string sql = @"
+                SELECT TABLE_NAME, OWNER, 'BASE TABLE' AS TABLE_TYPE, NUM_ROWS
+                FROM ALL_TABLES
+                WHERE (:owner = '' AND OWNER = USER) OR (:owner <> '' AND OWNER = :owner)
+                UNION ALL
+                SELECT VIEW_NAME AS TABLE_NAME, OWNER, 'VIEW' AS TABLE_TYPE, NULL AS NUM_ROWS
+                FROM ALL_VIEWS
+                WHERE (:owner = '' AND OWNER = USER) OR (:owner <> '' AND OWNER = :owner)
+                ORDER BY TABLE_TYPE, OWNER, TABLE_NAME";
+
+            await using var cmd = _connection!.CreateCommand();
+            cmd.CommandText = sql;
+            cmd.Parameters.Add(new OracleParameter("owner", currentUser));
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var tblName = reader.GetString(0);
+                var owner = reader.GetString(1);
+                var typeStr = reader.GetString(2);
+                var numRows = reader.IsDBNull(3) ? (long?)null : Convert.ToInt64(reader.GetValue(3));
+
+                var isView = string.Equals(typeStr, "VIEW", StringComparison.OrdinalIgnoreCase);
+
+                var displayName = string.Equals(owner, currentUser, StringComparison.OrdinalIgnoreCase)
+                    ? tblName
+                    : $"{owner}.{tblName}";
+
+                tables.Add(new TableInfo
+                {
+                    Name = displayName,
+                    Schema = owner,
+                    Type = isView ? "VIEW" : "BASE TABLE",
+                    RowCount = numRows
+                });
+            }
+        }
+        catch
+        {
+            // Fallback para USER_TABLES e USER_VIEWS
+            try
+            {
+                const string fallbackSql = @"
+                    SELECT TABLE_NAME, USER AS OWNER, 'BASE TABLE' AS TABLE_TYPE, NUM_ROWS FROM USER_TABLES
+                    UNION ALL
+                    SELECT VIEW_NAME AS TABLE_NAME, USER AS OWNER, 'VIEW' AS TABLE_TYPE, NULL AS NUM_ROWS FROM USER_VIEWS
+                    ORDER BY TABLE_TYPE, TABLE_NAME";
+
+                await using var cmd = _connection!.CreateCommand();
+                cmd.CommandText = fallbackSql;
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    var tblName = reader.GetString(0);
+                    var owner = reader.GetString(1);
+                    var typeStr = reader.GetString(2);
+                    var numRows = reader.IsDBNull(3) ? (long?)null : Convert.ToInt64(reader.GetValue(3));
+
+                    tables.Add(new TableInfo
+                    {
+                        Name = tblName,
+                        Schema = owner,
+                        Type = string.Equals(typeStr, "VIEW", StringComparison.OrdinalIgnoreCase) ? "VIEW" : "BASE TABLE",
+                        RowCount = numRows
+                    });
+                }
+            }
+            catch
+            {
+                // Ignorar erro de fallback e manter lista vazia
+            }
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
+
+        return tables;
     }
 
-    public Task<string> GetTableDdlAsync(string tableName)
+    public async Task<List<ColumnInfo>> GetTableColumnsAsync(string tableName)
     {
-        return Task.FromResult($"-- DDL for Oracle table {tableName}\n");
+        var columns = new List<ColumnInfo>();
+        await EnsureConnectedAsync();
+        await _connectionLock.WaitAsync();
+        try
+        {
+            var (owner, table) = SplitSchemaAndTable(tableName);
+
+            // 1. Fetch Primary Keys
+            var pkColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                const string pkSql = @"
+                    SELECT acc.COLUMN_NAME
+                    FROM ALL_CONSTRAINTS ac
+                    JOIN ALL_CONS_COLUMNS acc ON ac.OWNER = acc.OWNER AND ac.CONSTRAINT_NAME = acc.CONSTRAINT_NAME
+                    WHERE ac.OWNER = :owner AND ac.TABLE_NAME = :tableName AND ac.CONSTRAINT_TYPE = 'P'
+                    ORDER BY acc.POSITION";
+
+                await using var pkCmd = _connection!.CreateCommand();
+                pkCmd.CommandText = pkSql;
+                pkCmd.Parameters.Add(new OracleParameter("owner", owner));
+                pkCmd.Parameters.Add(new OracleParameter("tableName", table));
+
+                await using var pkReader = await pkCmd.ExecuteReaderAsync();
+                while (await pkReader.ReadAsync())
+                {
+                    pkColumns.Add(pkReader.GetString(0));
+                }
+            }
+            catch
+            {
+                // Fallback gracioso
+            }
+
+            // 2. Fetch Foreign Keys for Table
+            var fkMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                const string fkSql = @"
+                    SELECT acc.COLUMN_NAME, r_ac.TABLE_NAME, r_acc.COLUMN_NAME
+                    FROM ALL_CONSTRAINTS ac
+                    JOIN ALL_CONS_COLUMNS acc ON ac.OWNER = acc.OWNER AND ac.CONSTRAINT_NAME = acc.CONSTRAINT_NAME
+                    JOIN ALL_CONSTRAINTS r_ac ON ac.R_OWNER = r_ac.OWNER AND ac.R_CONSTRAINT_NAME = r_ac.CONSTRAINT_NAME
+                    JOIN ALL_CONS_COLUMNS r_acc ON r_ac.OWNER = r_acc.OWNER AND r_ac.CONSTRAINT_NAME = r_acc.CONSTRAINT_NAME AND acc.POSITION = r_acc.POSITION
+                    WHERE ac.OWNER = :owner AND ac.TABLE_NAME = :tableName AND ac.CONSTRAINT_TYPE = 'R'";
+
+                await using var fkCmd = _connection!.CreateCommand();
+                fkCmd.CommandText = fkSql;
+                fkCmd.Parameters.Add(new OracleParameter("owner", owner));
+                fkCmd.Parameters.Add(new OracleParameter("tableName", table));
+
+                await using var fkReader = await fkCmd.ExecuteReaderAsync();
+                while (await fkReader.ReadAsync())
+                {
+                    var colName = fkReader.GetString(0);
+                    var tgtTable = fkReader.GetString(1);
+                    var tgtCol = fkReader.GetString(2);
+                    fkMap[colName] = $"{tgtTable}({tgtCol})";
+                }
+            }
+            catch
+            {
+                // Fallback gracioso
+            }
+
+            // 3. Fetch Columns
+            const string colSql = @"
+                SELECT c.COLUMN_ID, c.COLUMN_NAME, c.DATA_TYPE, c.DATA_LENGTH, c.DATA_PRECISION, c.DATA_SCALE, 
+                       c.NULLABLE, c.DATA_DEFAULT, c.CHAR_LENGTH
+                FROM ALL_TAB_COLUMNS c
+                WHERE c.OWNER = :owner AND c.TABLE_NAME = :tableName
+                ORDER BY c.COLUMN_ID";
+
+            await using var cmd = _connection!.CreateCommand();
+            cmd.CommandText = colSql;
+            cmd.Parameters.Add(new OracleParameter("owner", owner));
+            cmd.Parameters.Add(new OracleParameter("tableName", table));
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var colId = reader.IsDBNull(0) ? columns.Count + 1 : Convert.ToInt32(reader.GetValue(0));
+                var colName = reader.GetString(1);
+                var rawType = reader.GetString(2);
+                var dataLength = reader.IsDBNull(3) ? 0 : Convert.ToInt32(reader.GetValue(3));
+                int? precision = reader.IsDBNull(4) ? null : Convert.ToInt32(reader.GetValue(4));
+                int? scale = reader.IsDBNull(5) ? null : Convert.ToInt32(reader.GetValue(5));
+                var nullableStr = reader.GetString(6);
+                var defaultVal = reader.IsDBNull(7) ? null : reader.GetValue(7)?.ToString()?.Trim();
+                int? charLength = reader.IsDBNull(8) ? null : Convert.ToInt32(reader.GetValue(8));
+
+                var isPk = pkColumns.Contains(colName);
+                var isFk = fkMap.TryGetValue(colName, out var fkRef);
+
+                var formattedType = FormatOracleType(rawType, dataLength, precision, scale, charLength);
+
+                columns.Add(new ColumnInfo
+                {
+                    TableName = tableName,
+                    OrdinalPosition = colId,
+                    Name = colName,
+                    DataType = formattedType,
+                    IsNullable = string.Equals(nullableStr, "Y", StringComparison.OrdinalIgnoreCase),
+                    IsPrimaryKey = isPk,
+                    IsForeignKey = isFk,
+                    ForeignKeyReference = fkRef,
+                    DefaultValue = defaultVal
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[OracleDatabaseService] Error in GetTableColumnsAsync: {ex.Message}");
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
+
+        return columns;
     }
 
-    public Task<List<ForeignKeyInfo>> GetForeignKeysAsync(string? tableName = null)
+    public async Task<List<TableIndexInfo>> GetTableIndexesAsync(string tableName)
     {
-        return Task.FromResult(new List<ForeignKeyInfo>());
+        var list = new List<TableIndexInfo>();
+        await EnsureConnectedAsync();
+        await _connectionLock.WaitAsync();
+        try
+        {
+            var (owner, table) = SplitSchemaAndTable(tableName);
+
+            const string sql = @"
+                SELECT 
+                    ai.INDEX_NAME,
+                    ai.UNIQUENESS,
+                    aic.COLUMN_NAME,
+                    aic.COLUMN_POSITION,
+                    ai.INDEX_TYPE
+                FROM ALL_INDEXES ai
+                JOIN ALL_IND_COLUMNS aic ON ai.OWNER = aic.INDEX_OWNER AND ai.INDEX_NAME = aic.INDEX_NAME
+                WHERE ai.TABLE_OWNER = :owner AND ai.TABLE_NAME = :tableName
+                ORDER BY ai.INDEX_NAME, aic.COLUMN_POSITION";
+
+            await using var cmd = _connection!.CreateCommand();
+            cmd.CommandText = sql;
+            cmd.Parameters.Add(new OracleParameter("owner", owner));
+            cmd.Parameters.Add(new OracleParameter("tableName", table));
+
+            var indexDict = new Dictionary<string, (string uniqueness, string type, List<string> cols)>(StringComparer.OrdinalIgnoreCase);
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var indexName = reader.GetString(0);
+                var uniqueness = reader.GetString(1);
+                var colName = reader.GetString(2);
+                var idxType = reader.IsDBNull(4) ? "NORMAL" : reader.GetString(4);
+
+                if (!indexDict.TryGetValue(indexName, out var entry))
+                {
+                    entry = (uniqueness, idxType, new List<string>());
+                    indexDict[indexName] = entry;
+                }
+                entry.cols.Add(colName);
+            }
+
+            foreach (var (idxName, entry) in indexDict)
+            {
+                var isUnique = string.Equals(entry.uniqueness, "UNIQUE", StringComparison.OrdinalIgnoreCase);
+                list.Add(new TableIndexInfo
+                {
+                    Name = idxName,
+                    TableName = tableName,
+                    Columns = string.Join(", ", entry.cols),
+                    IsUnique = isUnique,
+                    IsPrimaryKey = idxName.StartsWith("PK_", StringComparison.OrdinalIgnoreCase) || isUnique,
+                    Method = entry.type,
+                    Definition = $"CREATE {(isUnique ? "UNIQUE " : "")}INDEX \"{idxName}\" ON \"{owner}\".\"{table}\" ({string.Join(", ", entry.cols.Select(QuoteIdentifier))})"
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[OracleDatabaseService] Error in GetTableIndexesAsync: {ex.Message}");
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
+
+        return list;
     }
 
-    public Task<ErdGraphModel> GetErdGraphAsync()
+    public async Task<string> GetTableDdlAsync(string tableName)
     {
-        return Task.FromResult(new ErdGraphModel());
+        var cols = await GetTableColumnsAsync(tableName);
+        var fks = await GetForeignKeysAsync(tableName);
+        var (owner, table) = SplitSchemaAndTable(tableName);
+        var quotedTable = $"\"{owner}\".\"{table}\"";
+
+        var lines = new List<string>();
+
+        foreach (var c in cols)
+        {
+            var nullability = c.IsNullable ? "" : " NOT NULL";
+            var def = !string.IsNullOrWhiteSpace(c.DefaultValue) ? $" DEFAULT {c.DefaultValue.Trim()}" : "";
+            lines.Add($"    \"{c.Name}\" {c.DataType}{def}{nullability}");
+        }
+
+        var pkCols = cols.Where(c => c.IsPrimaryKey).Select(c => $"\"{c.Name}\"").ToList();
+        if (pkCols.Count > 0)
+        {
+            lines.Add($"    CONSTRAINT \"PK_{table}\" PRIMARY KEY ({string.Join(", ", pkCols)})");
+        }
+
+        foreach (var fk in fks)
+        {
+            var onDel = fk.OnDelete.Equals("CASCADE", StringComparison.OrdinalIgnoreCase) ? " ON DELETE CASCADE" : "";
+            lines.Add($"    CONSTRAINT \"{fk.ConstraintName}\" FOREIGN KEY (\"{fk.SourceColumn}\") REFERENCES \"{fk.TargetTable}\" (\"{fk.TargetColumn}\"){onDel}");
+        }
+
+        return $"CREATE TABLE {quotedTable} (\n{string.Join(",\n", lines)}\n);\n";
+    }
+
+    public async Task<List<ForeignKeyInfo>> GetForeignKeysAsync(string? tableName = null)
+    {
+        var list = new List<ForeignKeyInfo>();
+        await EnsureConnectedAsync();
+        await _connectionLock.WaitAsync();
+        try
+        {
+            string? owner = null;
+            string? table = null;
+            if (!string.IsNullOrWhiteSpace(tableName))
+            {
+                var parts = SplitSchemaAndTable(tableName);
+                owner = parts.schema;
+                table = parts.table;
+            }
+            else
+            {
+                owner = !string.IsNullOrWhiteSpace(Config.Username) ? Config.Username.ToUpperInvariant() : "USER";
+            }
+
+            const string sql = @"
+                SELECT 
+                    ac.CONSTRAINT_NAME,
+                    ac.TABLE_NAME AS SOURCE_TABLE,
+                    acc.COLUMN_NAME AS SOURCE_COLUMN,
+                    r_ac.TABLE_NAME AS TARGET_TABLE,
+                    r_acc.COLUMN_NAME AS TARGET_COLUMN,
+                    ac.DELETE_RULE
+                FROM ALL_CONSTRAINTS ac
+                JOIN ALL_CONS_COLUMNS acc ON ac.OWNER = acc.OWNER AND ac.CONSTRAINT_NAME = acc.CONSTRAINT_NAME
+                JOIN ALL_CONSTRAINTS r_ac ON ac.R_OWNER = r_ac.OWNER AND ac.R_CONSTRAINT_NAME = r_ac.CONSTRAINT_NAME
+                JOIN ALL_CONS_COLUMNS r_acc ON r_ac.OWNER = r_acc.OWNER AND r_ac.CONSTRAINT_NAME = r_acc.CONSTRAINT_NAME AND acc.POSITION = r_acc.POSITION
+                WHERE ac.OWNER = :owner
+                  AND (:tableName = '' OR ac.TABLE_NAME = :tableName)
+                  AND ac.CONSTRAINT_TYPE = 'R'
+                ORDER BY ac.CONSTRAINT_NAME, acc.POSITION";
+
+            await using var cmd = _connection!.CreateCommand();
+            cmd.CommandText = sql;
+            cmd.Parameters.Add(new OracleParameter("owner", owner));
+            cmd.Parameters.Add(new OracleParameter("tableName", table ?? ""));
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var constraintName = reader.GetString(0);
+                var srcTable = reader.GetString(1);
+                var srcCol = reader.GetString(2);
+                var tgtTable = reader.GetString(3);
+                var tgtCol = reader.GetString(4);
+                var delRule = reader.IsDBNull(5) ? "NO ACTION" : reader.GetString(5);
+
+                list.Add(new ForeignKeyInfo
+                {
+                    ConstraintName = constraintName,
+                    SourceTable = srcTable,
+                    SourceColumn = srcCol,
+                    TargetTable = tgtTable,
+                    TargetColumn = tgtCol,
+                    OnDelete = delRule,
+                    OnUpdate = "NO ACTION"
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[OracleDatabaseService] Error in GetForeignKeysAsync: {ex.Message}");
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
+
+        return list;
+    }
+
+    public async Task<ErdGraphModel> GetErdGraphAsync()
+    {
+        var graph = new ErdGraphModel();
+        var tables = await GetTablesAsync();
+        var tablesOnly = tables.Where(t => !t.IsView).ToList();
+        if (tablesOnly.Count == 0) return graph;
+
+        var allFks = await GetForeignKeysAsync();
+        var fksByTable = allFks
+            .GroupBy(f => f.SourceTable, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+
+        var tableColumns = new Dictionary<string, List<ColumnInfo>>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var tbl in tablesOnly)
+        {
+            var cols = await GetTableColumnsAsync(tbl.Name);
+            tableColumns[tbl.Name] = cols;
+
+            if (fksByTable.TryGetValue(tbl.Name, out var tableFks))
+            {
+                foreach (var col in cols)
+                {
+                    var fk = tableFks.FirstOrDefault(f => string.Equals(f.SourceColumn, col.Name, StringComparison.OrdinalIgnoreCase));
+                    if (fk != null)
+                    {
+                        col.IsForeignKey = true;
+                        col.ForeignKeyReference = $"{fk.TargetTable}({fk.TargetColumn})";
+                    }
+                }
+            }
+
+            graph.Nodes.Add(new ErdTableNode
+            {
+                Table = tbl,
+                Columns = cols
+            });
+        }
+
+        foreach (var fk in allFks)
+        {
+            tableColumns.TryGetValue(fk.SourceTable, out var cols);
+            cols ??= new List<ColumnInfo>();
+
+            List<ForeignKeyInfo>? tableFks = null;
+            fksByTable.TryGetValue(fk.SourceTable, out tableFks);
+
+            var card = Runix.Core.Services.ErdLayoutService.InferCardinality(fk, cols, tableFks ?? new List<ForeignKeyInfo>());
+
+            graph.Relationships.Add(new ErdRelationshipLink
+            {
+                SourceTable = fk.SourceTable,
+                SourceColumn = fk.SourceColumn,
+                TargetTable = fk.TargetTable,
+                TargetColumn = fk.TargetColumn,
+                Cardinality = card,
+                OnDelete = fk.OnDelete,
+                OnUpdate = fk.OnUpdate
+            });
+        }
+
+        Runix.Core.Services.ErdLayoutService.ApplyTopologicalLayout(graph);
+        return graph;
     }
 
     public async Task<QueryResult> ExecuteBatchTransactionalAsync(IReadOnlyList<ParameterizedCommand> commands, CancellationToken cancellationToken = default)

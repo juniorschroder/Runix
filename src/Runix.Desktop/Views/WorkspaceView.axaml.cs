@@ -704,6 +704,30 @@ public partial class WorkspaceView : UserControl
             _treeItems.Add(idxGroup);
         }
 
+        var packages = matchingProg.Where(o => o.ObjectType == DatabaseObjectType.Package).ToList();
+        if (packages.Count > 0)
+        {
+            var pkgGroup = new SchemaOrGroupSidebarItem("Packages", "📦") { IsExpanded = !string.IsNullOrEmpty(filter) };
+            foreach (var pkg in packages)
+            {
+                pkgGroup.Children.Add(new ProgrammabilitySidebarItem(pkg));
+            }
+            pkgGroup.NotifyCountChanged();
+            _treeItems.Add(pkgGroup);
+        }
+
+        var sequences = matchingProg.Where(o => o.ObjectType == DatabaseObjectType.Sequence).ToList();
+        if (sequences.Count > 0)
+        {
+            var seqGroup = new SchemaOrGroupSidebarItem("Sequences", "🔢") { IsExpanded = !string.IsNullOrEmpty(filter) };
+            foreach (var seq in sequences)
+            {
+                seqGroup.Children.Add(new ProgrammabilitySidebarItem(seq));
+            }
+            seqGroup.NotifyCountChanged();
+            _treeItems.Add(seqGroup);
+        }
+
         TreeTables.ItemsSource = null;
         TreeTables.ItemsSource = _treeItems;
 
